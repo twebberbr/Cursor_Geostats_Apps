@@ -385,6 +385,7 @@
             }
         }
     </style>
+    <link rel="stylesheet" href="geostats-hub.css">
 </head>
 <body>
     <div class="container">
@@ -1250,6 +1251,7 @@ SK: C [w1 w2]ᵀ = c0
         </div>
     </div>
 
+    <script src="geostats-hub.js"></script>
     <script>
         // ============================================
         // PARÂMETROS GLOBAIS
@@ -2355,6 +2357,18 @@ SK: C [w1 w2]ᵀ = c0
         });
 
         updateExampleSection();
+
+        if (window.GeoStatsHub && typeof window.GeoStatsHub.install === 'function') {
+            window.GeoStatsHub.install({
+                labId: 'lagrange',
+                disableProjectIO: true,
+                checklist: [
+                    'A restricao de nao-vies (soma dos pesos = 1) foi respeitada?',
+                    'Ha indicios de pesos negativos por redundancia espacial?',
+                    'O valor de mu indica o custo de impor a restricao?'
+                ]
+            });
+        }
     </script>
 </body>
 </html>

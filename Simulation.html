@@ -573,6 +573,7 @@
   }
 
 </style>
+<link rel="stylesheet" href="geostats-hub.css">
 </head>
 <body>
 
@@ -893,6 +894,7 @@
 
 </div>
 
+<script src="geostats-hub.js"></script>
 <script>
 // ============ GLOBAL VARIABLES ============
 let canvas, ctx, points = [], nextId = 1;
@@ -3514,6 +3516,105 @@ function init() {
   updateGridInfo();
   computeNscoreTransform();
   draw();
+
+  if (window.GeoStatsHub && typeof window.GeoStatsHub.install === 'function') {
+    window.GeoStatsHub.install({
+      labId: 'simulation',
+      checklist: [
+        'Do multiple realizations reproduce global statistics?',
+        'Are high-uncertainty zones aligned with sparse data?',
+        'Are P10/P50/P90 maps consistent with geologic expectations?'
+      ],
+      collectState: () => ({
+        points: points.map((p) => ({
+          id: p.id,
+          x: worldX(p.x),
+          y: worldY(p.y),
+          value: p.value,
+          active: p.active
+        })),
+        bounds: { dataMinX, dataMaxX, dataMinY, dataMaxY },
+        controls: {
+          nugget: document.getElementById('nugget').value,
+          useStruct1: document.getElementById('useStruct1').checked,
+          varioType1: document.getElementById('varioType1').value,
+          sill1: document.getElementById('sill1').value,
+          range1: document.getElementById('range1').value,
+          rangeOrtho1: document.getElementById('rangeOrtho1').value,
+          useStruct2: document.getElementById('useStruct2').checked,
+          varioType2: document.getElementById('varioType2').value,
+          sill2: document.getElementById('sill2').value,
+          range2: document.getElementById('range2').value,
+          rangeOrtho2: document.getElementById('rangeOrtho2').value,
+          anisoAngle: document.getElementById('anisoAngle').value,
+          maxOrigNeighbors: document.getElementById('maxOrigNeighbors').value,
+          maxSimNeighbors: document.getElementById('maxSimNeighbors').value,
+          useSearchRadius: document.getElementById('useSearchRadius').checked,
+          searchRadiusMajor: document.getElementById('searchRadiusMajor').value,
+          searchRadiusMinor: document.getElementById('searchRadiusMinor').value,
+          gridOriginX: document.getElementById('gridOriginX').value,
+          gridOriginY: document.getElementById('gridOriginY').value,
+          gridSpacingX: document.getElementById('gridSpacingX').value,
+          gridSpacingY: document.getElementById('gridSpacingY').value,
+          gridNx: document.getElementById('gridNx').value,
+          gridNy: document.getElementById('gridNy').value,
+          nRealizations: document.getElementById('nRealizations').value,
+          randomSeed: document.getElementById('randomSeed').value,
+          useSeed: document.getElementById('useSeed').checked
+        }
+      }),
+      applyState: (data) => {
+        if (!data || !Array.isArray(data.points) || data.points.length === 0) return;
+
+        if (data.controls) {
+          Object.keys(data.controls).forEach((id) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            if (el.type === 'checkbox') el.checked = !!data.controls[id];
+            else el.value = data.controls[id];
+          });
+          document.getElementById('struct2Opts').style.display = document.getElementById('useStruct2').checked ? 'block' : 'none';
+          document.getElementById('radiusGroup').style.display = document.getElementById('useSearchRadius').checked ? '' : 'none';
+        }
+
+        if (data.bounds) {
+          if (isFinite(data.bounds.dataMinX)) dataMinX = data.bounds.dataMinX;
+          if (isFinite(data.bounds.dataMaxX)) dataMaxX = data.bounds.dataMaxX;
+          if (isFinite(data.bounds.dataMinY)) dataMinY = data.bounds.dataMinY;
+          if (isFinite(data.bounds.dataMaxY)) dataMaxY = data.bounds.dataMaxY;
+        } else {
+          const xs = data.points.map((p) => Number(p.x));
+          const ys = data.points.map((p) => Number(p.y));
+          const pad = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) * 0.1 || 1;
+          dataMinX = Math.min(...xs) - pad;
+          dataMaxX = Math.max(...xs) + pad;
+          dataMinY = Math.min(...ys) - pad;
+          dataMaxY = Math.max(...ys) + pad;
+        }
+        updateAspectTransform();
+
+        points = data.points.map((p, idx) => ({
+          id: Number.isFinite(Number(p.id)) ? Number(p.id) : idx + 1,
+          x: internalX(Number(p.x)),
+          y: internalY(Number(p.y)),
+          value: Number.isFinite(Number(p.value)) ? Number(p.value) : 0,
+          active: p.active !== false
+        }));
+        nextId = Math.max(0, ...points.map((p) => p.id)) + 1;
+
+        clearResults();
+        updatePointsTable();
+        updateModelSummary();
+        updateGridInfo();
+        computeNscoreTransform();
+        draw();
+      },
+      afterPreset: () => {
+        updateModelSummary();
+        draw();
+      }
+    });
+  }
 }
 
 function setupEvents() {

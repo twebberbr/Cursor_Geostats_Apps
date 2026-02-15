@@ -525,6 +525,7 @@
   }
 
 </style>
+<link rel="stylesheet" href="geostats-hub.css">
 </head>
 <body>
 
@@ -886,6 +887,7 @@
   </div>
 </div>
 
+<script src="geostats-hub.js"></script>
 <script>
 // ============================================
 // GLOBAL VARIABLES
@@ -982,6 +984,71 @@ window.onload = function() {
   setupImageUpload();
   drawDataCanvas();
   updateOrthoFieldsVisibility();
+
+  if (window.GeoStatsHub && typeof window.GeoStatsHub.install === 'function') {
+    window.GeoStatsHub.install({
+      labId: 'variography',
+      checklist: [
+        'Are lag distance and tolerance compatible with sample spacing?',
+        'Do directional ranges reveal meaningful anisotropy?',
+        'Does fitted model honor the experimental cloud trend?'
+      ],
+      collectState: () => ({
+        points: dataPoints.map((p) => ({ x: p.x, y: p.y, value: p.value })),
+        controls: {
+          variogramType: document.getElementById('variogramType').value,
+          lagSize: document.getElementById('lagSize').value,
+          numLags: document.getElementById('numLags').value,
+          directionAngle: document.getElementById('directionAngle').value,
+          angleTolerance: document.getElementById('angleTolerance').value,
+          bandwidth: document.getElementById('bandwidth').value,
+          modelType: document.getElementById('modelType').value,
+          numStructures: document.getElementById('numStructures').value,
+          modelNugget: document.getElementById('modelNugget').value,
+          modelC1: document.getElementById('modelC1').value,
+          modelRange1: document.getElementById('modelRange1').value,
+          modelRangeOrtho1: document.getElementById('modelRangeOrtho1').value,
+          modelC2: document.getElementById('modelC2').value,
+          modelRange2: document.getElementById('modelRange2').value,
+          modelRangeOrtho2: document.getElementById('modelRangeOrtho2').value
+        }
+      }),
+      applyState: (data) => {
+        if (!data || !Array.isArray(data.points) || data.points.length === 0) return;
+        dataPoints = data.points.map((p) => ({
+          x: Number.isFinite(Number(p.x)) ? Number(p.x) : 0,
+          y: Number.isFinite(Number(p.y)) ? Number(p.y) : 0,
+          value: Number.isFinite(Number(p.value)) ? Number(p.value) : 0
+        }));
+        originalDataPoints = JSON.parse(JSON.stringify(dataPoints));
+        isNScoreApplied = false;
+        isIndicatorApplied = false;
+        variogramData = null;
+        variogramDataOrtho = null;
+        imageSampledPoints = [];
+
+        if (data.controls) {
+          Object.keys(data.controls).forEach((id) => {
+            const el = document.getElementById(id);
+            if (el) el.value = data.controls[id];
+          });
+        }
+
+        updateOrthoFieldsVisibility();
+        updatePointsList();
+        updateDataStats();
+        calculateDataBounds();
+        resetZoom();
+        drawDataCanvas();
+        drawVariogramPlot();
+        showNotification(`Project loaded: ${dataPoints.length} points`, 'success');
+      },
+      afterPreset: () => {
+        updateModelPlot();
+        drawDataCanvas();
+      }
+    });
+  }
 };
 
 // ============================================

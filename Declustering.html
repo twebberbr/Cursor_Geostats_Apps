@@ -565,6 +565,7 @@
   }
 
 </style>
+<link rel="stylesheet" href="geostats-hub.css">
 </head>
 <body>
 
@@ -859,6 +860,7 @@
 
 <div id="toast" class="toast"></div>
 
+<script src="geostats-hub.js"></script>
 <script>
 // ============ GLOBAL STATE ============
 let canvas, ctx;
@@ -954,6 +956,94 @@ function init() {
   draw();
   clearWeightComparisonCanvas();
   clearCDFCanvas();
+
+  if (window.GeoStatsHub && typeof window.GeoStatsHub.install === 'function') {
+    window.GeoStatsHub.install({
+      labId: 'declustering',
+      checklist: [
+        'Did declustering reduce preferential sampling bias?',
+        'Is the declustered mean stable across cell sizes?',
+        'Do different methods lead to similar central tendency?'
+      ],
+      collectState: () => ({
+        points: points.map((p) => ({
+          id: p.id,
+          x: p.worldX,
+          y: p.worldY,
+          value: p.value,
+          active: p.active
+        })),
+        bounds: { dataMinX, dataMaxX, dataMinY, dataMaxY },
+        controls: {
+          cellSizeX: document.getElementById('cellSizeX').value,
+          cellSizeY: document.getElementById('cellSizeY').value,
+          cellOriginX: document.getElementById('cellOriginX').value,
+          cellOriginY: document.getElementById('cellOriginY').value
+        }
+      }),
+      applyState: (data) => {
+        if (!data || !Array.isArray(data.points) || data.points.length === 0) return;
+
+        if (data.bounds) {
+          if (isFinite(data.bounds.dataMinX)) dataMinX = data.bounds.dataMinX;
+          if (isFinite(data.bounds.dataMaxX)) dataMaxX = data.bounds.dataMaxX;
+          if (isFinite(data.bounds.dataMinY)) dataMinY = data.bounds.dataMinY;
+          if (isFinite(data.bounds.dataMaxY)) dataMaxY = data.bounds.dataMaxY;
+        } else {
+          const xs = data.points.map((p) => p.x);
+          const ys = data.points.map((p) => p.y);
+          const pad = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) * 0.1 || 1;
+          dataMinX = Math.min(...xs) - pad;
+          dataMaxX = Math.max(...xs) + pad;
+          dataMinY = Math.min(...ys) - pad;
+          dataMaxY = Math.max(...ys) + pad;
+        }
+
+        updateAspectTransform();
+
+        points = data.points.map((p, idx) => {
+          const wx = Number(p.x);
+          const wy = Number(p.y);
+          return {
+            id: Number.isFinite(Number(p.id)) ? Number(p.id) : idx + 1,
+            worldX: wx,
+            worldY: wy,
+            x: internalX(wx),
+            y: internalY(wy),
+            value: Number.isFinite(Number(p.value)) ? Number(p.value) : 0,
+            active: p.active !== false
+          };
+        });
+        nextId = Math.max(0, ...points.map((p) => p.id)) + 1;
+
+        if (data.controls) {
+          if (data.controls.cellSizeX !== undefined) document.getElementById('cellSizeX').value = data.controls.cellSizeX;
+          if (data.controls.cellSizeY !== undefined) document.getElementById('cellSizeY').value = data.controls.cellSizeY;
+          if (data.controls.cellOriginX !== undefined) document.getElementById('cellOriginX').value = data.controls.cellOriginX;
+          if (data.controls.cellOriginY !== undefined) document.getElementById('cellOriginY').value = data.controls.cellOriginY;
+        }
+
+        cellWeights = [];
+        voronoiWeights = [];
+        krigingWeights = [];
+        idwWeights = [];
+        voronoiPolygons = [];
+        cellGrid = null;
+        krigingGrid = null;
+        previewVoronoi = null;
+        previewKriging = null;
+        previewIDW = null;
+
+        updatePointsTable();
+        updateNaiveStats();
+        drawWeightComparison();
+        drawCDF();
+        draw();
+        showToast(`Project loaded: ${points.length} points`, 'success');
+      },
+      afterPreset: () => draw()
+    });
+  }
 }
 
 // ============ COORDINATE TRANSFORMS ============

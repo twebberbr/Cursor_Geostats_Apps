@@ -1,0 +1,96 @@
+.gs-hub {
+  margin: 0 0 12px 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(37, 99, 235, 0.28);
+  background: #eff6ff;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.06);
+}
+
+.gs-hub h3 {
+  margin: 0 0 6px 0;
+  font-size: 0.9rem;
+  color: #1e3a8a;
+}
+
+.gs-hub p {
+  margin: 0 0 8px 0;
+  font-size: 0.82rem;
+  color: #334155;
+}
+
+.gs-hub-flow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 8px 0;
+}
+
+.gs-hub-flow a {
+  text-decoration: none;
+  font-size: 0.78rem;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  color: #1d4ed8;
+  background: #ffffff;
+}
+
+.gs-hub-flow a.current {
+  color: #ffffff;
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+.gs-hub-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 8px 0;
+}
+
+.gs-hub button {
+  border-radius: 999px;
+  border: 1px solid rgba(30, 64, 175, 0.28);
+  background: #ffffff;
+  color: #1e3a8a;
+  padding: 4px 9px;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.gs-hub button:hover {
+  border-color: #2563eb;
+  color: #1d4ed8;
+}
+
+.gs-hub select {
+  border-radius: 999px;
+  border: 1px solid rgba(30, 64, 175, 0.28);
+  background: #ffffff;
+  color: #1e3a8a;
+  padding: 3px 8px;
+  font-size: 0.78rem;
+}
+
+.gs-hub-status {
+  margin: 0;
+  font-size: 0.76rem;
+  color: #475569;
+  min-height: 1em;
+}
+
+.gs-hub-checklist {
+  margin: 4px 0 0 16px;
+  padding: 0;
+  font-size: 0.78rem;
+  color: #334155;
+}
+
+.gs-hub-checklist li {
+  margin: 2px 0;
+}
+
+.gs-hub-checklist input[type="checkbox"] {
+  transform: translateY(1px);
+}
