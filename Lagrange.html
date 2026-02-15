@@ -77,7 +77,8 @@
         }
 
         .figure-box {
-            background: rgba(0,0,0,0.25);
+            background: #f8fafc;
+            border: 1px solid rgba(148, 163, 184, 0.35);
             border-radius: 8px;
             padding: 1rem;
         }
@@ -89,7 +90,7 @@
         .figure-label {
             font-family: 'JetBrains Mono', monospace;
             font-size: 0.75rem;
-            color: #81d4fa;
+            color: #1d4ed8;
             margin-bottom: 0.75rem;
             text-transform: uppercase;
             letter-spacing: 0.1em;
@@ -99,7 +100,7 @@
             display: block;
             width: 100%;
             height: auto;
-            background: rgba(255,255,255,0.02);
+            background: #ffffff;
             border-radius: 6px;
         }
 
@@ -113,8 +114,8 @@
         }
 
         .math-box {
-            background: rgba(79, 195, 247, 0.1);
-            border-left: 4px solid #4fc3f7;
+            background: #eff6ff;
+            border-left: 4px solid #2563eb;
             padding: 1rem 1.2rem;
             margin: 1rem 0;
             border-radius: 0 8px 8px 0;
@@ -124,19 +125,19 @@
         .math {
             font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
             font-style: italic;
-            color: #fff;
+            color: #0f172a;
         }
 
         .key-insight {
-            background: linear-gradient(135deg, rgba(255,213,79,0.15), rgba(255,183,77,0.1));
-            border: 1px solid rgba(255,213,79,0.3);
+            background: #fffbeb;
+            border: 1px solid #fcd34d;
             border-radius: 8px;
             padding: 1rem;
             margin: 1rem 0;
         }
 
         .key-insight-title {
-            color: #ffd54f;
+            color: #92400e;
             font-weight: 600;
             font-size: 1rem;
             margin-bottom: 0.4rem;
@@ -152,7 +153,7 @@
             counter-increment: step;
             padding: 0.6rem 0 0.6rem 2.5rem;
             position: relative;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
+            border-bottom: 1px solid rgba(148, 163, 184, 0.3);
             font-size: 0.95rem;
         }
 
@@ -193,7 +194,7 @@
         .slider-group label {
             font-family: 'JetBrains Mono', monospace;
             font-size: 0.8rem;
-            color: #81d4fa;
+            color: #1e3a8a;
         }
 
         input[type="range"] {
@@ -205,7 +206,7 @@
         .value-display {
             font-family: 'JetBrains Mono', monospace;
             font-size: 0.9rem;
-            color: #ffd54f;
+            color: #1d4ed8;
             min-width: 3rem;
             font-weight: 500;
         }
@@ -218,15 +219,15 @@
         }
 
         .status-optimal {
-            background: rgba(102, 187, 106, 0.2);
-            border: 1px solid #66bb6a;
-            color: #a5d6a7;
+            background: #dcfce7;
+            border: 1px solid #22c55e;
+            color: #166534;
         }
 
         .status-suboptimal {
-            background: rgba(255, 152, 0, 0.2);
-            border: 1px solid #ff9800;
-            color: #ffcc80;
+            background: #ffedd5;
+            border: 1px solid #f97316;
+            color: #9a3412;
         }
 
         @media (max-width: 800px) {
@@ -400,10 +401,10 @@
                 <div class="explanation">
                     <p><strong>Use the sliders</strong> to explore weight space:</p>
                     <ul class="step-list">
-                        <li>The <strong style="color:#64b5f6">blue contours</strong> are error level curves (σ²). Closer to the center means lower error.</li>
-                        <li>The <strong style="color:#2196f3">blue point</strong> is the unconstrained minimum (Simple Kriging).</li>
-                        <li>The <strong style="color:#ef5350">red line</strong> is the constraint: λ₁ + λ₂ = 1.</li>
-                        <li>The <strong style="color:#ff5722">orange point</strong> is your current position.</li>
+                        <li>The <strong style="color:#1d4ed8">blue contours</strong> are error level curves (σ²). Closer to the center means lower error.</li>
+                        <li>The <strong style="color:#2563eb">blue point</strong> is the unconstrained minimum (Simple Kriging).</li>
+                        <li>The <strong style="color:#dc2626">red line</strong> is the constraint: λ₁ + λ₂ = 1.</li>
+                        <li>The <strong style="color:#c2410c">orange point</strong> is your current position.</li>
                     </ul>
 
                     <div class="key-insight">
@@ -501,9 +502,9 @@
 
                 <div class="explanation">
                     <ul class="step-list">
-                        <li>The <strong style="color:#ff9800">∇f (orange)</strong> vector points to the direction of fastest error increase.</li>
-                        <li>The <strong style="color:#ab47bc">∇g (purple)</strong> vector is perpendicular to the constraint.</li>
-                        <li>The <strong style="color:#66bb6a">tangential component (green)</strong> shows whether there is an improving direction along the line.</li>
+                        <li>The <strong style="color:#b45309">∇f (orange)</strong> vector points to the direction of fastest error increase.</li>
+                        <li>The <strong style="color:#7c3aed">∇g (purple)</strong> vector is perpendicular to the constraint.</li>
+                        <li>The <strong style="color:#15803d">tangential component (green)</strong> shows whether there is an improving direction along the line.</li>
                         <li>At the <strong>optimum</strong>: tangential component = 0, gradients are parallel!</li>
                     </ul>
 
@@ -514,7 +515,7 @@
 
                     <div class="key-insight">
                         <div class="key-insight-title">💡 Find the Optimum!</div>
-                        <p>Move the slider until the <strong style="color:#66bb6a">tangential component becomes zero</strong>. At that point, ∇f and ∇g are parallel!</p>
+                        <p>Move the slider until the <strong style="color:#15803d">tangential component becomes zero</strong>. At that point, ∇f and ∇g are parallel!</p>
                     </div>
                 </div>
             </div>
@@ -548,7 +549,7 @@
                     <div class="math-box">
                         <span class="math">∂L/∂λ₁ = 0</span> → <span class="math">∂f/∂λ₁ + μ = 0</span><br>
                         <span class="math">∂L/∂λ₂ = 0</span> → <span class="math">∂f/∂λ₂ + μ = 0</span><br>
-                        <span class="math">∂L/∂μ = 0</span> → <span class="math">g(λ) = 0</span> ← <strong style="color:#ffd54f">the constraint!</strong>
+                        <span class="math">∂L/∂μ = 0</span> → <span class="math">g(λ) = 0</span> ← <strong style="color:#b45309">the constraint!</strong>
                     </div>
 
                     <p>The first two equations imply: <span class="math">∇f = −μ∇g</span> (parallel vectors).</p>
@@ -791,24 +792,24 @@
             <div class="math-box" style="font-size: 0.95rem;">
                 <table style="width: 100%; border-collapse: collapse;">
                     <tr style="border-bottom: 1px solid rgba(255,255,255,0.2);">
-                        <td style="padding: 0.6rem; color: #ffd54f; font-weight: 600;">Lagrangian</td>
+                        <td style="padding: 0.6rem; color: #1d4ed8; font-weight: 600;">Lagrangian</td>
                         <td style="padding: 0.6rem;"><span class="math">L(λ, μ) = f(λ) + μ · g(λ)</span></td>
-                        <td style="padding: 0.6rem; color: #888;">Combines objective and constraint</td>
+                        <td style="padding: 0.6rem; color: #475569;">Combines objective and constraint</td>
                     </tr>
                     <tr style="border-bottom: 1px solid rgba(255,255,255,0.2);">
-                        <td style="padding: 0.6rem; color: #ff9800; font-weight: 600;">Condition 1</td>
+                        <td style="padding: 0.6rem; color: #b45309; font-weight: 600;">Condition 1</td>
                         <td style="padding: 0.6rem;"><span class="math">∇<sub>λ</sub>L = 0 → ∇f = −μ∇g</span></td>
-                        <td style="padding: 0.6rem; color: #888;">Parallel gradients</td>
+                        <td style="padding: 0.6rem; color: #475569;">Parallel gradients</td>
                     </tr>
                     <tr style="border-bottom: 1px solid rgba(255,255,255,0.2);">
-                        <td style="padding: 0.6rem; color: #ef5350; font-weight: 600;">Condition 2</td>
+                        <td style="padding: 0.6rem; color: #dc2626; font-weight: 600;">Condition 2</td>
                         <td style="padding: 0.6rem;"><span class="math">∂L/∂μ = 0 → g(λ) = 0</span></td>
-                        <td style="padding: 0.6rem; color: #888;">On the constraint</td>
+                        <td style="padding: 0.6rem; color: #475569;">On the constraint</td>
                     </tr>
                     <tr>
-                        <td style="padding: 0.6rem; color: #66bb6a; font-weight: 600;">Meaning of μ</td>
+                        <td style="padding: 0.6rem; color: #15803d; font-weight: 600;">Meaning of μ</td>
                         <td style="padding: 0.6rem;"><span class="math">μ = dσ²*/dc</span></td>
-                        <td style="padding: 0.6rem; color: #888;">Trade-off rate (shadow price)</td>
+                        <td style="padding: 0.6rem; color: #475569;">Trade-off rate (shadow price)</td>
                     </tr>
                 </table>
             </div>
