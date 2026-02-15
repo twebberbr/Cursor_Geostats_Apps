@@ -780,6 +780,9 @@
     <button class="secondary" onclick="updateModelPlot()" style="width: 100%; margin-top: 6px;">
       Update Model
     </button>
+    <button class="secondary" onclick="exportVariogramModelFile()" style="width: 100%; margin-top: 6px;">
+      Export Variogram Model (JSON)
+    </button>
     <div id="fitDiagnostics" class="info-box" style="margin-top: 10px;">
       Fit diagnostics appear after computing the experimental variogram.
     </div>
@@ -3199,6 +3202,76 @@ function updateFitDiagnostics() {
 // ============================================
 // MODEL FITTING
 // ============================================
+function getVariogramModelExportPayload() {
+  const numStructures = parseInt(document.getElementById('numStructures').value, 10) || 1;
+  const modelType = document.getElementById('modelType').value || 'spherical';
+  const normalizedView = !!document.getElementById('normalizeCheck')?.checked;
+
+  let nugget = parseFloat(document.getElementById('modelNugget').value);
+  let c1 = parseFloat(document.getElementById('modelC1').value);
+  let c2 = parseFloat(document.getElementById('modelC2').value);
+
+  if (normalizedView && unnormalizedModelParams) {
+    if (isFinite(unnormalizedModelParams.nugget)) nugget = unnormalizedModelParams.nugget;
+    if (isFinite(unnormalizedModelParams.c1)) c1 = unnormalizedModelParams.c1;
+    if (isFinite(unnormalizedModelParams.c2)) c2 = unnormalizedModelParams.c2;
+  }
+
+  const range1 = parseFloat(document.getElementById('modelRange1').value);
+  const rangeOrtho1 = parseFloat(document.getElementById('modelRangeOrtho1').value);
+  const range2 = parseFloat(document.getElementById('modelRange2').value);
+  const rangeOrtho2 = parseFloat(document.getElementById('modelRangeOrtho2').value);
+  const anisotropyAngle = parseFloat(document.getElementById('directionAngle').value);
+
+  const structure1 = {
+    enabled: true,
+    type: modelType,
+    sill: isFinite(c1) ? c1 : 0,
+    rangeMain: isFinite(range1) ? range1 : 0,
+    rangeOrtho: isFinite(rangeOrtho1) ? rangeOrtho1 : (isFinite(range1) ? range1 : 0)
+  };
+
+  const structure2 = {
+    enabled: numStructures >= 2,
+    type: modelType,
+    sill: isFinite(c2) ? c2 : 0,
+    rangeMain: isFinite(range2) ? range2 : 0,
+    rangeOrtho: isFinite(rangeOrtho2) ? rangeOrtho2 : (isFinite(range2) ? range2 : 0)
+  };
+
+  return {
+    schema: 'geostats-variogram-model-v1',
+    createdAt: new Date().toISOString(),
+    sourceLab: 'Variography',
+    model: {
+      nugget: isFinite(nugget) ? nugget : 0,
+      anisotropyAngle: isFinite(anisotropyAngle) ? anisotropyAngle : 0,
+      structures: [structure1, structure2]
+    },
+    meta: {
+      normalizedView,
+      modelType,
+      currentDataMode
+    }
+  };
+}
+
+function exportVariogramModelFile() {
+  const payload = getVariogramModelExportPayload();
+  const jsonText = JSON.stringify(payload, null, 2);
+  const blob = new Blob([jsonText], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `variogram_model_${stamp}.json`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  showNotification('Variogram model exported. Load this JSON in Estimation or Simulation.', 'success');
+}
+
 function updateModelPlot() {
   const numStructures = parseInt(document.getElementById('numStructures').value);
   

@@ -731,6 +731,12 @@
       <label><input type="checkbox" id="showVarioGuides"> Show pair guide lines</label>
     </div>
 
+    <div style="margin-top:6px; font-size:0.86rem;">
+      <button id="btnLoadVariogramModel">Load variogram model (JSON)</button>
+      <input type="file" id="variogramModelFileInput" accept=".json,application/json" style="display:none;">
+      <div id="variogramModelStatus" style="margin-top:4px; color:var(--text-muted);"></div>
+    </div>
+
     <div class="model-summary" id="modelSummary">γ(h) = C₀ + C₁·g₁(h)</div>
   </div>
 
@@ -894,6 +900,7 @@ function updateAspectTransform() {
 let lambdaById = {}, maxLambdaAbs = 0, lastUsedIds = {};
 let legendCanvas, legendCtx, csvRawData = null, csvHeaders = [];
 let estMapData = null, varMapData = null, slopeMapData = null, lagrangeMapData = null, idwMapData = null, nnMapData = null;
+const VARIOGRAM_MODEL_SCHEMA = 'geostats-variogram-model-v1';
 
 // Get variogram parameters as object
 function getVarioParams() {
@@ -924,6 +931,59 @@ function getVarioParams() {
   structures.forEach(s => totalSill += s.sill);
   
   return { nugget, structures, anisoAngle, totalSill };
+}
+
+function setVariogramModelStatus(message, isError = false) {
+  const el = document.getElementById('variogramModelStatus');
+  if (!el) return;
+  el.textContent = message || '';
+  el.style.color = isError ? '#b91c1c' : 'var(--text-muted)';
+}
+
+function clampVarioType(type) {
+  const allowed = ['spherical', 'exponential', 'gaussian'];
+  return allowed.includes(type) ? type : 'spherical';
+}
+
+function applyVariogramModelToEstimation(payload) {
+  if (!payload || payload.schema !== VARIOGRAM_MODEL_SCHEMA || !payload.model) {
+    throw new Error('Invalid variogram model schema.');
+  }
+  const model = payload.model;
+  const s1 = Array.isArray(model.structures) ? model.structures[0] : null;
+  const s2 = Array.isArray(model.structures) ? model.structures[1] : null;
+  if (!s1) throw new Error('Model must include at least one structure.');
+
+  const nugget = Number(model.nugget);
+  if (isFinite(nugget)) document.getElementById('nugget').value = nugget;
+
+  document.getElementById('useStruct1').checked = s1.enabled !== false;
+  document.getElementById('varioType1').value = clampVarioType(s1.type);
+  if (isFinite(Number(s1.sill))) document.getElementById('sill1').value = Number(s1.sill);
+  if (isFinite(Number(s1.rangeMain))) document.getElementById('range1').value = Number(s1.rangeMain);
+  if (isFinite(Number(s1.rangeOrtho))) document.getElementById('rangeOrtho1').value = Number(s1.rangeOrtho);
+
+  if (s2) {
+    document.getElementById('useStruct2').checked = s2.enabled !== false;
+    document.getElementById('varioType2').value = clampVarioType(s2.type);
+    if (isFinite(Number(s2.sill))) document.getElementById('sill2').value = Number(s2.sill);
+    if (isFinite(Number(s2.rangeMain))) document.getElementById('range2').value = Number(s2.rangeMain);
+    if (isFinite(Number(s2.rangeOrtho))) document.getElementById('rangeOrtho2').value = Number(s2.rangeOrtho);
+  } else {
+    document.getElementById('useStruct2').checked = false;
+  }
+
+  const angle = Number(model.anisotropyAngle);
+  if (isFinite(angle)) document.getElementById('anisoAngle').value = angle;
+
+  document.getElementById('useStruct1').dispatchEvent(new Event('change'));
+  document.getElementById('useStruct2').dispatchEvent(new Event('change'));
+  updateModelSummary();
+  clearResults();
+  draw();
+
+  const source = payload.sourceLab || 'unknown source';
+  setVariogramModelStatus(`Variogram model loaded from ${source}.`);
 }
 
 // Gamma function for single structure
@@ -1248,6 +1308,25 @@ function setupEvents() {
   document.getElementById('btnResetView').onclick = () => { viewScale=1; viewOffsetX=0; viewOffsetY=0; draw(); };
   document.getElementById('btnResetPoints').onclick = () => init();
   document.getElementById('learningMode').onchange = () => applyLearningModeEstimation();
+  document.getElementById('btnLoadVariogramModel').onclick = () => {
+    const input = document.getElementById('variogramModelFileInput');
+    if (input) input.click();
+  };
+  document.getElementById('variogramModelFileInput').onchange = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const payload = JSON.parse(String(ev.target.result || '{}'));
+        applyVariogramModelToEstimation(payload);
+      } catch (err) {
+        setVariogramModelStatus(`Failed to load model: ${err.message}`, true);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
   document.getElementById('cvScheme').onchange = (e) => {
     document.getElementById('cvKFolds').disabled = e.target.value !== 'kfold';
   };
