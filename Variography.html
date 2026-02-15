@@ -524,6 +524,41 @@
     color: var(--text-muted);
   }
 
+  .mode-switcher {
+    margin: 0 0 12px 0;
+    padding: 8px 10px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(37, 99, 235, 0.24);
+    background: #eff6ff;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .mode-switcher-title {
+    font-size: 0.8rem;
+    color: #1e3a8a;
+    font-weight: 600;
+    margin-right: 2px;
+  }
+
+  .mode-switcher button {
+    margin: 0;
+    padding: 5px 10px;
+    font-size: 0.8rem;
+    border-radius: 999px;
+    border: 1px solid rgba(59, 130, 246, 0.35);
+    background: #ffffff;
+    color: #1d4ed8;
+  }
+
+  .mode-switcher button.active {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #ffffff;
+  }
+
 </style>
 <link rel="stylesheet" href="geostats-hub.css">
 </head>
@@ -628,6 +663,14 @@
     </div>
     <div class="info-box">
       Lag Tolerance: 0.5 × Lag Size
+    </div>
+    <div class="control-row" style="margin-top: 8px;">
+      <label>Estimator:
+        <select id="variogramEstimator">
+          <option value="classical">Classical (Matheron)</option>
+          <option value="cressie">Cressie-Hawkins (robust)</option>
+        </select>
+      </label>
     </div>
   </div>
 
@@ -737,6 +780,9 @@
     <button class="secondary" onclick="updateModelPlot()" style="width: 100%; margin-top: 6px;">
       Update Model
     </button>
+    <div id="fitDiagnostics" class="info-box" style="margin-top: 10px;">
+      Fit diagnostics appear after computing the experimental variogram.
+    </div>
   </div>
 
   <hr class="section-divider">
@@ -968,6 +1014,10 @@ let minX = 0, maxX = 100, minY = 0, maxY = 100;
 // Measurement mode
 let measurementMode = false;
 let measurementPoints = [];
+let currentDataMode = 'point';
+let pointModeElements = [];
+let imageModeElements = [];
+let lastAutoFitRMSE = NaN;
 
 // ============================================
 // INITIALIZATION
@@ -982,8 +1032,15 @@ window.onload = function() {
   setupCanvasInteraction();
   setupCSVUpload();
   setupImageUpload();
+  setupModeSwitcher();
   drawDataCanvas();
   updateOrthoFieldsVisibility();
+  const estimatorSelect = document.getElementById('variogramEstimator');
+  if (estimatorSelect) {
+    estimatorSelect.addEventListener('change', () => {
+      if (dataPoints.length >= 2) calculateVariogram();
+    });
+  }
 
   if (window.GeoStatsHub && typeof window.GeoStatsHub.install === 'function') {
     window.GeoStatsHub.install({
@@ -997,6 +1054,7 @@ window.onload = function() {
         points: dataPoints.map((p) => ({ x: p.x, y: p.y, value: p.value })),
         controls: {
           variogramType: document.getElementById('variogramType').value,
+          variogramEstimator: document.getElementById('variogramEstimator').value,
           lagSize: document.getElementById('lagSize').value,
           numLags: document.getElementById('numLags').value,
           directionAngle: document.getElementById('directionAngle').value,
@@ -1010,7 +1068,8 @@ window.onload = function() {
           modelRangeOrtho1: document.getElementById('modelRangeOrtho1').value,
           modelC2: document.getElementById('modelC2').value,
           modelRange2: document.getElementById('modelRange2').value,
-          modelRangeOrtho2: document.getElementById('modelRangeOrtho2').value
+          modelRangeOrtho2: document.getElementById('modelRangeOrtho2').value,
+          dataMode: currentDataMode
         }
       }),
       applyState: (data) => {
@@ -1032,6 +1091,7 @@ window.onload = function() {
             const el = document.getElementById(id);
             if (el) el.value = data.controls[id];
           });
+          if (data.controls.dataMode) setVariographyMode(data.controls.dataMode);
         }
 
         updateOrthoFieldsVisibility();
@@ -1041,15 +1101,74 @@ window.onload = function() {
         resetZoom();
         drawDataCanvas();
         drawVariogramPlot();
+        updateFitDiagnostics();
         showNotification(`Project loaded: ${dataPoints.length} points`, 'success');
       },
       afterPreset: () => {
         updateModelPlot();
         drawDataCanvas();
+        updateFitDiagnostics();
       }
     });
   }
 };
+
+function setupModeSwitcher() {
+  const left = document.getElementById('left-panel');
+  if (!left || document.getElementById('variographyModeSwitcher')) return;
+
+  const children = Array.from(left.children);
+  let collectPoint = false;
+  let collectImage = false;
+  pointModeElements = [];
+  imageModeElements = [];
+
+  children.forEach((el) => {
+    if (el.tagName === 'H2' && el.textContent.trim() === 'Data') {
+      collectPoint = true;
+      pointModeElements.push(el);
+      return;
+    }
+    if (el.tagName === 'H2' && el.textContent.trim() === 'Variogram Calculation') {
+      collectPoint = false;
+    }
+    if (collectPoint) pointModeElements.push(el);
+
+    if (el.tagName === 'H2' && el.textContent.trim() === 'Image Variography') {
+      collectImage = true;
+      imageModeElements.push(el);
+      return;
+    }
+    if (collectImage) imageModeElements.push(el);
+  });
+
+  const switcher = document.createElement('div');
+  switcher.id = 'variographyModeSwitcher';
+  switcher.className = 'mode-switcher';
+  switcher.innerHTML = `
+    <span class="mode-switcher-title">Data mode:</span>
+    <button id="btnPointMode" type="button" class="active">Point Data Mode</button>
+    <button id="btnImageMode" type="button">Image Mode</button>
+  `;
+
+  const intro = left.querySelector('.lab-intro');
+  if (intro) intro.insertAdjacentElement('afterend', switcher);
+  else left.insertBefore(switcher, left.firstChild);
+
+  document.getElementById('btnPointMode').addEventListener('click', () => setVariographyMode('point'));
+  document.getElementById('btnImageMode').addEventListener('click', () => setVariographyMode('image'));
+  setVariographyMode('point');
+}
+
+function setVariographyMode(mode) {
+  currentDataMode = mode === 'image' ? 'image' : 'point';
+  pointModeElements.forEach((el) => { el.style.display = currentDataMode === 'image' ? 'none' : ''; });
+  imageModeElements.forEach((el) => { el.style.display = currentDataMode === 'point' ? 'none' : ''; });
+  const bPoint = document.getElementById('btnPointMode');
+  const bImage = document.getElementById('btnImageMode');
+  if (bPoint) bPoint.classList.toggle('active', currentDataMode === 'point');
+  if (bImage) bImage.classList.toggle('active', currentDataMode === 'image');
+}
 
 // ============================================
 // CSV HANDLING
@@ -2346,30 +2465,44 @@ function calculateVariogram() {
   const lagSize = parseFloat(document.getElementById('lagSize').value);
   const numLags = parseInt(document.getElementById('numLags').value);
   const lagTolerance = lagSize * 0.5;
+  const estimator = document.getElementById('variogramEstimator')?.value || 'classical';
   
   if (type === 'omnidirectional') {
-    variogramData = calculateOmnidirectionalVariogram(lagSize, numLags, lagTolerance);
+    variogramData = calculateOmnidirectionalVariogram(lagSize, numLags, lagTolerance, estimator);
     variogramDataOrtho = null;
     
-    document.getElementById('variogramMainTitle').textContent = 'Omnidirectional Variogram';
+    document.getElementById('variogramMainTitle').textContent = `Omnidirectional Variogram (${estimator === 'cressie' ? 'Cressie-Hawkins' : 'Classical'})`;
   } else {
     const angle = parseFloat(document.getElementById('directionAngle').value);
     const angleTol = parseFloat(document.getElementById('angleTolerance').value);
     const bandwidth = parseFloat(document.getElementById('bandwidth').value);
     
-    variogramData = calculateDirectionalVariogram(lagSize, numLags, lagTolerance, angle, angleTol, bandwidth);
+    variogramData = calculateDirectionalVariogram(lagSize, numLags, lagTolerance, angle, angleTol, bandwidth, estimator);
     
     const orthoAngle = (angle + 90) % 180;
-    variogramDataOrtho = calculateDirectionalVariogram(lagSize, numLags, lagTolerance, orthoAngle, angleTol, bandwidth);
+    variogramDataOrtho = calculateDirectionalVariogram(lagSize, numLags, lagTolerance, orthoAngle, angleTol, bandwidth, estimator);
     
-    document.getElementById('variogramMainTitle').textContent = `Directional Variogram (${angle}° and ${orthoAngle}°)`;
+    document.getElementById('variogramMainTitle').textContent = `Directional Variogram (${angle}° and ${orthoAngle}°, ${estimator === 'cressie' ? 'Cressie-Hawkins' : 'Classical'})`;
   }
   
   displayVariogramTable();
   drawVariogramPlot();
+  updateFitDiagnostics();
 }
 
-function calculateOmnidirectionalVariogram(lagSize, numLags, lagTolerance) {
+function computeSemivarianceFromDiffs(diffs, estimator) {
+  if (!diffs || !diffs.length) return NaN;
+  if (estimator === 'cressie') {
+    const n = diffs.length;
+    const meanRoot = diffs.reduce((s, d) => s + Math.sqrt(Math.abs(d)), 0) / n;
+    const denom = 0.457 + 0.494 / n + 0.045 / (n * n);
+    return 0.5 * (Math.pow(meanRoot, 4) / Math.max(denom, 1e-12));
+  }
+  const sumSq = diffs.reduce((s, d) => s + d * d, 0);
+  return sumSq / (2 * diffs.length);
+}
+
+function calculateOmnidirectionalVariogram(lagSize, numLags, lagTolerance, estimator = 'classical') {
   const lags = [];
   
   for (let lagIdx = 1; lagIdx <= numLags; lagIdx++) {
@@ -2377,8 +2510,7 @@ function calculateOmnidirectionalVariogram(lagSize, numLags, lagTolerance) {
     const minDist = targetDist - lagTolerance;
     const maxDist = targetDist + lagTolerance;
     
-    let sumSqDiff = 0;
-    let count = 0;
+    const diffs = [];
     
     for (let i = 0; i < dataPoints.length; i++) {
       for (let j = i + 1; j < dataPoints.length; j++) {
@@ -2387,20 +2519,18 @@ function calculateOmnidirectionalVariogram(lagSize, numLags, lagTolerance) {
         const dist = Math.sqrt(dx * dx + dy * dy);
         
         if (dist >= minDist && dist <= maxDist) {
-          const diff = dataPoints[j].value - dataPoints[i].value;
-          sumSqDiff += diff * diff;
-          count++;
+          diffs.push(dataPoints[j].value - dataPoints[i].value);
         }
       }
     }
     
-    if (count > 0) {
-      const semivariance = sumSqDiff / (2 * count);
+    if (diffs.length > 0) {
+      const semivariance = computeSemivarianceFromDiffs(diffs, estimator);
       lags.push({
         lag: lagIdx,
         distance: targetDist,
         semivariance: semivariance,
-        pairs: count
+        pairs: diffs.length
       });
     }
   }
@@ -2408,7 +2538,7 @@ function calculateOmnidirectionalVariogram(lagSize, numLags, lagTolerance) {
   return lags;
 }
 
-function calculateDirectionalVariogram(lagSize, numLags, lagTolerance, angle, angleTol, bandwidth) {
+function calculateDirectionalVariogram(lagSize, numLags, lagTolerance, angle, angleTol, bandwidth, estimator = 'classical') {
   const lags = [];
   
   // Convert: user angle 0° = North -> standard 90°
@@ -2420,8 +2550,7 @@ function calculateDirectionalVariogram(lagSize, numLags, lagTolerance, angle, an
     const minDist = targetDist - lagTolerance;
     const maxDist = targetDist + lagTolerance;
     
-    let sumSqDiff = 0;
-    let count = 0;
+    const diffs = [];
     
     for (let i = 0; i < dataPoints.length; i++) {
       for (let j = i + 1; j < dataPoints.length; j++) {
@@ -2441,22 +2570,20 @@ function calculateDirectionalVariogram(lagSize, numLags, lagTolerance, angle, an
             const perpDist = Math.abs(dx * Math.sin(angleRad) - dy * Math.cos(angleRad));
             
             if (perpDist <= bandwidth) {
-              const diff = dataPoints[j].value - dataPoints[i].value;
-              sumSqDiff += diff * diff;
-              count++;
+              diffs.push(dataPoints[j].value - dataPoints[i].value);
             }
           }
         }
       }
     }
     
-    if (count > 0) {
-      const semivariance = sumSqDiff / (2 * count);
+    if (diffs.length > 0) {
+      const semivariance = computeSemivarianceFromDiffs(diffs, estimator);
       lags.push({
         lag: lagIdx,
         distance: targetDist,
         semivariance: semivariance,
-        pairs: count
+        pairs: diffs.length
       });
     }
   }
@@ -3017,6 +3144,58 @@ function calculateStructureValue(h, contribution, range, modelType) {
   }
 }
 
+function modelSemivarianceAt(h, useOrthoRange = false) {
+  const modelType = document.getElementById('modelType').value;
+  const c1 = Number(modelParams.c1) || 0;
+  const c2 = Number(modelParams.c2) || 0;
+  const nugget = Number(modelParams.nugget) || 0;
+  const r1 = useOrthoRange ? (Number(modelParams.rangeOrtho1) || Number(modelParams.range1) || 1) : (Number(modelParams.range1) || 1);
+  const r2 = useOrthoRange ? (Number(modelParams.rangeOrtho2) || Number(modelParams.range2) || 1) : (Number(modelParams.range2) || 1);
+  let g = nugget;
+  g += calculateStructureValue(h, c1, Math.max(r1, 1e-9), modelType);
+  if ((Number(document.getElementById('numStructures').value) || 1) === 2) {
+    g += calculateStructureValue(h, c2, Math.max(r2, 1e-9), modelType);
+  }
+  return g;
+}
+
+function computeCurrentModelRMSE() {
+  if (!variogramData || !variogramData.length) return NaN;
+  let sumW = 0;
+  let sumSq = 0;
+  variogramData.forEach((lag) => {
+    const pred = modelSemivarianceAt(lag.distance, false);
+    const w = Math.max(1, Number(lag.pairs) || 1);
+    sumSq += w * Math.pow(lag.semivariance - pred, 2);
+    sumW += w;
+  });
+  if (variogramDataOrtho && variogramDataOrtho.length) {
+    variogramDataOrtho.forEach((lag) => {
+      const pred = modelSemivarianceAt(lag.distance, true);
+      const w = Math.max(1, Number(lag.pairs) || 1);
+      sumSq += w * Math.pow(lag.semivariance - pred, 2);
+      sumW += w;
+    });
+  }
+  if (sumW <= 0) return NaN;
+  return Math.sqrt(sumSq / sumW);
+}
+
+function updateFitDiagnostics() {
+  const box = document.getElementById('fitDiagnostics');
+  if (!box) return;
+  if (!variogramData || !variogramData.length) {
+    box.textContent = 'Fit diagnostics appear after computing the experimental variogram.';
+    return;
+  }
+  const rmse = computeCurrentModelRMSE();
+  const estimator = document.getElementById('variogramEstimator')?.value || 'classical';
+  box.innerHTML =
+    `<b>Current weighted RMSE:</b> ${isFinite(rmse) ? rmse.toFixed(4) : 'n/a'}<br>` +
+    `<b>Estimator:</b> ${estimator === 'cressie' ? 'Cressie-Hawkins (robust)' : 'Classical Matheron'}<br>` +
+    `<b>Last auto-fit RMSE:</b> ${isFinite(lastAutoFitRMSE) ? lastAutoFitRMSE.toFixed(4) : 'not run yet'}`;
+}
+
 // ============================================
 // MODEL FITTING
 // ============================================
@@ -3053,6 +3232,7 @@ function updateModelPlot() {
   
   drawVariogramPlot();
   drawDataCanvas();
+  updateFitDiagnostics();
 }
 
 function autoFitModel() {
@@ -3060,6 +3240,7 @@ function autoFitModel() {
     showNotification('Calculate the experimental variogram first', 'warning');
     return;
   }
+  const previousRmse = computeCurrentModelRMSE();
   
   const normalize = document.getElementById('normalizeCheck').checked;
   const numStructures = parseInt(document.getElementById('numStructures').value);
@@ -3147,8 +3328,11 @@ function autoFitModel() {
   }
   
   updateModelPlot();
+  lastAutoFitRMSE = computeCurrentModelRMSE();
   
-  showNotification('Model auto-fitted! You can refine the parameters manually.', 'success');
+  const prevMsg = isFinite(previousRmse) ? ` Previous RMSE: ${previousRmse.toFixed(4)}.` : '';
+  const newMsg = isFinite(lastAutoFitRMSE) ? ` New RMSE: ${lastAutoFitRMSE.toFixed(4)}.` : '';
+  showNotification(`Model auto-fitted!${prevMsg}${newMsg} You can refine the parameters manually.`, 'success');
 }
 
 </script>

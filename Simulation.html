@@ -572,6 +572,26 @@
     color: var(--text-muted);
   }
 
+  .learning-section {
+    margin-top: 8px;
+    padding: 8px 10px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(37, 99, 235, 0.24);
+    background: #eff6ff;
+  }
+
+  .learning-section h4 {
+    margin: 0 0 6px 0;
+    color: #1e3a8a;
+  }
+
+  .learning-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 6px 10px;
+    align-items: center;
+  }
+
 </style>
 <link rel="stylesheet" href="geostats-hub.css">
 </head>
@@ -598,6 +618,22 @@
     <button id="btnResetView">Reset Zoom</button>
   </div>
 
+  <div class="learning-section">
+    <h4>Learning Path</h4>
+    <div class="learning-grid">
+      <label>Mode:
+        <select id="simulationLearningMode">
+          <option value="essential">Essential</option>
+          <option value="intermediate" selected>Intermediate</option>
+          <option value="advanced">Advanced</option>
+        </select>
+      </label>
+      <div style="font-size:0.82rem; color:var(--text-muted);">
+        Essential: fast uncertainty workflow | Intermediate: diagnostics | Advanced: full step-by-step.
+      </div>
+    </div>
+  </div>
+
   <canvas id="simCanvas"></canvas>
 
   <!-- Maps -->
@@ -607,6 +643,11 @@
     <label><input type="checkbox" id="showSimMap" checked> Current Realization</label>
     <label><input type="checkbox" id="showMeanMap"> E-type (Mean)</label>
     <label><input type="checkbox" id="showStdMap"> Uncertainty (Std)</label>
+    <label><input type="checkbox" id="showP10Map"> P10</label>
+    <label><input type="checkbox" id="showP50Map"> P50</label>
+    <label><input type="checkbox" id="showP90Map"> P90</label>
+    <label><input type="checkbox" id="showProbMap"> P(Z > cutoff)</label>
+    <label>Cutoff: <input type="number" id="probabilityCutoff" value="2.5" step="0.1"></label>
     <div class="realization-selector" id="realizationSelector" style="display:none;">
       <label>Realization: <select id="realizationSelect"></select></label>
     </div>
@@ -617,7 +658,7 @@
   </div>
 
   <!-- Normal Score Transform -->
-  <div class="nscore-section">
+  <div class="nscore-section" id="nscoreSection">
     <h4>🔄 Normal Score Transform</h4>
     <label><input type="checkbox" id="useNscore" checked> Apply Normal Score</label>
     <div id="nscoreStats" style="margin-top: 8px;"></div>
@@ -626,7 +667,7 @@
   </div>
 
   <!-- Declustering for Normal Score -->
-  <div class="decluster-section">
+  <div class="decluster-section" id="declusterSection">
     <h4>⚖️ Declustering Weights</h4>
     <div class="decluster-info">
       Declustering corrects for preferential sampling by weighting samples in sparse regions higher.
@@ -823,7 +864,7 @@
   </div>
 
   <!-- Target Histogram Section -->
-  <div class="target-histogram-section">
+  <div class="target-histogram-section" id="targetHistogramSection">
     <h4>📍 Target Node Histogram</h4>
     <p style="font-size: 0.85rem; color: var(--text-muted);">
       Click any grid node (after simulations are available) to inspect the distribution of simulated values at that location.
@@ -886,6 +927,11 @@
     <div id="simSummary"><em>Run simulation to see results</em></div>
   </div>
 
+  <div class="matrix-block">
+    <h4>Uncertainty and Probability Summary</h4>
+    <div id="uncertaintySummary"><em>Run simulations to compute quantiles and exceedance probabilities.</em></div>
+  </div>
+
   <!-- Realizations Statistics -->
   <div class="matrix-block" id="realizationsStats" style="display:none;">
     <h4>Realizations Statistics</h4>
@@ -919,7 +965,7 @@ let legendCanvas, legendCtx, csvRawData = null, csvHeaders = [];
 // Simulation data
 let realizations = []; // Array of 2D arrays
 let currentRealization = null;
-let meanMap = null, stdMap = null;
+let meanMap = null, stdMap = null, p10Map = null, p50Map = null, p90Map = null, probMap = null;
 let simulatedNodes = []; // For step-by-step
 let randomPath = [];
 let stepIndex = 0;
@@ -1932,7 +1978,9 @@ function runMultipleSimulations() {
 
   // Update summaries and histograms
   updateSimSummary();
+  updateUncertaintySummary();
   updateRealizationsStats();
+  applyLearningModeSimulation();
   drawHistograms();
   draw();
 }
@@ -2160,24 +2208,54 @@ function computeSummaryMaps() {
   if (realizations.length === 0) return;
   
   const grid = getGridParams();
-  const nReal = realizations.length;
-  
+  const cutoffRaw = parseFloat(document.getElementById('probabilityCutoff')?.value || '0');
+  const cutoff = isFinite(cutoffRaw) ? cutoffRaw : 0;
+
+  function quantileFromSorted(sorted, q) {
+    if (!sorted.length) return NaN;
+    if (q <= 0) return sorted[0];
+    if (q >= 1) return sorted[sorted.length - 1];
+    const pos = (sorted.length - 1) * q;
+    const lo = Math.floor(pos);
+    const hi = Math.ceil(pos);
+    if (lo === hi) return sorted[lo];
+    const t = pos - lo;
+    return sorted[lo] * (1 - t) + sorted[hi] * t;
+  }
+
   // Initialize maps
-  const meanVals = [], stdVals = [];
+  const meanVals = [], stdVals = [], p10Vals = [], p50Vals = [], p90Vals = [], probVals = [];
   for (let i = 0; i < grid.nx; i++) {
     meanVals[i] = [];
     stdVals[i] = [];
+    p10Vals[i] = [];
+    p50Vals[i] = [];
+    p90Vals[i] = [];
+    probVals[i] = [];
     for (let j = 0; j < grid.ny; j++) {
       // Collect values across realizations
       const vals = realizations.map(r => r[i][j]).filter(v => isFinite(v));
       if (vals.length > 0) {
         const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
         const variance = vals.reduce((s, v) => s + (v - mean) ** 2, 0) / vals.length;
+        const sorted = vals.slice().sort((a, b) => a - b);
+        const p10 = quantileFromSorted(sorted, 0.10);
+        const p50 = quantileFromSorted(sorted, 0.50);
+        const p90 = quantileFromSorted(sorted, 0.90);
+        const prob = sorted.filter((v) => v > cutoff).length / sorted.length;
         meanVals[i][j] = mean;
         stdVals[i][j] = Math.sqrt(variance);
+        p10Vals[i][j] = p10;
+        p50Vals[i][j] = p50;
+        p90Vals[i][j] = p90;
+        probVals[i][j] = prob;
       } else {
         meanVals[i][j] = NaN;
         stdVals[i][j] = NaN;
+        p10Vals[i][j] = NaN;
+        p50Vals[i][j] = NaN;
+        p90Vals[i][j] = NaN;
+        probVals[i][j] = NaN;
       }
     }
   }
@@ -2185,6 +2263,10 @@ function computeSummaryMaps() {
   // Calculate min/max for color scaling
   let meanMin = Infinity, meanMax = -Infinity;
   let stdMin = Infinity, stdMax = -Infinity;
+  let p10Min = Infinity, p10Max = -Infinity;
+  let p50Min = Infinity, p50Max = -Infinity;
+  let p90Min = Infinity, p90Max = -Infinity;
+  let probMin = Infinity, probMax = -Infinity;
   
   for (let i = 0; i < grid.nx; i++) {
     for (let j = 0; j < grid.ny; j++) {
@@ -2196,11 +2278,31 @@ function computeSummaryMaps() {
         stdMin = Math.min(stdMin, stdVals[i][j]);
         stdMax = Math.max(stdMax, stdVals[i][j]);
       }
+      if (isFinite(p10Vals[i][j])) {
+        p10Min = Math.min(p10Min, p10Vals[i][j]);
+        p10Max = Math.max(p10Max, p10Vals[i][j]);
+      }
+      if (isFinite(p50Vals[i][j])) {
+        p50Min = Math.min(p50Min, p50Vals[i][j]);
+        p50Max = Math.max(p50Max, p50Vals[i][j]);
+      }
+      if (isFinite(p90Vals[i][j])) {
+        p90Min = Math.min(p90Min, p90Vals[i][j]);
+        p90Max = Math.max(p90Max, p90Vals[i][j]);
+      }
+      if (isFinite(probVals[i][j])) {
+        probMin = Math.min(probMin, probVals[i][j]);
+        probMax = Math.max(probMax, probVals[i][j]);
+      }
     }
   }
   
   meanMap = { values: meanVals, min: meanMin, max: meanMax, ...grid };
   stdMap = { values: stdVals, min: stdMin, max: stdMax, ...grid };
+  p10Map = { values: p10Vals, min: p10Min, max: p10Max, ...grid };
+  p50Map = { values: p50Vals, min: p50Min, max: p50Max, ...grid };
+  p90Map = { values: p90Vals, min: p90Min, max: p90Max, ...grid };
+  probMap = { values: probVals, min: probMin, max: probMax, ...grid };
 }
 
 // ============ STEP-BY-STEP SIMULATION ============
@@ -2252,7 +2354,9 @@ function executeStep() {
     // Add to realizations
     realizations = [currentRealization];
     computeSummaryMaps();
+    updateUncertaintySummary();
     drawHistograms();
+    applyLearningModeSimulation();
     return;
   }
 
@@ -2381,6 +2485,29 @@ function updateStepDisplay(i, j, xWorld, yWorld, neighbors, sk, u, simValueNs, s
 }
 
 // ============ DISPLAY FUNCTIONS ============
+function applyLearningModeSimulation() {
+  const mode = document.getElementById('simulationLearningMode')?.value || 'intermediate';
+  const nscoreSection = document.getElementById('nscoreSection');
+  const declusterSection = document.getElementById('declusterSection');
+  const nscoreTableSection = document.getElementById('nscoreTableSection');
+  const stepByStepSection = document.getElementById('stepByStepSection');
+  const realizationsStats = document.getElementById('realizationsStats');
+  const targetHistogramSection = document.getElementById('targetHistogramSection');
+  const stepButton = document.getElementById('btnStepSimulation');
+
+  const showEssential = mode === 'essential';
+  const showAdvanced = mode === 'advanced';
+
+  if (nscoreSection) nscoreSection.style.display = showEssential ? 'none' : '';
+  if (declusterSection) declusterSection.style.display = showEssential ? 'none' : '';
+  if (targetHistogramSection) targetHistogramSection.style.display = showEssential ? 'none' : '';
+
+  if (nscoreTableSection) nscoreTableSection.style.display = showAdvanced ? '' : 'none';
+  if (stepByStepSection && !isStepMode) stepByStepSection.style.display = showAdvanced ? '' : 'none';
+  if (realizationsStats) realizationsStats.style.display = showEssential ? 'none' : (realizations.length ? 'block' : 'none');
+  if (stepButton && !isStepMode) stepButton.style.display = showEssential ? 'none' : 'inline-flex';
+}
+
 function updateSimSummary() {
   if (realizations.length === 0) {
     document.getElementById('simSummary').innerHTML = '<em>Run simulation to see results</em>';
@@ -2407,6 +2534,8 @@ function updateSimSummary() {
   const min = sorted[0];
   const max = sorted[sorted.length - 1];
   const median = sorted[Math.floor(sorted.length / 2)];
+  const p10 = sorted[Math.floor(0.10 * (sorted.length - 1))];
+  const p90 = sorted[Math.floor(0.90 * (sorted.length - 1))];
   
   document.getElementById('simSummary').innerHTML = `
     <p><b>Realizations:</b> ${nReal}</p>
@@ -2415,8 +2544,60 @@ function updateSimSummary() {
     <hr>
     <p><b>Mean:</b> ${mean.toFixed(4)}</p>
     <p><b>Std Dev:</b> ${std.toFixed(4)}</p>
-    <p><b>Median:</b> ${median.toFixed(4)}</p>
+    <p><b>P10:</b> ${p10.toFixed(4)} | <b>Median:</b> ${median.toFixed(4)} | <b>P90:</b> ${p90.toFixed(4)}</p>
     <p><b>Min:</b> ${min.toFixed(4)} | <b>Max:</b> ${max.toFixed(4)}</p>
+  `;
+}
+
+function mapStats(mapObj) {
+  if (!mapObj || !mapObj.values) return null;
+  const vals = [];
+  for (let i = 0; i < mapObj.values.length; i++) {
+    for (let j = 0; j < mapObj.values[i].length; j++) {
+      const v = mapObj.values[i][j];
+      if (isFinite(v)) vals.push(v);
+    }
+  }
+  if (!vals.length) return null;
+  vals.sort((a, b) => a - b);
+  const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+  const q = (p) => {
+    const pos = (vals.length - 1) * p;
+    const lo = Math.floor(pos);
+    const hi = Math.ceil(pos);
+    if (lo === hi) return vals[lo];
+    return vals[lo] * (hi - pos) + vals[hi] * (pos - lo);
+  };
+  return {
+    n: vals.length,
+    mean,
+    min: vals[0],
+    max: vals[vals.length - 1],
+    p10: q(0.10),
+    p50: q(0.50),
+    p90: q(0.90)
+  };
+}
+
+function updateUncertaintySummary() {
+  const box = document.getElementById('uncertaintySummary');
+  if (!box) return;
+  if (!realizations.length) {
+    box.innerHTML = '<em>Run simulations to compute quantiles and exceedance probabilities.</em>';
+    return;
+  }
+  const cutoffRaw = parseFloat(document.getElementById('probabilityCutoff')?.value || '0');
+  const cutoff = isFinite(cutoffRaw) ? cutoffRaw : 0;
+  const stP10 = mapStats(p10Map);
+  const stP50 = mapStats(p50Map);
+  const stP90 = mapStats(p90Map);
+  const stProb = mapStats(probMap);
+  const stStd = mapStats(stdMap);
+  box.innerHTML = `
+    <p><b>Cutoff:</b> ${cutoff.toFixed(3)} | <b>Average P(Z > cutoff):</b> ${stProb ? stProb.mean.toFixed(3) : '—'}</p>
+    <p><b>P10:</b> mean=${stP10 ? stP10.mean.toFixed(3) : '—'} | <b>P50:</b> mean=${stP50 ? stP50.mean.toFixed(3) : '—'} | <b>P90:</b> mean=${stP90 ? stP90.mean.toFixed(3) : '—'}</p>
+    <p><b>Uncertainty (Std):</b> mean=${stStd ? stStd.mean.toFixed(3) : '—'} | min=${stStd ? stStd.min.toFixed(3) : '—'} | max=${stStd ? stStd.max.toFixed(3) : '—'}</p>
+    <p><b>Interquantile spread (P90-P10):</b> ${stP90 && stP10 ? (stP90.mean - stP10.mean).toFixed(3) : '—'}</p>
   `;
 }
 
@@ -2429,7 +2610,7 @@ function updateRealizationsStats() {
   document.getElementById('realizationsStats').style.display = 'block';
   
   const grid = getGridParams();
-  let html = '<table><tr><th>Real.</th><th>Mean</th><th>Std</th><th>Min</th><th>Max</th></tr>';
+  let html = '<table><tr><th>Real.</th><th>Mean</th><th>Std</th><th>P10</th><th>P50</th><th>P90</th><th>Min</th><th>Max</th><th>γ(lag1)</th></tr>';
   
   realizations.forEach((r, idx) => {
     let vals = [];
@@ -2438,16 +2619,52 @@ function updateRealizationsStats() {
         if (isFinite(r[i][j])) vals.push(r[i][j]);
       }
     }
+    if (!vals.length) {
+      html += `<tr><td>${idx + 1}</td><td colspan="8">No valid nodes</td></tr>`;
+      return;
+    }
+    vals.sort((a, b) => a - b);
+    const quant = (p) => {
+      const pos = (vals.length - 1) * p;
+      const lo = Math.floor(pos);
+      const hi = Math.ceil(pos);
+      if (lo === hi) return vals[lo];
+      return vals[lo] * (hi - pos) + vals[hi] * (pos - lo);
+    };
     const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
     const std = Math.sqrt(vals.reduce((s, v) => s + (v - mean) ** 2, 0) / vals.length);
     const min = Math.min(...vals);
     const max = Math.max(...vals);
+    const p10 = quant(0.10);
+    const p50 = quant(0.50);
+    const p90 = quant(0.90);
+
+    let sumSq = 0;
+    let pairCount = 0;
+    for (let i = 0; i < grid.nx - 1; i++) {
+      for (let j = 0; j < grid.ny; j++) {
+        const v1 = r[i][j], v2 = r[i + 1][j];
+        if (!isFinite(v1) || !isFinite(v2)) continue;
+        sumSq += (v2 - v1) * (v2 - v1);
+        pairCount++;
+      }
+    }
+    for (let i = 0; i < grid.nx; i++) {
+      for (let j = 0; j < grid.ny - 1; j++) {
+        const v1 = r[i][j], v2 = r[i][j + 1];
+        if (!isFinite(v1) || !isFinite(v2)) continue;
+        sumSq += (v2 - v1) * (v2 - v1);
+        pairCount++;
+      }
+    }
+    const gammaLag1 = pairCount > 0 ? 0.5 * (sumSq / pairCount) : NaN;
     
-    html += `<tr><td>${idx + 1}</td><td>${mean.toFixed(3)}</td><td>${std.toFixed(3)}</td><td>${min.toFixed(3)}</td><td>${max.toFixed(3)}</td></tr>`;
+    html += `<tr><td>${idx + 1}</td><td>${mean.toFixed(3)}</td><td>${std.toFixed(3)}</td><td>${p10.toFixed(3)}</td><td>${p50.toFixed(3)}</td><td>${p90.toFixed(3)}</td><td>${min.toFixed(3)}</td><td>${max.toFixed(3)}</td><td>${isFinite(gammaLag1) ? gammaLag1.toFixed(3) : '—'}</td></tr>`;
   });
   
   html += '</table>';
   document.getElementById('realizationsTable').innerHTML = html;
+  applyLearningModeSimulation();
 }
 
 // ============ DRAWING FUNCTIONS ============
@@ -2571,7 +2788,7 @@ function valueColor(t, alpha) {
   return useNscoreView ? nscoreColor(t, alpha) : rainbowColor(t, alpha);
 }
 
-function drawMap(mapData, alpha = 0.7) {
+function drawMap(mapData, alpha = 0.7, forceRainbow = false) {
   if (!mapData || !mapData.values) return;
   
   const { nx, ny, originX, originY, dx, dy, values, min, max } = mapData;
@@ -2589,7 +2806,8 @@ function drawMap(mapData, alpha = 0.7) {
       const x1 = internalX(xWorld + dx);
       const y1 = internalY(yWorld + dy);
       
-      ctx.fillStyle = valueColor((values[i][j] - min) / range, alpha);
+      const t = (values[i][j] - min) / range;
+      ctx.fillStyle = forceRainbow ? rainbowColor(t, alpha) : valueColor(t, alpha);
       ctx.fillRect(x0, y1, x1 - x0, y0 - y1);
     }
   }
@@ -2618,12 +2836,24 @@ function draw() {
     colorMax = Math.max(colorMax, val);
   });
 
-  // Draw maps (mean and std remain in original space)
+  // Draw maps (summary maps are stored in original-value space)
   if (document.getElementById('showMeanMap').checked && meanMap) {
-    drawMap({ ...meanMap, dx: grid.dx, dy: grid.dy }, 0.7);
+    drawMap({ ...meanMap, dx: grid.dx, dy: grid.dy }, 0.7, true);
   }
   if (document.getElementById('showStdMap').checked && stdMap) {
-    drawMap({ ...stdMap, dx: grid.dx, dy: grid.dy }, 0.7);
+    drawMap({ ...stdMap, dx: grid.dx, dy: grid.dy }, 0.7, true);
+  }
+  if (document.getElementById('showP10Map').checked && p10Map) {
+    drawMap({ ...p10Map, dx: grid.dx, dy: grid.dy }, 0.7, true);
+  }
+  if (document.getElementById('showP50Map').checked && p50Map) {
+    drawMap({ ...p50Map, dx: grid.dx, dy: grid.dy }, 0.7, true);
+  }
+  if (document.getElementById('showP90Map').checked && p90Map) {
+    drawMap({ ...p90Map, dx: grid.dx, dy: grid.dy }, 0.7, true);
+  }
+  if (document.getElementById('showProbMap').checked && probMap) {
+    drawMap({ ...probMap, dx: grid.dx, dy: grid.dy }, 0.75, true);
   }
   if (document.getElementById('showSimMap').checked && currentRealization) {
     // Compute min/max and values in display space for the current realization
@@ -2950,6 +3180,20 @@ function refreshMapLegend() {
   } else if (document.getElementById('showStdMap').checked && stdMap) {
     data = stdMap;
     label = 'Std Dev';
+  } else if (document.getElementById('showP10Map').checked && p10Map) {
+    data = p10Map;
+    label = 'P10';
+  } else if (document.getElementById('showP50Map').checked && p50Map) {
+    data = p50Map;
+    label = 'P50';
+  } else if (document.getElementById('showP90Map').checked && p90Map) {
+    data = p90Map;
+    label = 'P90';
+  } else if (document.getElementById('showProbMap').checked && probMap) {
+    data = probMap;
+    const cutoffRaw = parseFloat(document.getElementById('probabilityCutoff')?.value || '0');
+    const cutoff = isFinite(cutoffRaw) ? cutoffRaw : 0;
+    label = `P(Z > ${cutoff.toFixed(2)})`;
   }
   
   if (!data) {
@@ -3516,6 +3760,8 @@ function init() {
   updateGridInfo();
   computeNscoreTransform();
   draw();
+  applyLearningModeSimulation();
+  updateUncertaintySummary();
 
   if (window.GeoStatsHub && typeof window.GeoStatsHub.install === 'function') {
     window.GeoStatsHub.install({
@@ -3560,7 +3806,9 @@ function init() {
           gridNy: document.getElementById('gridNy').value,
           nRealizations: document.getElementById('nRealizations').value,
           randomSeed: document.getElementById('randomSeed').value,
-          useSeed: document.getElementById('useSeed').checked
+          useSeed: document.getElementById('useSeed').checked,
+          probabilityCutoff: document.getElementById('probabilityCutoff').value,
+          simulationLearningMode: document.getElementById('simulationLearningMode').value
         }
       }),
       applyState: (data) => {
@@ -3607,6 +3855,8 @@ function init() {
         updateModelSummary();
         updateGridInfo();
         computeNscoreTransform();
+        applyLearningModeSimulation();
+        updateUncertaintySummary();
         draw();
       },
       afterPreset: () => {
@@ -3625,6 +3875,7 @@ function setupEvents() {
   document.getElementById('btnResetView').onclick = () => { viewScale = 1; viewOffsetX = 0; viewOffsetY = 0; draw(); };
   document.getElementById('btnResetPoints').onclick = init;
   document.getElementById('btnShowNscoreTable').onclick = showNscoreTable;
+  document.getElementById('simulationLearningMode').onchange = () => applyLearningModeSimulation();
   
   const kdeHistChk = document.getElementById('kdeShowDataHist');
   if (kdeHistChk) kdeHistChk.onchange = () => drawHistograms();
@@ -3682,9 +3933,20 @@ function setupEvents() {
   document.getElementById('showGridFrame').onchange = () => draw();
   
   // Map checkboxes
-  ['showSimMap', 'showMeanMap', 'showStdMap'].forEach(id => {
+  ['showSimMap', 'showMeanMap', 'showStdMap', 'showP10Map', 'showP50Map', 'showP90Map', 'showProbMap'].forEach(id => {
     document.getElementById(id).onchange = () => { refreshMapLegend(); draw(); };
   });
+  const probCutoffEl = document.getElementById('probabilityCutoff');
+  if (probCutoffEl) {
+    probCutoffEl.onchange = () => {
+      if (realizations.length) {
+        computeSummaryMaps();
+        updateUncertaintySummary();
+      }
+      refreshMapLegend();
+      draw();
+    };
+  }
   
   // Realization selector
   document.getElementById('realizationSelect').onchange = (e) => {
@@ -3811,6 +4073,10 @@ function clearResults() {
   currentRealization = null;
   meanMap = null;
   stdMap = null;
+  p10Map = null;
+  p50Map = null;
+  p90Map = null;
+  probMap = null;
   simulatedNodes = [];
   stepIndex = 0;
   isStepMode = false;
@@ -3825,6 +4091,8 @@ function clearResults() {
   document.getElementById('btnStepSimulation').style.display = 'inline-flex';
   document.getElementById('realizationsStats').style.display = 'none';
   document.getElementById('simSummary').innerHTML = '<em>Run simulation to see results</em>';
+  const uncertaintyDiv = document.getElementById('uncertaintySummary');
+  if (uncertaintyDiv) uncertaintyDiv.innerHTML = '<em>Run simulations to compute quantiles and exceedance probabilities.</em>';
   document.getElementById('targetNodeInfo').innerHTML = 'No node selected';
   
   const c1 = document.getElementById('histOutputCanvas').getContext('2d');
@@ -3835,6 +4103,7 @@ function clearResults() {
   c2.clearRect(0, 0, 500, 300);
   document.getElementById('targetStats').innerHTML = '';
   
+  applyLearningModeSimulation();
   draw();
 }
 

@@ -762,6 +762,30 @@
     <div id="optimizeResults" class="optimize-results" style="display:none;"></div>
   </div>
 
+  <h3>Bootstrap Uncertainty (Declustered Mean)</h3>
+  <div class="optimize-section">
+    <h4>📈 Confidence Interval</h4>
+    <div class="param-row">
+      <label>Method:</label>
+      <select id="bootstrapMethod">
+        <option value="naive">Naive</option>
+        <option value="cell">Cell</option>
+        <option value="voronoi">Polygonal</option>
+        <option value="kriging">Kriging</option>
+        <option value="idw">IDW</option>
+      </select>
+      <label>Iterations:</label>
+      <input type="number" id="bootstrapIter" value="500" min="100" max="5000" step="100" class="small">
+    </div>
+    <button id="btnBootstrap" class="btn-primary">Run Bootstrap</button>
+    <div id="bootstrapResults" class="optimize-results" style="display:none;"></div>
+  </div>
+
+  <h3>Declustering Impact</h3>
+  <div id="declusterImpact" class="info-box">
+    Apply methods to compare mean shift relative to the naive estimate.
+  </div>
+
   <div id="mapLegendContainer">
     <canvas id="legendCanvas" width="220" height="20"></canvas>
     <div id="legendLabels"><em>Load data to begin</em></div>
@@ -894,6 +918,7 @@ let krigingGrid = null;
 let previewVoronoi = null;
 let previewKriging = null;
 let previewIDW = null;
+let lastOptimizationResults = null;
 
 // CSV parsing
 let csvRawData = null;
@@ -937,6 +962,7 @@ function init() {
   document.getElementById('btnClear').addEventListener('click', clearAll);
   document.getElementById('btnResetView').addEventListener('click', resetView);
   document.getElementById('btnOptimize').addEventListener('click', runOptimization);
+  document.getElementById('btnBootstrap').addEventListener('click', runBootstrapDeclusteredMean);
   document.getElementById('btnLoadCSV').addEventListener('click', loadCSVWithSelectedColumns);
   document.getElementById('btnExportAll').addEventListener('click', exportAllWeights);
   
@@ -1362,6 +1388,7 @@ function clearAll() {
   voronoiPolygons = [];
   cellGrid = null;
   krigingGrid = null;
+  lastOptimizationResults = null;
   
   // Clear previews
   previewVoronoi = null;
@@ -1374,6 +1401,10 @@ function clearAll() {
   updateAspectTransform();
   updatePointsTable();
   clearStats();
+  const boot = document.getElementById('bootstrapResults');
+  if (boot) { boot.style.display = 'none'; boot.innerHTML = ''; }
+  const impact = document.getElementById('declusterImpact');
+  if (impact) impact.innerHTML = 'Apply methods to compare mean shift relative to the naive estimate.';
   clearCDFCanvas();
   clearWeightComparisonCanvas();
   draw();
@@ -2250,6 +2281,7 @@ function runOptimization() {
   
   const minMean = Math.min(...results.map(r => r.mean));
   const optimalResult = results.find(r => r.mean === minMean);
+  lastOptimizationResults = results;
   
   const resultsDiv = document.getElementById('optimizeResults');
   resultsDiv.style.display = 'block';
@@ -2260,9 +2292,113 @@ function runOptimization() {
   `;
   
   drawOptimizationCurve(results, optimalResult);
+  updateDeclusterImpact();
   
   document.getElementById('cellSizeX').value = optimalResult.size.toFixed(1);
   document.getElementById('cellSizeY').value = optimalResult.size.toFixed(1);
+}
+
+function getMethodWeights(method, active) {
+  if (method === 'naive') return active.map(() => 1 / active.length);
+  if (method === 'cell' && cellWeights.length === active.length) return cellWeights;
+  if (method === 'voronoi' && voronoiWeights.length === active.length) return voronoiWeights;
+  if (method === 'kriging' && krigingWeights.length === active.length) return krigingWeights;
+  if (method === 'idw' && idwWeights.length === active.length) return idwWeights;
+  return null;
+}
+
+function runBootstrapDeclusteredMean() {
+  const active = points.filter(p => p.active);
+  if (active.length < 2) {
+    showToast('Need at least 2 active points for bootstrap', 'warning');
+    return;
+  }
+
+  const method = document.getElementById('bootstrapMethod').value;
+  const nIter = Math.max(100, Math.min(5000, parseInt(document.getElementById('bootstrapIter').value, 10) || 500));
+  const weights = getMethodWeights(method, active);
+  if (!weights) {
+    showToast(`Apply ${method} declustering first`, 'warning');
+    return;
+  }
+
+  const values = active.map(p => p.value);
+  const bootMeans = [];
+  for (let b = 0; b < nIter; b++) {
+    let num = 0;
+    let den = 0;
+    for (let i = 0; i < values.length; i++) {
+      const idx = Math.floor(Math.random() * values.length);
+      num += weights[idx] * values[idx];
+      den += weights[idx];
+    }
+    if (den > 0) bootMeans.push(num / den);
+  }
+
+  if (!bootMeans.length) {
+    showToast('Bootstrap failed to produce valid samples', 'error');
+    return;
+  }
+
+  bootMeans.sort((a, b) => a - b);
+  const q = (p) => {
+    const pos = (bootMeans.length - 1) * p;
+    const lo = Math.floor(pos);
+    const hi = Math.ceil(pos);
+    if (lo === hi) return bootMeans[lo];
+    const t = pos - lo;
+    return bootMeans[lo] * (1 - t) + bootMeans[hi] * t;
+  };
+
+  const meanBoot = bootMeans.reduce((a, b) => a + b, 0) / bootMeans.length;
+  const meanPoint = weightedMean(values, weights);
+  const ciLow = q(0.025);
+  const ciHigh = q(0.975);
+
+  const out = document.getElementById('bootstrapResults');
+  out.style.display = 'block';
+  out.innerHTML =
+    `<strong>Method:</strong> ${method.toUpperCase()} | <strong>Iterations:</strong> ${bootMeans.length}<br>` +
+    `<strong>Weighted mean (original):</strong> ${meanPoint.toFixed(4)}<br>` +
+    `<strong>Bootstrap mean:</strong> ${meanBoot.toFixed(4)}<br>` +
+    `<strong>95% CI:</strong> [${ciLow.toFixed(4)}, ${ciHigh.toFixed(4)}]`;
+}
+
+function updateDeclusterImpact() {
+  const box = document.getElementById('declusterImpact');
+  if (!box) return;
+  const active = points.filter(p => p.active);
+  if (!active.length) {
+    box.innerHTML = 'Load data to compare declustering impact.';
+    return;
+  }
+  const values = active.map(p => p.value);
+  const naive = weightedMean(values, values.map(() => 1 / values.length));
+
+  const methods = [
+    { key: 'Cell', weights: cellWeights },
+    { key: 'Polygonal', weights: voronoiWeights },
+    { key: 'Kriging', weights: krigingWeights },
+    { key: 'IDW', weights: idwWeights }
+  ];
+
+  let html = '<table class="comparison-table"><thead><tr><th>Method</th><th>Mean</th><th>Δ vs Naive</th></tr></thead><tbody>';
+  html += `<tr><td>Naive</td><td>${naive.toFixed(4)}</td><td>0.0000</td></tr>`;
+  methods.forEach((m) => {
+    if (!m.weights || m.weights.length !== active.length) return;
+    const mean = weightedMean(values, m.weights);
+    const delta = mean - naive;
+    html += `<tr><td>${m.key}</td><td>${mean.toFixed(4)}</td><td>${delta >= 0 ? '+' : ''}${delta.toFixed(4)}</td></tr>`;
+  });
+  html += '</tbody></table>';
+
+  if (lastOptimizationResults && lastOptimizationResults.length > 1) {
+    const means = lastOptimizationResults.map((r) => r.mean);
+    const spread = Math.max(...means) - Math.min(...means);
+    html += `<div style="margin-top:6px;"><b>Cell-size sensitivity spread:</b> ${spread.toFixed(4)} (${means.length} tested sizes)</div>`;
+  }
+
+  box.innerHTML = html;
 }
 
 function calculateCellWeights(active, sizeX, sizeY, originX, originY) {
@@ -2579,6 +2715,7 @@ function updateAllStats() {
   }
   
   updateStatsTable(naiveStats, cellStats, voronoiStats, krigingStats, idwStats);
+  updateDeclusterImpact();
 }
 
 function computeWeightedStats(values, weights) {

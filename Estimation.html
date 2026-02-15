@@ -541,6 +541,59 @@
     color: var(--text-muted);
   }
 
+  .advanced-section {
+    margin-top: 8px;
+    padding: 8px 10px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(37, 99, 235, 0.24);
+    background: #eff6ff;
+  }
+
+  .advanced-section h4 {
+    margin: 0 0 6px 0;
+    color: #1e3a8a;
+  }
+
+  .advanced-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 6px 10px;
+    align-items: center;
+  }
+
+  .diag-box {
+    margin-top: 8px;
+    padding: 8px;
+    border-radius: 8px;
+    border: 1px solid rgba(148, 163, 184, 0.45);
+    background: #ffffff;
+    font-size: 0.82rem;
+    color: #334155;
+  }
+
+  .cv-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 10px;
+    margin-top: 8px;
+  }
+
+  .cv-canvas {
+    width: 100%;
+    height: auto;
+    background: #ffffff;
+    border-radius: 8px;
+    border: 1px solid rgba(148, 163, 184, 0.45);
+  }
+
+  .cv-scroll {
+    max-height: 260px;
+    overflow-y: auto;
+    margin-top: 8px;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    border-radius: 8px;
+  }
+
 </style>
 <link rel="stylesheet" href="geostats-hub.css">
 
@@ -706,6 +759,39 @@
   </div>
   <div id="resultSummary"></div>
 
+  <div class="advanced-section">
+    <h4>Learning and Validation</h4>
+    <div class="advanced-grid">
+      <label>Learning mode:
+        <select id="learningMode">
+          <option value="essential">Essential</option>
+          <option value="advanced" selected>Advanced</option>
+        </select>
+      </label>
+      <label>Min samples: <input type="number" id="minNeighbors" value="3" min="1"></label>
+      <label><input type="checkbox" id="useOctantSearch"> Balance by octants</label>
+      <label>Max / octant: <input type="number" id="maxPerOctant" value="2" min="1"></label>
+      <label>CV method:
+        <select id="cvMethod">
+          <option value="current">Current method</option>
+          <option value="OK">Kriging OK</option>
+          <option value="SK">Kriging SK</option>
+          <option value="idw">IDW</option>
+          <option value="nn">Nearest Neighbor</option>
+        </select>
+      </label>
+      <label>CV scheme:
+        <select id="cvScheme">
+          <option value="loocv">LOOCV</option>
+          <option value="kfold">k-fold</option>
+        </select>
+      </label>
+      <label>k folds: <input type="number" id="cvKFolds" value="5" min="2" max="20"></label>
+      <button id="btnRunCV" class="btn-primary">Run Cross-validation</button>
+    </div>
+    <div id="neighborhoodDiagnostics" class="diag-box"><em>Run an estimate to inspect local diagnostics.</em></div>
+  </div>
+
 <h3>Grid</h3>
   <label><input type="checkbox" id="showGridFrame" checked> Show grid frame</label><br>
   
@@ -736,6 +822,16 @@
 <div id="right-panel">
   <h3>Results</h3>
   <div class="matrix-block"><h4>Method Comparison</h4><div id="methodComparison"><em>Click "Compare Methods"</em></div></div>
+  <div class="matrix-block">
+    <h4>Cross-validation</h4>
+    <div id="cvSummary"><em>Run LOOCV or k-fold to quantify model performance.</em></div>
+    <div class="cv-grid">
+      <canvas id="cvScatterCanvas" class="cv-canvas" width="420" height="300"></canvas>
+      <canvas id="cvErrorCanvas" class="cv-canvas" width="420" height="300"></canvas>
+      <canvas id="cvQQCanvas" class="cv-canvas" width="420" height="300"></canvas>
+    </div>
+    <div id="cvTableWrap" class="cv-scroll"></div>
+  </div>
   <div class="matrix-block">
     <h4>Histograms</h4>
     <div class="histogram-container">
@@ -1031,6 +1127,8 @@ function init() {
   updateModelSummary();
   refreshMapLegend();
   draw();
+  applyLearningModeEstimation();
+  document.getElementById('cvKFolds').disabled = document.getElementById('cvScheme').value !== 'kfold';
 
   if (window.GeoStatsHub && typeof window.GeoStatsHub.install === 'function') {
     window.GeoStatsHub.install({
@@ -1126,6 +1224,7 @@ function init() {
         updateIndicatorStats();
         clearResults();
         updatePointsTable();
+        applyLearningModeEstimation();
         draw();
       },
       afterPreset: () => {
@@ -1144,9 +1243,14 @@ function setupEvents() {
   };
   document.getElementById('btnCompute').onclick = () => compute();
   document.getElementById('btnCompareAll').onclick = () => compareAllMethods();
+  document.getElementById('btnRunCV').onclick = () => runCrossValidation();
   document.getElementById('btnClear').onclick = () => clearResults();
   document.getElementById('btnResetView').onclick = () => { viewScale=1; viewOffsetX=0; viewOffsetY=0; draw(); };
   document.getElementById('btnResetPoints').onclick = () => init();
+  document.getElementById('learningMode').onchange = () => applyLearningModeEstimation();
+  document.getElementById('cvScheme').onchange = (e) => {
+    document.getElementById('cvKFolds').disabled = e.target.value !== 'kfold';
+  };
   
   // Indicator events
   document.getElementById('useIndicator').onchange = (e) => {
@@ -1190,6 +1294,9 @@ function setupEvents() {
   document.getElementById('useSearchRadius').onchange = (e) => {
     document.getElementById('radiusGroup').style.display = e.target.checked ? '' : 'none'; draw();
   };
+  document.getElementById('useOctantSearch').onchange = () => draw();
+  document.getElementById('maxPerOctant').onchange = () => draw();
+  document.getElementById('minNeighbors').onchange = () => draw();
   const searchMajorEl = document.getElementById('searchRadiusMajor');
   const searchMinorEl = document.getElementById('searchRadiusMinor');
   if (searchMajorEl) searchMajorEl.onchange = () => draw();
@@ -1945,51 +2052,100 @@ function compute() {
 
 function dist(p1, p2) { return Math.sqrt((p1.x-p2.x)**2 + (p1.y-p2.y)**2); }
 
-function getNearestPoints(x0, y0) {
-  const maxN = parseInt(document.getElementById('maxNeighbors').value) || Infinity;
+function getNeighborSearchConfig() {
+  const maxNRaw = parseInt(document.getElementById('maxNeighbors').value, 10);
+  const minNRaw = parseInt(document.getElementById('minNeighbors')?.value || '1', 10);
+  const maxN = Number.isFinite(maxNRaw) && maxNRaw > 0 ? maxNRaw : Infinity;
+  const minN = Number.isFinite(minNRaw) && minNRaw > 0 ? minNRaw : 1;
+  const useOctants = !!document.getElementById('useOctantSearch')?.checked;
+  const maxPerOctantRaw = parseInt(document.getElementById('maxPerOctant')?.value || '2', 10);
+  const maxPerOctant = Number.isFinite(maxPerOctantRaw) && maxPerOctantRaw > 0 ? maxPerOctantRaw : 2;
+  return { maxN, minN, useOctants, maxPerOctant };
+}
+
+function getOctantIndex(dx, dy) {
+  const angle = Math.atan2(dy, dx);
+  return Math.floor(((angle + Math.PI) / (Math.PI / 4))) % 8;
+}
+
+function getNearestPointsForDataset(x0, y0, dataset, options = {}) {
+  const cfg = getNeighborSearchConfig();
+  const maxN = Number.isFinite(options.maxN) ? options.maxN : cfg.maxN;
+  const minN = Number.isFinite(options.minN) ? options.minN : cfg.minN;
+  const useOctants = options.useOctants !== undefined ? options.useOctants : cfg.useOctants;
+  const maxPerOctant = Number.isFinite(options.maxPerOctant) ? options.maxPerOctant : cfg.maxPerOctant;
+  const excludeIds = options.excludeIds || new Set();
+
   const useRadius = document.getElementById('useSearchRadius').checked;
-  
   const searchMajorEl = document.getElementById('searchRadiusMajor');
   const searchMinorEl = document.getElementById('searchRadiusMinor');
   const searchRadiusMajor = searchMajorEl ? parseFloat(searchMajorEl.value) : 50;
   const searchRadiusMinor = searchMinorEl ? parseFloat(searchMinorEl.value) : 50;
-  
-  // Get anisotropy angle from variogram model
+
   const params = getVarioParams();
-  const anisoAngle = params.anisoAngle;
-  
-  // Use same formula as visualization and calculations
-  const theta = (anisoAngle - 90) * Math.PI / 180;
-  
-  // Convert world radii to internal coordinates (same as visualization)
-  // This ensures consistency between drawn ellipse and selection ellipse
+  const theta = (params.anisoAngle - 90) * Math.PI / 180;
   const rMajorInt = Math.abs(internalX(worldX(x0) + searchRadiusMajor) - x0);
   const rMinorInt = Math.abs(internalY(worldY(y0) + searchRadiusMinor) - y0);
-  
-  let candidates = [];
-  for (const p of points) {
+
+  const candidates = [];
+  for (const p of dataset) {
     if (!p.active) continue;
-    const d = dist(p, {x:x0, y:y0});
-    
+    if (excludeIds.has(p.id)) continue;
+
+    const d = dist(p, { x: x0, y: y0 });
     if (useRadius && isFinite(rMajorInt) && isFinite(rMinorInt)) {
-      // Calculate differences in INTERNAL coordinates (canvas space)
       const dx = p.x - x0;
       const dy = p.y - y0;
-      
-      // Rotate to ellipse axes (canvas coords, Y grows downward)
       const xr = dx * Math.cos(theta) + dy * Math.sin(theta);
       const yr = -dx * Math.sin(theta) + dy * Math.cos(theta);
-      
-      // Check if inside ellipse: (x/a)^2 + (y/b)^2 <= 1
-      const normalized = (xr * xr) / (rMajorInt * rMajorInt) + 
-                        (yr * yr) / (rMinorInt * rMinorInt);
-      
+      const normalized = (xr * xr) / (rMajorInt * rMajorInt) + (yr * yr) / (rMinorInt * rMinorInt);
       if (normalized > 1) continue;
     }
-    candidates.push({p, d});
+    candidates.push({ p, d });
   }
-  candidates.sort((a,b) => a.d - b.d);
-  return candidates.slice(0, maxN).map(c => c.p);
+
+  candidates.sort((a, b) => a.d - b.d);
+  if (candidates.length === 0) return [];
+
+  const cap = Number.isFinite(maxN) ? Math.max(1, maxN) : candidates.length;
+  const required = Math.min(Math.max(1, minN), cap);
+  let selected = [];
+
+  if (useOctants) {
+    const buckets = Array.from({ length: 8 }, () => []);
+    candidates.forEach((c) => {
+      const oct = getOctantIndex(c.p.x - x0, c.p.y - y0);
+      buckets[oct].push(c);
+    });
+    buckets.forEach((bucket) => {
+      bucket.sort((a, b) => a.d - b.d);
+      const take = Math.min(maxPerOctant, bucket.length);
+      for (let i = 0; i < take; i++) selected.push(bucket[i]);
+    });
+    selected.sort((a, b) => a.d - b.d);
+    if (selected.length > cap) selected = selected.slice(0, cap);
+  } else {
+    selected = candidates.slice(0, cap);
+  }
+
+  const selectedIds = new Set(selected.map((c) => c.p.id));
+  if (selected.length < required) {
+    for (const c of candidates) {
+      if (selectedIds.has(c.p.id)) continue;
+      selected.push(c);
+      selectedIds.add(c.p.id);
+      if (selected.length >= required) break;
+    }
+  }
+
+  if (selected.length === 0) selected = candidates.slice(0, cap);
+  selected.sort((a, b) => a.d - b.d);
+  if (selected.length > cap) selected = selected.slice(0, cap);
+  return selected.map((c) => c.p);
+}
+
+function getNearestPoints(x0, y0) {
+  return getNearestPointsForDataset(x0, y0, points);
 }
 
 function compareAllMethods() {
@@ -2008,7 +2164,7 @@ function compareAllMethods() {
   drawHistogramComparison();
 }
 
-function computeKrigingResult(pts, krigeType, meanSK, params) {
+function computeKrigingAtTarget(pts, targetNode, krigeType, meanSK, params) {
   const n = pts.length;
   const Gamma=[], Cov=[];
   for (let i=0; i<n; i++) {
@@ -2020,8 +2176,8 @@ function computeKrigingResult(pts, krigeType, meanSK, params) {
   }
   const gamma0=[], cov0=[];
   for (let i=0; i<n; i++) {
-    gamma0[i] = gammaAniso(pts[i], target, params);
-    cov0[i] = covarianceAniso(pts[i], target, params);
+    gamma0[i] = gammaAniso(pts[i], targetNode, params);
+    cov0[i] = covarianceAniso(pts[i], targetNode, params);
   }
 
   let lambdas, zstar, sigma2, mu=NaN;
@@ -2048,13 +2204,17 @@ function computeKrigingResult(pts, krigeType, meanSK, params) {
   let varDen = 0;
   for (let i=0; i<n; i++) for (let j=0; j<n; j++) varDen += lambdas[i]*lambdas[j]*Cov[i][j];
   const sr = varDen ? covNum/varDen : NaN;
-  return { zstar, sigma2, sr, mu, lambdas, sumLambda: lambdas.reduce((a,b)=>a+b,0) };
+  return { zstar, sigma2, sr, mu, lambdas, sumLambda: lambdas.reduce((a,b)=>a+b,0), Cov, Gamma, cov0, gamma0 };
 }
 
-function computeIDWResult(pts, power) {
+function computeKrigingResult(pts, krigeType, meanSK, params) {
+  return computeKrigingAtTarget(pts, target, krigeType, meanSK, params);
+}
+
+function computeIDWAtTarget(pts, targetNode, power) {
   let weights=[], total=0, exact=-1;
   for (let i=0; i<pts.length; i++) {
-    const d = dist(pts[i], target);
+    const d = dist(pts[i], targetNode);
     if (d===0) { exact=i; break; }
     weights[i] = 1/Math.pow(d, power); total += weights[i];
   }
@@ -2063,10 +2223,18 @@ function computeIDWResult(pts, power) {
   return { zstar, sigma2:NaN, sr:NaN, mu:NaN, lambdas, sumLambda:1 };
 }
 
-function computeNNResult(pts) {
-  let best=0, minD=dist(pts[0], target);
-  for (let i=1; i<pts.length; i++) { const d=dist(pts[i],target); if(d<minD){minD=d;best=i;} }
+function computeIDWResult(pts, power) {
+  return computeIDWAtTarget(pts, target, power);
+}
+
+function computeNNAtTarget(pts, targetNode) {
+  let best=0, minD=dist(pts[0], targetNode);
+  for (let i=1; i<pts.length; i++) { const d=dist(pts[i], targetNode); if(d<minD){minD=d;best=i;} }
   return { zstar: getPointValue(pts[best]), sigma2:NaN, sr:NaN, mu:NaN, lambdas: pts.map((_,i)=>i===best?1:0), sumLambda:1 };
+}
+
+function computeNNResult(pts) {
+  return computeNNAtTarget(pts, target);
 }
 
 function displayMethodComparison(results, idwPower) {
@@ -2078,6 +2246,382 @@ function displayMethodComparison(results, idwPower) {
     else html += `<tr><td>${m.n}</td><td colspan="5">Error</td></tr>`;
   });
   document.getElementById('methodComparison').innerHTML = html + '</tbody></table>';
+}
+
+function matrixInfinityNorm(A) {
+  if (!A || !A.length) return NaN;
+  let maxRowSum = 0;
+  for (let i = 0; i < A.length; i++) {
+    let rowSum = 0;
+    for (let j = 0; j < A[i].length; j++) rowSum += Math.abs(A[i][j]);
+    if (rowSum > maxRowSum) maxRowSum = rowSum;
+  }
+  return maxRowSum;
+}
+
+function isPositiveDefinite(A) {
+  if (!A || !A.length) return false;
+  const n = A.length;
+  const L = Array.from({ length: n }, () => Array(n).fill(0));
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j <= i; j++) {
+      let sum = 0;
+      for (let k = 0; k < j; k++) sum += L[i][k] * L[j][k];
+      if (i === j) {
+        const diag = A[i][i] - sum;
+        if (!(diag > 1e-12)) return false;
+        L[i][j] = Math.sqrt(diag);
+      } else {
+        if (Math.abs(L[j][j]) < 1e-12) return false;
+        L[i][j] = (A[i][j] - sum) / L[j][j];
+      }
+    }
+  }
+  return true;
+}
+
+function conditionNumberEstimate(A) {
+  if (!A || !A.length) return NaN;
+  const inv = invertMatrix(A);
+  if (!inv) return NaN;
+  const normA = matrixInfinityNorm(A);
+  const normInv = matrixInfinityNorm(inv);
+  if (!isFinite(normA) || !isFinite(normInv)) return NaN;
+  return normA * normInv;
+}
+
+function updateNeighborhoodDiagnostics(methodName, pts, result, matrixForDiag = null) {
+  const box = document.getElementById('neighborhoodDiagnostics');
+  if (!box) return;
+  if (!pts || pts.length === 0) {
+    box.innerHTML = '<em>No neighborhood selected.</em>';
+    return;
+  }
+
+  const dists = pts.map((p) => dist(p, target));
+  const minD = Math.min(...dists);
+  const maxD = Math.max(...dists);
+  const lambdas = result && Array.isArray(result.lambdas) ? result.lambdas : [];
+  const negCount = lambdas.filter((l) => l < 0).length;
+  const sumL = lambdas.reduce((a, b) => a + b, 0);
+
+  let matrixInfo = '';
+  if (matrixForDiag && matrixForDiag.length) {
+    const pd = isPositiveDefinite(matrixForDiag);
+    const cond = conditionNumberEstimate(matrixForDiag);
+    matrixInfo = `<br><b>Covariance matrix:</b> ${pd ? 'positive definite' : 'not positive definite'} | ` +
+      `cond∞≈${isFinite(cond) ? cond.toExponential(2) : 'n/a'}`;
+  }
+
+  box.innerHTML =
+    `<b>${methodName}</b> | n=${pts.length} | dmin=${minD.toFixed(2)} | dmax=${maxD.toFixed(2)}<br>` +
+    `<b>Weights:</b> Σλ=${isFinite(sumL) ? sumL.toFixed(4) : '—'}, negatives=${negCount}` +
+    `${matrixInfo}`;
+}
+
+function normalInvApprox(p) {
+  if (p <= 0 || p >= 1) return NaN;
+  const a1 = -39.6968302866538, a2 = 220.946098424521, a3 = -275.928510446969;
+  const a4 = 138.357751867269, a5 = -30.6647980661472, a6 = 2.50662827745924;
+  const b1 = -54.4760987982241, b2 = 161.585836858041, b3 = -155.698979859887;
+  const b4 = 66.8013118877197, b5 = -13.2806815528857;
+  const c1 = -0.00778489400243029, c2 = -0.322396458041136, c3 = -2.40075827716184;
+  const c4 = -2.54973253934373, c5 = 4.37466414146497, c6 = 2.93816398269878;
+  const d1 = 0.00778469570904146, d2 = 0.32246712907004, d3 = 2.445134137143, d4 = 3.75440866190742;
+  const plow = 0.02425;
+  const phigh = 1 - plow;
+  let q, r;
+  if (p < plow) {
+    q = Math.sqrt(-2 * Math.log(p));
+    return (((((c1 * q + c2) * q + c3) * q + c4) * q + c5) * q + c6) /
+      ((((d1 * q + d2) * q + d3) * q + d4) * q + 1);
+  }
+  if (p > phigh) {
+    q = Math.sqrt(-2 * Math.log(1 - p));
+    return -(((((c1 * q + c2) * q + c3) * q + c4) * q + c5) * q + c6) /
+      ((((d1 * q + d2) * q + d3) * q + d4) * q + 1);
+  }
+  q = p - 0.5;
+  r = q * q;
+  return (((((a1 * r + a2) * r + a3) * r + a4) * r + a5) * r + a6) * q /
+    (((((b1 * r + b2) * r + b3) * r + b4) * r + b5) * r + 1);
+}
+
+function applyLearningModeEstimation() {
+  const mode = document.getElementById('learningMode')?.value || 'advanced';
+  const essential = mode === 'essential';
+  const advancedBlocks = [
+    'matrixH','matrixH0','matrixGamma','vectorGamma0','matrixCov','vectorCov0',
+    'systemGamma','inverseGamma','systemCov','inverseCov','weights','weightsProps',
+    'estimateCalc','errorVariance','errorVarianceDecomp','estimatorVariance',
+    'slopeDefinition','slopeNumerator','slopeDenominator','slopeResult'
+  ];
+  advancedBlocks.forEach((id) => {
+    const el = document.getElementById(id);
+    const block = el ? el.closest('.matrix-block') : null;
+    if (block) block.style.display = essential ? 'none' : '';
+  });
+  document.querySelectorAll('#right-panel > h3').forEach((h3) => {
+    const t = h3.textContent.trim();
+    if (/^[1-8]\./.test(t)) h3.style.display = essential ? 'none' : '';
+  });
+  const pairs = document.getElementById('variogramPairs');
+  if (pairs) pairs.style.display = essential ? 'none' : '';
+}
+
+function assignFoldIds(n, scheme, kFolds) {
+  if (scheme !== 'kfold' || !Number.isFinite(kFolds) || kFolds < 2) {
+    return Array.from({ length: n }, (_, idx) => idx);
+  }
+  const folds = [];
+  for (let i = 0; i < n; i++) folds.push(i % kFolds);
+  return folds;
+}
+
+function drawCVScatter(rows, slope, intercept) {
+  const canvas = document.getElementById('cvScatterCanvas');
+  if (!canvas) return;
+  const c = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  c.clearRect(0, 0, w, h);
+  if (!rows.length) return;
+  const margin = { t: 28, r: 16, b: 38, l: 52 };
+  const pw = w - margin.l - margin.r;
+  const ph = h - margin.t - margin.b;
+  const obs = rows.map((r) => r.obs);
+  const pred = rows.map((r) => r.pred);
+  const minV = Math.min(...obs, ...pred);
+  const maxV = Math.max(...obs, ...pred);
+  const range = (maxV - minV) || 1;
+  const x = (v) => margin.l + ((v - minV) / range) * pw;
+  const y = (v) => margin.t + (1 - ((v - minV) / range)) * ph;
+
+  c.strokeStyle = '#334155';
+  c.beginPath();
+  c.moveTo(margin.l, margin.t);
+  c.lineTo(margin.l, h - margin.b);
+  c.lineTo(w - margin.r, h - margin.b);
+  c.stroke();
+
+  c.setLineDash([4, 3]);
+  c.strokeStyle = '#9ca3af';
+  c.beginPath();
+  c.moveTo(x(minV), y(minV));
+  c.lineTo(x(maxV), y(maxV));
+  c.stroke();
+  c.setLineDash([]);
+
+  c.strokeStyle = '#2563eb';
+  c.beginPath();
+  c.moveTo(x(minV), y(intercept + slope * minV));
+  c.lineTo(x(maxV), y(intercept + slope * maxV));
+  c.stroke();
+
+  c.fillStyle = '#1d4ed8';
+  rows.forEach((r) => {
+    c.beginPath();
+    c.arc(x(r.obs), y(r.pred), 2.5, 0, Math.PI * 2);
+    c.fill();
+  });
+
+  c.fillStyle = '#111827';
+  c.font = '12px Arial';
+  c.textAlign = 'center';
+  c.fillText('Observed vs Predicted', w / 2, 16);
+}
+
+function drawCVErrorHistogram(rows) {
+  const canvas = document.getElementById('cvErrorCanvas');
+  if (!canvas) return;
+  const c = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  c.clearRect(0, 0, w, h);
+  if (!rows.length) return;
+  const margin = { t: 28, r: 16, b: 38, l: 52 };
+  const pw = w - margin.l - margin.r;
+  const ph = h - margin.t - margin.b;
+  const values = rows.map((r) => r.error);
+  const minV = Math.min(...values);
+  const maxV = Math.max(...values);
+  const range = (maxV - minV) || 1;
+  const bins = Math.min(18, Math.max(8, Math.round(Math.sqrt(values.length))));
+  const binW = range / bins;
+  const hist = new Array(bins).fill(0);
+  values.forEach((v) => {
+    let idx = Math.floor((v - minV) / binW);
+    if (idx < 0) idx = 0;
+    if (idx >= bins) idx = bins - 1;
+    hist[idx] += 1;
+  });
+  const maxC = Math.max(...hist) || 1;
+  c.strokeStyle = '#334155';
+  c.beginPath();
+  c.moveTo(margin.l, margin.t);
+  c.lineTo(margin.l, h - margin.b);
+  c.lineTo(w - margin.r, h - margin.b);
+  c.stroke();
+  c.fillStyle = '#059669';
+  const bw = pw / bins;
+  for (let i = 0; i < bins; i++) {
+    const bh = (hist[i] / maxC) * ph;
+    c.fillRect(margin.l + i * bw, h - margin.b - bh, bw - 1, bh);
+  }
+  c.fillStyle = '#111827';
+  c.font = '12px Arial';
+  c.textAlign = 'center';
+  c.fillText('Residual Histogram', w / 2, 16);
+}
+
+function drawCVQQ(rows) {
+  const canvas = document.getElementById('cvQQCanvas');
+  if (!canvas) return;
+  const c = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  c.clearRect(0, 0, w, h);
+  if (!rows.length) return;
+  const stdValuesRaw = rows.map((r) => r.stdError).filter((v) => isFinite(v));
+  let vals = stdValuesRaw;
+  if (vals.length < 3) {
+    const residuals = rows.map((r) => r.error);
+    const mean = residuals.reduce((a, b) => a + b, 0) / residuals.length;
+    const sd = Math.sqrt(residuals.reduce((s, v) => s + (v - mean) ** 2, 0) / Math.max(1, residuals.length - 1)) || 1;
+    vals = residuals.map((v) => (v - mean) / sd);
+  }
+  vals = vals.slice().sort((a, b) => a - b);
+  const theo = vals.map((_, i) => normalInvApprox((i + 0.5) / vals.length));
+  const minV = Math.min(...vals, ...theo);
+  const maxV = Math.max(...vals, ...theo);
+  const range = (maxV - minV) || 1;
+  const margin = { t: 28, r: 16, b: 38, l: 52 };
+  const pw = w - margin.l - margin.r;
+  const ph = h - margin.t - margin.b;
+  const x = (v) => margin.l + ((v - minV) / range) * pw;
+  const y = (v) => margin.t + (1 - ((v - minV) / range)) * ph;
+  c.strokeStyle = '#334155';
+  c.beginPath();
+  c.moveTo(margin.l, margin.t);
+  c.lineTo(margin.l, h - margin.b);
+  c.lineTo(w - margin.r, h - margin.b);
+  c.stroke();
+  c.setLineDash([4, 3]);
+  c.strokeStyle = '#9ca3af';
+  c.beginPath();
+  c.moveTo(x(minV), y(minV));
+  c.lineTo(x(maxV), y(maxV));
+  c.stroke();
+  c.setLineDash([]);
+  c.fillStyle = '#7c3aed';
+  for (let i = 0; i < vals.length; i++) {
+    c.beginPath();
+    c.arc(x(theo[i]), y(vals[i]), 2.5, 0, Math.PI * 2);
+    c.fill();
+  }
+  c.fillStyle = '#111827';
+  c.font = '12px Arial';
+  c.textAlign = 'center';
+  c.fillText('QQ Plot (standardized errors)', w / 2, 16);
+}
+
+function runCrossValidation() {
+  const active = points.filter((p) => p.active);
+  if (active.length < 3) {
+    alert('At least 3 active points are required for cross-validation.');
+    return;
+  }
+
+  const cvMethodSel = document.getElementById('cvMethod').value;
+  const estMethod = document.getElementById('estMethod').value;
+  const method = cvMethodSel === 'current'
+    ? (estMethod === 'kriging' ? document.getElementById('krigeType').value : estMethod)
+    : cvMethodSel;
+  const scheme = document.getElementById('cvScheme').value;
+  const kFolds = parseInt(document.getElementById('cvKFolds').value, 10);
+  const foldIds = assignFoldIds(active.length, scheme, kFolds);
+  const nFolds = Math.max(...foldIds) + 1;
+  const params = getVarioParams();
+  const meanSK = parseFloat(document.getElementById('meanSK').value);
+  const idwPower = parseFloat(document.getElementById('idwPower').value) || 2;
+  const rows = [];
+
+  for (let fold = 0; fold < nFolds; fold++) {
+    const train = active.filter((_, idx) => foldIds[idx] !== fold);
+    const testItems = active.filter((_, idx) => foldIds[idx] === fold);
+    for (const testPoint of testItems) {
+      if (train.length === 0) continue;
+      const neighbors = getNearestPointsForDataset(testPoint.x, testPoint.y, train, { excludeIds: new Set([testPoint.id]) });
+      if (!neighbors.length) continue;
+      const targetNode = { x: testPoint.x, y: testPoint.y };
+      let result = null;
+      try {
+        if (method === 'OK' || method === 'SK') result = computeKrigingAtTarget(neighbors, targetNode, method, meanSK, params);
+        else if (method === 'idw') result = computeIDWAtTarget(neighbors, targetNode, idwPower);
+        else result = computeNNAtTarget(neighbors, targetNode);
+      } catch (_) {
+        result = null;
+      }
+      if (!result || !isFinite(result.zstar)) continue;
+      const obs = getPointValue(testPoint);
+      const pred = result.zstar;
+      const error = pred - obs;
+      const stdError = isFinite(result.sigma2) && result.sigma2 > 1e-12 ? error / Math.sqrt(result.sigma2) : NaN;
+      rows.push({
+        id: testPoint.id,
+        fold: fold + 1,
+        obs,
+        pred,
+        error,
+        absError: Math.abs(error),
+        sqError: error * error,
+        stdError
+      });
+    }
+  }
+
+  if (!rows.length) {
+    document.getElementById('cvSummary').innerHTML = '<em>No valid cross-validation results (check neighborhood constraints).</em>';
+    document.getElementById('cvTableWrap').innerHTML = '';
+    return;
+  }
+
+  const n = rows.length;
+  const me = rows.reduce((s, r) => s + r.error, 0) / n;
+  const mae = rows.reduce((s, r) => s + r.absError, 0) / n;
+  const rmse = Math.sqrt(rows.reduce((s, r) => s + r.sqError, 0) / n);
+  const stdList = rows.map((r) => r.stdError).filter((v) => isFinite(v));
+  const rmsse = stdList.length ? Math.sqrt(stdList.reduce((s, v) => s + v * v, 0) / stdList.length) : NaN;
+  const obsMean = rows.reduce((s, r) => s + r.obs, 0) / n;
+  const predMean = rows.reduce((s, r) => s + r.pred, 0) / n;
+  let cov = 0, varObs = 0, varPred = 0;
+  rows.forEach((r) => {
+    cov += (r.obs - obsMean) * (r.pred - predMean);
+    varObs += (r.obs - obsMean) ** 2;
+    varPred += (r.pred - predMean) ** 2;
+  });
+  const slope = varObs > 0 ? cov / varObs : NaN;
+  const intercept = isFinite(slope) ? predMean - slope * obsMean : NaN;
+  const corr = (varObs > 0 && varPred > 0) ? cov / Math.sqrt(varObs * varPred) : NaN;
+  const r2 = isFinite(corr) ? corr * corr : NaN;
+
+  document.getElementById('cvSummary').innerHTML =
+    `<p><b>Method:</b> ${method}${method === 'idw' ? ` (power=${idwPower.toFixed(2)})` : ''} | ` +
+    `<b>Scheme:</b> ${scheme === 'kfold' ? `${nFolds}-fold` : 'LOOCV'} | <b>Valid cases:</b> ${n}</p>` +
+    `<p><b>ME:</b> ${me.toFixed(4)} | <b>MAE:</b> ${mae.toFixed(4)} | <b>RMSE:</b> ${rmse.toFixed(4)} | ` +
+    `<b>RMSSE:</b> ${isFinite(rmsse) ? rmsse.toFixed(4) : 'n/a'}</p>` +
+    `<p><b>Regression (Pred = a + b·Obs):</b> a=${isFinite(intercept) ? intercept.toFixed(4) : 'n/a'}, ` +
+    `b=${isFinite(slope) ? slope.toFixed(4) : 'n/a'}, R²=${isFinite(r2) ? r2.toFixed(4) : 'n/a'}</p>`;
+
+  let tableHtml = '<table><thead><tr><th>Fold</th><th>ID</th><th>Obs</th><th>Pred</th><th>Error</th><th>|Error|</th><th>StdErr</th></tr></thead><tbody>';
+  rows.slice(0, 300).forEach((r) => {
+    tableHtml += `<tr><td>${r.fold}</td><td>P${r.id}</td><td>${r.obs.toFixed(4)}</td><td>${r.pred.toFixed(4)}</td>` +
+      `<td>${r.error.toFixed(4)}</td><td>${r.absError.toFixed(4)}</td><td>${isFinite(r.stdError) ? r.stdError.toFixed(4) : '—'}</td></tr>`;
+  });
+  tableHtml += '</tbody></table>';
+  if (rows.length > 300) tableHtml += `<p style="padding:6px; margin:0;"><em>Showing first 300 of ${rows.length} rows.</em></p>`;
+  document.getElementById('cvTableWrap').innerHTML = tableHtml;
+
+  drawCVScatter(rows, slope, intercept);
+  drawCVErrorHistogram(rows);
+  drawCVQQ(rows);
 }
 
 // ============ MAP COMPUTATION ============
@@ -2322,6 +2866,7 @@ function computeKriging() {
   for (let i=0; i<n; i++) { lambdaById[pts[i].id]=lambdas[i]; maxLambdaAbs=Math.max(maxLambdaAbs, Math.abs(lambdas[i])); }
 
   displayKrigingResults(pts, lambdas, zstar, sigma2, sr, mu, krigeType, meanSK, H, h0, Gamma, gamma0, Cov, cov0, KGamma, dGamma, KCov, dCov, params.totalSill, covNum, varDen, params, useInd);
+  updateNeighborhoodDiagnostics(`Kriging ${krigeType}`, pts, { lambdas, sigma2, mu }, Cov);
 
   if (document.getElementById('showEstMap').checked||document.getElementById('showVarMap').checked||document.getElementById('showSlopeMap').checked||document.getElementById('showLagrangeMap').checked) computeKrigingMaps();
   if (document.getElementById('showIDWMap').checked) computeIDWMap();
@@ -2340,6 +2885,7 @@ function computeNN() {
   const z = getPointValue(pts[best]);
   document.getElementById('summaryText').innerHTML = `<b>NN</b>: P${pts[best].id}, Z*=${z.toFixed(4)}`;
   document.getElementById('resultSummary').innerHTML = `Z*=${z.toFixed(4)} (NN)`;
+  updateNeighborhoodDiagnostics('Nearest Neighbor', pts, { lambdas: pts.map((_, i) => i === best ? 1 : 0), sigma2: NaN, mu: NaN }, null);
   updatePointsTable(); draw();
 }
 
@@ -2360,6 +2906,7 @@ function computeIDW() {
   else { for (let i=0; i<pts.length; i++) { const l=weights[i]/total; zstar+=l*getPointValue(pts[i]); lambdaById[pts[i].id]=l; maxLambdaAbs=Math.max(maxLambdaAbs,l); } }
   document.getElementById('summaryText').innerHTML = `<b>IDW(${power})</b>: Z*=${zstar.toFixed(4)}`;
   document.getElementById('resultSummary').innerHTML = `Z*=${zstar.toFixed(4)} (IDW)`;
+  updateNeighborhoodDiagnostics(`IDW(${power.toFixed(2)})`, pts, { lambdas: pts.map((p) => lambdaById[p.id] || 0), sigma2: NaN, mu: NaN }, null);
   updatePointsTable(); draw();
 }
 
