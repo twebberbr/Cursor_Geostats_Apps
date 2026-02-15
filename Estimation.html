@@ -1,0 +1,2667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Super Krige - Laboratory</title>
+  
+<style>
+  
+  
+  
+  :root {
+    --bg-main: #f3f4f6;
+    --bg-panel: #f9fafb;
+    --bg-card: #ffffff;
+    --bg-card-alt: #f3f4f6;
+    --border-subtle: rgba(15,23,42,0.12);
+    --accent: #2563eb;
+    --accent-soft: rgba(37,99,235,0.10);
+    --accent-strong: #1d4ed8;
+    --accent-green: #15803d;
+    --accent-amber: #b45309;
+    --text-main: #111827;
+    --text-muted: #4b5563;
+    --text-strong: #0f172a;
+    --radius-lg: 14px;
+    --radius-md: 10px;
+    --shadow-soft: 0 8px 24px rgba(15,23,42,0.06);
+    --shadow-subtle: 0 4px 14px rgba(15,23,42,0.04);
+  }
+
+
+
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    padding: 12px;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+    display: flex;
+    height: 100vh;
+    background:var(--bg-main);
+    color: var(--text-main);
+  }
+
+  #left-panel, #right-panel {
+    background:var(--bg-panel);
+    backdrop-filter: blur(20px);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-soft);
+    border: 1px solid rgba(148, 163, 184, 0.35);
+  }
+
+  #left-panel {
+    width: 780px;
+    padding: 14px 16px 18px 16px;
+    margin-right: 12px;
+    overflow-y: auto;
+  }
+
+  #right-panel {
+    flex: 1;
+    padding: 16px 18px 20px 18px;
+    overflow-y: auto;
+  }
+
+  #left-panel h2 {
+    margin-top: 0;
+    margin-bottom: 12px;
+    font-size: 1.45rem;
+    letter-spacing: 0.03em;
+    font-weight: 650;
+    color: var(--text-strong);
+  }
+
+  #left-panel h2::after {
+    content: "";
+    display: block;
+    width: 84px;
+    height: 2px;
+    margin-top: 6px;
+    border-radius: 999px;
+    background:var(--bg-main);
+  }
+
+  #left-panel h3,
+  #right-panel h3 {
+    margin: 12px 0 10px;
+    font-size: 0.96rem;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #111827;
+    font-weight: 600;
+  }
+
+  #right-panel h3 {
+    margin-top: 0;
+    margin-bottom: 8px;
+  }
+
+  #left-panel h3::before,
+  #right-panel h3::before {
+    content: "●";
+    margin-right: 6px;
+    font-size: 0.65em;
+    color: var(--accent);
+  }
+
+  h4 {
+    margin: 0 0 6px 0;
+    font-size: 0.9rem;
+    color: var(--text-strong);
+  }
+
+  h5 {
+    margin: 0 0 4px 0;
+    font-size: 0.9rem;
+    color: var(--text-main);
+  }
+
+  canvas {
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    background:var(--bg-main);
+    cursor: crosshair;
+    box-shadow: var(--shadow-subtle);
+  }
+
+  #krigeCanvas {
+    width: 700px;
+    height: 700px;
+    display: block;
+    margin: 4px 0 10px 0;
+  }
+
+  button {
+    margin: 5px 6px 5px 0;
+    padding: 6px 12px;
+    cursor: pointer;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    background:var(--bg-main);
+    color: var(--text-main);
+    font-size: 0.9rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.16s ease-out;
+  }
+
+  button:hover {
+    border-color: var(--accent);
+    background:var(--bg-main);
+    transform: translateY(-1px);
+    box-shadow: 0 10px 25px rgba(37, 99, 235, 0.35);
+  }
+
+  button:active {
+    transform: translateY(0);
+    box-shadow: none;
+  }
+
+  
+  .btn-primary {
+    background:#2563eb;
+    border-color:#2563eb;
+    color:#ffffff;
+    font-weight: 600;
+  }
+
+  .btn-primary:hover {
+    background:#1d4ed8;
+    border-color:#1d4ed8;
+    color:#ffffff;
+  }
+
+  .btn-compare {
+    background:#16a34a;
+    border-color:#16a34a;
+    color:#ffffff;
+    font-weight: 600;
+  }
+
+  .btn-compare:hover {
+    background:#15803d;
+    border-color:#15803d;
+    color:#ffffff;
+  }
+
+  .btn-compare::before {
+    content: "⥯";
+    font-size: 0.85em;
+  }
+
+
+  select,
+  input[type="number"],
+  input[type="file"] {
+    background:var(--bg-main);
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.5);
+    padding: 4px 9px;
+    color: var(--text-main);
+    font-size: 0.9rem;
+    outline: none;
+    margin: 2px 4px;
+  }
+
+  select:focus,
+  input[type="number"]:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.6);
+  }
+
+  input[type="number"] {
+    width: 80px;
+  }
+
+  label {
+    font-size: 0.86rem;
+    color: var(--text-muted);
+  }
+
+  label input[type="checkbox"] {
+    margin-right: 4px;
+  }
+
+  table {
+    border-collapse: collapse;
+    font-size: 0.82rem;
+    width: 100%;
+  }
+
+  table th,
+  table td {
+    border: 1px solid rgba(31, 41, 55, 0.9);
+    padding: 3px 6px;
+    text-align: right;
+    background:var(--bg-main);
+  }
+
+  table th {
+  background:#e5e7eb;
+  color:#111827;
+  font-weight:600;
+  font-size:0.85rem;
+}
+
+  .matrix-block {
+    margin-bottom: 14px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(31, 41, 55, 0.9);
+    padding: 10px 10px 11px 10px;
+    background:var(--bg-main);
+    box-shadow: var(--shadow-subtle);
+  }
+
+  .matrix-block h4 {
+    margin: 0 0 8px 0;
+    font-size: 0.9rem;
+    color: var(--text-strong);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .matrix-block h4::after {
+    content: "";
+    flex: 1;
+    margin-left: 8px;
+    height: 1px;
+    border-radius: 999px;
+    background:var(--bg-main);
+  }
+
+  #pointsTableContainer {
+    max-height: 300px;
+    overflow-y: auto;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(148, 163, 184, 0.9);
+    padding: 6px;
+    margin: 10px 0;
+    background:#ffffff;
+  }
+
+  .used-point {
+    font-weight: 600;
+    background:var(--bg-main);
+  }
+
+  #mapLegendContainer {
+    margin-top: 10px;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+  }
+
+  #legendCanvas {
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.5);
+    display: block;
+    margin-bottom: 4px;
+    width: 220px;
+    height: 20px;
+    background:var(--bg-main);
+  }
+
+  .comparison-table {
+    margin-top: 10px;
+  }
+
+  .comparison-table th {
+  background:#e5e7eb;
+  color:#111827;
+  font-weight:600;
+  font-size:0.85rem;
+}
+
+  .histogram-container {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+
+  .histogram-box {
+    flex: 1;
+    min-width: 360px;
+  }
+
+  .stats-table {
+    font-size: 0.78rem;
+    margin-top: 6px;
+  }
+
+  .stats-table th {
+  background:#e5e7eb;
+  color:#111827;
+  font-weight:600;
+  font-size:0.85rem;
+}
+
+  #csvColumnSelector {
+    display: none;
+    margin-top: 10px;
+    padding: 10px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    background:var(--bg-main);
+  }
+
+  #csvColumnSelector label {
+    display: block;
+    margin: 5px 0;
+  }
+
+  #csvColumnSelector select {
+    margin-left: 10px;
+    min-width: 120px;
+  }
+
+  .map-section {
+    margin: 8px 0;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(148, 163, 184, 0.9);
+    background:#ffffff;
+  }
+
+  .map-section h4 {
+    margin: 0 0 6px 0;
+    font-size: 0.9rem;
+    color: #111827;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .indicator-section {
+    margin: 10px 0;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(234, 179, 8, 0.85);
+    background:#fffbeb;
+  }
+
+  .indicator-section h4 {
+    margin: 0 0 8px 0;
+    color: #b45309;
+    font-size: 0.92rem;
+    font-weight: 600;
+  }
+
+  .indicator-active {
+    border-color: rgba(34, 197, 94, 0.9);
+    background:var(--bg-main);
+  }
+
+  .variogram-section {
+    margin: 10px 0;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(59, 130, 246, 0.7);
+    background:#ffffff;
+  }
+
+  .variogram-section h4 {
+    margin: 0 0 8px 0;
+    color: #1d4ed8;
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
+  .structure-box {
+    margin: 8px 0;
+    padding: 8px 10px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(148, 163, 184, 0.5);
+    background:var(--bg-main);
+  }
+
+  .structure-box.disabled {
+    opacity: 0.5;
+    background:var(--bg-main);
+  }
+
+  .structure-box h5 {
+    margin: 0 0 5px 0;
+    font-size: 0.9rem;
+  }
+
+  .structure-box label {
+    display: inline-block;
+    margin: 3px 8px 3px 0;
+  }
+
+  .model-summary {
+    margin-top: 10px;
+    padding: 8px 10px;
+    border-radius: var(--radius-md);
+    background:#ffffff;
+    border: 1px dashed rgba(148, 163, 184, 0.8);
+    font-family: "JetBrains Mono", "Fira Code", monospace;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
+  .left-block {
+    margin: 10px 0;
+    padding: 12px 14px;
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(148, 163, 184, 0.9);
+    background:#ffffff;
+    box-shadow: var(--shadow-subtle);
+  }
+
+  .calc-block {
+    margin-top: 6px;
+    padding: 8px 10px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(148, 163, 184, 0.7);
+    background:#ffffff;
+  }
+
+  .calc-title {
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: var(--text-strong);
+    font-size: 0.9rem;
+  }
+
+  .calc-eq {
+  font-family: "JetBrains Mono","Fira Code","Courier New",monospace;
+  font-size:0.86rem;
+  margin-bottom:4px;
+  color:#111827;
+}
+
+  .calc-steps {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
+  .calc-steps table {
+    width: 100%;
+    margin-top: 4px;
+  }
+
+  .calc-steps th {
+    background:#e5e7eb;
+  }
+
+  .calc-highlight {
+    font-weight: 700;
+    color: #f97316;
+  }
+
+  .vario-tooltip {
+    position: absolute;
+    padding: 4px 8px;
+    background: #111827;
+    color: #f9fafb;
+    border-radius: 4px;
+    font-size: 0.78rem;
+    pointer-events: none;
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.3);
+    z-index: 1000;
+    white-space: nowrap;
+  }
+</style>
+
+</head>
+<body>
+
+<div id="left-panel">
+  <h2>Super Krige - Laboratory</h2>
+
+  <div>
+    <button id="btnCompute" class="btn-primary">Calculate</button>
+    <button id="btnCompareAll" class="btn-compare">Compare Methods</button>
+    <button id="btnClear">Clear</button>
+    <button id="btnResetView">Reset Zoom</button>
+  </div>
+
+  <canvas id="krigeCanvas"></canvas>
+
+  
+  <!-- ORDER: Maps, Indicator, Data, Variogram, Method, Grid, Target -->
+<h3>Maps</h3>
+  <div class="map-section">
+    <h4>Kriging</h4>
+    <label><input type="checkbox" id="showEstMap"> Z*</label>
+    <label><input type="checkbox" id="showVarMap"> σ²</label>
+    <label><input type="checkbox" id="showSlopeMap"> SR</label>
+    <label><input type="checkbox" id="showLagrangeMap"> μ</label>
+  </div>
+  <div class="map-section">
+    <h4>Other Methods</h4>
+    <label><input type="checkbox" id="showIDWMap"> IDW</label>
+    <label><input type="checkbox" id="showNNMap"> NN</label>
+  </div>
+  <div id="mapLegendContainer">
+    <canvas id="legendCanvas" width="220" height="20"></canvas>
+    <div id="legendLabels"><em>No active map</em></div>
+  </div>
+
+  
+<!-- INDICATOR KRIGING SECTION -->
+  <div class="indicator-section" id="indicatorSection">
+    <h4>🎯 Indicator Kriging</h4>
+    <label><input type="checkbox" id="useIndicator"> Enable Indicator Transform</label>
+    <div id="indicatorOpts" style="display:none; margin-top:8px;">
+      <label>Cutoff: <input type="number" id="indicatorCutoff" value="2" step="0.1"></label>
+      <p style="font-size:0.85em; color:#666; margin:5px 0;">≥ cutoff → 1 | < cutoff → 0</p>
+      <div id="indicatorStats"></div>
+    </div>
+  </div>
+
+  
+<h3>Data and Points</h3>
+  <select id="dataSource">
+    <option value="manual">Interactive</option>
+    <option value="csv">CSV</option>
+  </select>
+  <div id="csvGroup" style="display:none; margin-top:5px;">
+    <input type="file" id="csvFile" accept=".csv">
+    <div id="csvStatus"></div>
+    <div id="csvColumnSelector">
+      <h4>Select Columns</h4>
+      <label>X: <select id="csvColX"></select></label>
+      <label>Y: <select id="csvColY"></select></label>
+      <label>Z: <select id="csvColZ"></select></label>
+      <button id="btnLoadCSV">Load</button>
+    </div>
+  </div>
+
+  <label><input type="checkbox" id="showPoints" checked> Show points</label>
+  <label><input type="checkbox" id="showPointLabels" checked> Labels</label>
+
+  <div id="pointsTableContainer"></div>
+  <button id="btnAddPoint">Add Point</button>
+  <button id="btnResetPoints">Reset</button>
+
+  
+<!-- VARIOGRAM SECTION - ENHANCED -->
+  <div class="variogram-section">
+    <h4>📊 Variogram Model (up to 3 structures)</h4>
+    
+    <div class="structure-box">
+      <h5>Nugget Effect (C₀)</h5>
+      <label>Nugget: <input type="number" id="nugget" value="0.5" step="0.01" min="0"></label>
+    </div>
+    
+    <div class="structure-box" id="struct1Box">
+      <h5>Structure 1 (C₁)</h5>
+      <label><input type="checkbox" id="useStruct1" checked> Enable</label><br>
+      <label>Type: <select id="varioType1">
+        <option value="spherical">Spherical</option>
+        <option value="exponential">Exponential</option>
+        <option value="gaussian">Gaussian</option>
+      </select></label>
+      <label>Sill: <input type="number" id="sill1" value="10" step="0.1" min="0"></label>
+      <label>Range (main): <input type="number" id="range1" value="4.7" step="0.1" min="0"></label>
+      <label>Range (ortho): <input type="number" id="rangeOrtho1" value="4.7" step="0.1" min="0"></label>
+    </div>
+    
+    <div class="structure-box" id="struct2Box">
+      <h5>Structure 2 (C₂)</h5>
+      <label><input type="checkbox" id="useStruct2"> Enable</label><br>
+      <div id="struct2Opts" style="display:none;">
+        <label>Type: <select id="varioType2">
+          <option value="spherical">Spherical</option>
+          <option value="exponential">Exponential</option>
+          <option value="gaussian">Gaussian</option>
+        </select></label>
+        <label>Sill: <input type="number" id="sill2" value="5" step="0.1" min="0"></label>
+        <label>Range (main): <input type="number" id="range2" value="15" step="0.1" min="0"></label>
+        <label>Range (ortho): <input type="number" id="rangeOrtho2" value="15" step="0.1" min="0"></label>
+      </div>
+    </div>
+    
+    <div class="structure-box">
+      <h5>Anisotropy Direction (applies to all structures)</h5>
+      <label>Angle (degrees): <input type="number" id="anisoAngle" value="0" step="1"></label>
+      <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">
+        0° = North-South | 90° = East-West (clockwise)
+      </div>
+    </div>
+    
+    
+
+    <div style="margin-top:6px; font-size:0.86rem;">
+      <label><input type="checkbox" id="showVarioGuides"> Show pair guide lines</label>
+    </div>
+
+    <div class="model-summary" id="modelSummary">γ(h) = C₀ + C₁·g₁(h)</div>
+  </div>
+
+  
+<h3>Method</h3>
+  <select id="estMethod">
+    <option value="kriging">Kriging</option>
+    <option value="nn">Nearest Neighbor</option>
+    <option value="idw">IDW</option>
+  </select>
+  <div id="krigingOpts">
+    <select id="krigeType"><option value="OK">Ordinary</option><option value="SK">Simple</option></select>
+    <label>SK Mean: <input type="number" id="meanSK" value="2" step="0.1"></label>
+  </div>
+  <div id="idwOpts" style="display:none;">
+    <label>Power: <input type="number" id="idwPower" value="2" step="0.1"></label>
+  </div>
+  <label>Max samples: <input type="number" id="maxNeighbors" value="6" min="1"></label><br>
+  <label><input type="checkbox" id="useSearchRadius"> Limit search ellipse</label>
+  <div id="radiusGroup" style="display:none;">
+    <label>Major Radius: <input type="number" id="searchRadiusMajor" value="50" step="1"></label><br>
+    <label>Minor Radius: <input type="number" id="searchRadiusMinor" value="50" step="1"></label>
+    <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">
+      Ellipse follows anisotropy angle from variogram model
+    </div>
+  </div>
+  <div id="resultSummary"></div>
+
+<h3>Grid</h3>
+  <label><input type="checkbox" id="showGridFrame" checked> Show grid frame</label><br>
+  
+  <h4>Grid Origin (lower-left corner):</h4>
+  <label>x₀: <input type="number" id="gridOriginX" value="0" step="1"></label>
+  <label>y₀: <input type="number" id="gridOriginY" value="0" step="1"></label>
+  
+  <h4>Cell Spacing:</h4>
+  <label>dx: <input type="number" id="gridSpacingX" value="20" step="0.5" min="0.1"></label>
+  <label>dy: <input type="number" id="gridSpacingY" value="20" step="0.5" min="0.1"></label>
+  
+  <h4>Grid Size:</h4>
+  <label>nx: <input type="number" id="gridNx" value="30" min="1" max="100"></label>
+  <label>ny: <input type="number" id="gridNy" value="30" min="1" max="100"></label>
+  
+  <div id="gridInfo" style="margin-top: 8px; padding: 8px; background: var(--bg-card); border-radius: 6px; font-size: 0.85rem; color: var(--text-muted);"></div>
+
+  
+<h3>Target</h3>
+  <div id="targetInfo">Click on canvas</div>
+  <label>x: <input type="number" id="targetX" step="0.1"></label>
+  <label>y: <input type="number" id="targetY" step="0.1"></label>
+  <button id="btnUpdateTarget">Update</button><br>
+  <label><input type="checkbox" id="lockTarget"> Lock target position</label>
+
+  </div>
+
+<div id="right-panel">
+  <h3>Results</h3>
+  <div class="matrix-block"><h4>Method Comparison</h4><div id="methodComparison"><em>Click "Compare Methods"</em></div></div>
+  <div class="matrix-block">
+    <h4>Histograms</h4>
+    <div class="histogram-container">
+      <div class="histogram-box"><canvas id="histInputCanvas" width="450" height="300"></canvas><div id="inputStats"></div></div>
+      <div class="histogram-box"><canvas id="histOutputCanvas" width="450" height="300"></canvas><div id="outputStats"></div></div>
+    </div>
+  </div>
+  <div class="matrix-block" style="position:relative;"><h4>Variogram Model</h4><canvas id="variogramCanvas" width="900" height="450"></canvas><div id="variogramTooltip" class="vario-tooltip" style="display:none;"></div><div id="variogramPairs"></div></div>
+  <div class="matrix-block"><h4>Summary</h4><div id="summaryText"></div></div>
+  <h3>1. Distances</h3>
+  <div class="matrix-block"><h4>1.1. Matrix H</h4><div id="matrixH"></div></div>
+  <div class="matrix-block"><h4>1.2. Vector h₀</h4><div id="matrixH0"></div></div>
+  <h3>2. Semivariogram/Covariance</h3>
+  <div class="matrix-block"><h4>2.1. Matrix Γ</h4><div id="matrixGamma"></div></div>
+  <div class="matrix-block"><h4>2.2. Vector γ₀</h4><div id="vectorGamma0"></div></div>
+  <div class="matrix-block"><h4>2.3. Matrix C</h4><div id="matrixCov"></div></div>
+  <div class="matrix-block"><h4>2.4. Vector c₀</h4><div id="vectorCov0"></div></div>
+  <h3>3. Kriging System</h3>
+  <div class="matrix-block"><h4>3.1. System Γ (Semivariogram)</h4><div id="systemGamma"></div></div>
+  <div class="matrix-block"><h4>3.1.1. Inverse of System Γ</h4><div id="inverseGamma"></div></div>
+  <div class="matrix-block"><h4>3.2. System C (Covariance)</h4><div id="systemCov"></div></div>
+  <div class="matrix-block"><h4>3.2.1. Inverse of System C</h4><div id="inverseCov"></div></div>
+  <h3>4. Weights</h3>
+  <div class="matrix-block"><h4>4.1. λ vector</h4><div id="weights"></div></div>
+  <div class="matrix-block"><h4>4.2. Properties</h4><div id="weightsProps"></div></div>
+  <h3>5. Estimate</h3>
+  <div class="matrix-block"><h4>5.1. Z* Calculation</h4><div id="estimateCalc"></div></div>
+  <h3>6. Error Variance</h3>
+  <div class="matrix-block"><h4>6.1. σ²ₖ</h4><div id="errorVariance"></div></div>
+  <div class="matrix-block"><h4>6.2. Decomposition</h4><div id="errorVarianceDecomp"></div></div>
+  <h3>7. Var(Z*)</h3>
+  <div class="matrix-block"><div id="estimatorVariance"></div></div>
+  <h3>8. Slope of Regression</h3>
+  <div class="matrix-block"><h4>8.1. Definition</h4><div id="slopeDefinition"></div></div>
+  <div class="matrix-block"><h4>8.2. Numerator</h4><div id="slopeNumerator"></div></div>
+  <div class="matrix-block"><h4>8.3. Denominator</h4><div id="slopeDenominator"></div></div>
+  <div class="matrix-block"><h4>8.4. Result</h4><div id="slopeResult"></div></div>
+</div>
+
+<script>
+let canvas, ctx, points = [], nextId = 1, target = null; let variogramPoints = []; let variogramAxis = null;
+let viewScale = 1, viewOffsetX = 0, viewOffsetY = 0;
+let isDragging = false, draggingIdx = null, isPanning = false, lastPanX = 0, lastPanY = 0;
+let dataMinX = 0, dataMaxX = 600, dataMinY = 0, dataMaxY = 440;
+let aspectScale = 1, aspectOffsetX = 0, aspectOffsetY = 0;
+
+function updateAspectTransform() {
+  if (!canvas) return;
+  const w = canvas.width || 1;
+  const h = canvas.height || 1;
+  const dx = Math.max(dataMaxX - dataMinX, 1e-9);
+  const dy = Math.max(dataMaxY - dataMinY, 1e-9);
+  const scale = Math.min(w / dx, h / dy);
+  aspectScale = scale;
+  aspectOffsetX = (w - dx * scale) * 0.5;
+  aspectOffsetY = (h - dy * scale) * 0.5;
+}
+
+let lambdaById = {}, maxLambdaAbs = 0, lastUsedIds = {};
+let legendCanvas, legendCtx, csvRawData = null, csvHeaders = [];
+let estMapData = null, varMapData = null, slopeMapData = null, lagrangeMapData = null, idwMapData = null, nnMapData = null;
+
+// Get variogram parameters as object
+function getVarioParams() {
+  const nugget = parseFloat(document.getElementById('nugget').value) || 0;
+  const structures = [];
+  
+  if (document.getElementById('useStruct1').checked) {
+    structures.push({
+      type: document.getElementById('varioType1').value,
+      sill: parseFloat(document.getElementById('sill1').value) || 0,
+      range: parseFloat(document.getElementById('range1').value) || 1,
+      rangeOrtho: parseFloat(document.getElementById('rangeOrtho1').value) || 1
+    });
+  }
+  if (document.getElementById('useStruct2').checked) {
+    structures.push({
+      type: document.getElementById('varioType2').value,
+      sill: parseFloat(document.getElementById('sill2').value) || 0,
+      range: parseFloat(document.getElementById('range2').value) || 1,
+      rangeOrtho: parseFloat(document.getElementById('rangeOrtho2').value) || 1
+    });
+  }
+  
+  const anisoAngle = parseFloat(document.getElementById('anisoAngle').value) || 0;
+  
+  // Calculate total sill
+  let totalSill = nugget;
+  structures.forEach(s => totalSill += s.sill);
+  
+  return { nugget, structures, anisoAngle, totalSill };
+}
+
+// Gamma function for single structure
+function gammaStruct(h, type, sill, range) {
+  if (h === 0) return 0;
+  if (range <= 0) return sill;
+  const hr = h / range;
+  if (type === 'spherical') return h >= range ? sill : sill * (1.5 * hr - 0.5 * hr * hr * hr);
+  if (type === 'gaussian') return sill * (1 - Math.exp(-3 * hr * hr));
+  return sill * (1 - Math.exp(-3 * hr)); // exponential
+}
+
+// Calculate anisotropic distance for a specific structure
+// Convention: 0° = North-South, 90° = East-West, clockwise
+function anisoDistForStructure(p1, p2, angleDeg, rangeMain, rangeOrtho) {
+  const dx = p1.x - p2.x;
+  const dy = p1.y - p2.y;
+  
+  // Canvas Y grows downward, so we need to account for this
+  // User: 0° = North (up), 90° = East (right), clockwise
+  // For rotation matrix, we use: angle_canvas = user_angle - 90°
+  const theta = (angleDeg - 90) * Math.PI / 180;
+  
+  // Rotate to principal axes
+  const xr = dx * Math.cos(theta) + dy * Math.sin(theta);
+  const yr = -dx * Math.sin(theta) + dy * Math.cos(theta);
+  
+  // Scale by ranges
+  const xScaled = xr / rangeMain;
+  const yScaled = yr / rangeOrtho;
+  
+  return Math.sqrt(xScaled * xScaled + yScaled * yScaled) * rangeMain;
+}
+
+// Combined gamma function with anisotropy per structure
+function gammaAniso(p1, p2, params) {
+  if (p1.x === p2.x && p1.y === p2.y) return 0;
+  
+  let g = params.nugget;
+  params.structures.forEach(s => {
+    const h = anisoDistForStructure(p1, p2, params.anisoAngle, s.range, s.rangeOrtho);
+    g += gammaStruct(h, s.type, s.sill, s.range);
+  });
+  return g;
+}
+
+// Combined gamma function (nugget + all structures) - simple isotropic version
+function gamma(h, params) {
+  if (h === 0) return 0;
+  let g = params.nugget;
+  params.structures.forEach(s => {
+    g += gammaStruct(h, s.type, s.sill, s.range);
+  });
+  return g;
+}
+
+// Covariance function using anisotropic distances
+function covarianceAniso(p1, p2, params) {
+  return params.totalSill - gammaAniso(p1, p2, params);
+}
+
+// Covariance function
+function covariance(h, params) {
+  return params.totalSill - gamma(h, params);
+}
+
+// Update model summary display
+function updateModelSummary() {
+  const p = getVarioParams();
+  let formula = `γ(h) = ${p.nugget.toFixed(2)}`;
+  const typeSymbols = { spherical: 'Sph', exponential: 'Exp', gaussian: 'Gau' };
+  
+  p.structures.forEach((s, i) => {
+    formula += ` + ${s.sill.toFixed(2)}·${typeSymbols[s.type]}(h/${s.range.toFixed(1)})`;
+    if (s.range !== s.rangeOrtho) {
+      formula += `<small>[ortho:${s.rangeOrtho.toFixed(1)}]</small>`;
+    }
+  });
+  
+  if (p.structures.length === 0) formula += ' (nugget only)';
+  
+  formula += `<br><small>Total Sill (C₀+ΣCᵢ) = ${p.totalSill.toFixed(2)}`;
+  if (p.anisoAngle !== 0) {
+    formula += ` | Angle: ${p.anisoAngle}°`;
+  }
+  formula += '</small>';
+  
+  document.getElementById('modelSummary').innerHTML = formula;
+}
+
+function getPointValue(p) {
+  if (!document.getElementById('useIndicator').checked) return p.value;
+  const cutoff = parseFloat(document.getElementById('indicatorCutoff').value);
+  return p.value >= cutoff ? 1 : 0;
+}
+
+function updateIndicatorStats() {
+  const statsDiv = document.getElementById('indicatorStats');
+  if (!document.getElementById('useIndicator').checked) { statsDiv.innerHTML = ''; return; }
+  const cutoff = parseFloat(document.getElementById('indicatorCutoff').value);
+  const active = points.filter(p => p.active);
+  if (active.length === 0) { statsDiv.innerHTML = '<em>No points</em>'; return; }
+  const above = active.filter(p => p.value >= cutoff).length;
+  const prop = above / active.length;
+  statsDiv.innerHTML = `<b>Cutoff: ${cutoff}</b> | Above: ${above} (${(prop*100).toFixed(1)}%) | Below: ${active.length-above}`;
+}
+
+
+
+
+
+
+
+
+function handleVariogramMouseMove(evt) {
+  const cv = document.getElementById('variogramCanvas');
+  const tooltip = document.getElementById('variogramTooltip');
+  if (!cv || !tooltip || !variogramPoints || variogramPoints.length === 0 || !variogramAxis) return;
+
+  const rect = cv.getBoundingClientRect();
+  
+  // Fator de escala entre canvas interno e renderizado
+  const scaleX = rect.width / cv.width;
+  const scaleY = rect.height / cv.height;
+  
+  // Coordenadas do mouse relativas ao canvas renderizado
+  const xMouse = evt.clientX - rect.left;
+  const yMouse = evt.clientY - rect.top;
+
+  let best = null;
+  let bestDist2 = 64;
+
+  for (const p of variogramPoints) {
+    // Calcula posição do ponto no canvas INTERNO (em pixels)
+    const xCanvasInternal = variogramAxis.mL + (Math.max(0, Math.min(p.h, variogramAxis.xMax)) / variogramAxis.xMax) * variogramAxis.pW;
+    const yCanvasInternal = variogramAxis.mT + (1 - Math.max(0, Math.min(p.gamma, variogramAxis.yMax)) / variogramAxis.yMax) * variogramAxis.pH;
+    
+    // Converte para coordenadas do canvas RENDERIZADO
+    const xRendered = xCanvasInternal * scaleX;
+    const yRendered = yCanvasInternal * scaleY;
+
+    const dx = xMouse - xRendered;
+    const dy = yMouse - yRendered;
+    const d2 = dx*dx + dy*dy;
+    
+    if (d2 < bestDist2) {
+      bestDist2 = d2;
+      best = { xRendered, yRendered, data: p };
+    }
+  }
+
+  if (best) {
+    const p = best.data;
+    tooltip.textContent = `${p.label} | h=${p.h.toFixed(2)} | γ=${p.gamma.toFixed(4)}`;
+    tooltip.style.display = 'block';
+    
+    // Força o navegador a calcular as dimensões do tooltip
+    void tooltip.offsetWidth;
+    
+    const tw = tooltip.offsetWidth;
+    const th = tooltip.offsetHeight;
+
+    // Position absolute é relativo ao parent (matrix-block)
+    // Precisamos somar a posição do canvas dentro do parent
+    const canvasTop = cv.offsetTop;
+    
+    tooltip.style.left = Math.round(best.xRendered - tw / 2) + 'px';
+    tooltip.style.top  = Math.round(canvasTop + best.yRendered - th - 12) + 'px';
+  } else {
+    tooltip.style.display = 'none';
+  }
+}
+function handleVariogramMouseLeave() {
+  const tooltip = document.getElementById('variogramTooltip');
+  if (tooltip) tooltip.style.display = 'none';
+}
+function init() {
+  canvas = document.getElementById('krigeCanvas');
+  ctx = canvas.getContext('2d');
+  canvas.width = canvas.getBoundingClientRect().width;
+  canvas.height = canvas.getBoundingClientRect().height;
+  legendCanvas = document.getElementById('legendCanvas');
+  if (legendCanvas) legendCtx = legendCanvas.getContext('2d');
+
+  const w = canvas.width, h = canvas.height;
+  points = [
+    {id:1, x:w*0.25, y:h*0.75, value:1.2, active:true},
+    {id:2, x:w*0.75, y:h*0.70, value:2.5, active:true},
+    {id:3, x:w*0.30, y:h*0.20, value:3.0, active:true},
+    {id:4, x:w*0.80, y:h*0.20, value:2.0, active:true}
+  ];
+  nextId = 5;
+  target = {x: w/2, y: h/2};
+  dataMinX = 0; dataMaxX = w; dataMinY = 0; dataMaxY = h;
+  updateAspectTransform();
+
+  setupEvents();
+  updatePointsTable();
+  updateTargetInfo();
+  updateIndicatorStats();
+  updateModelSummary();
+  refreshMapLegend();
+  draw();
+}
+
+function setupEvents() {
+  document.getElementById('btnAddPoint').onclick = () => {
+    const w = canvas.width, h = canvas.height;
+    points.push({id: nextId++, x: w*(0.2+Math.random()*0.6), y: h*(0.2+Math.random()*0.6), value: 1+Math.random()*3, active: true});
+    updatePointsTable(); updateIndicatorStats(); draw();
+  };
+  document.getElementById('btnCompute').onclick = () => compute();
+  document.getElementById('btnCompareAll').onclick = () => compareAllMethods();
+  document.getElementById('btnClear').onclick = () => clearResults();
+  document.getElementById('btnResetView').onclick = () => { viewScale=1; viewOffsetX=0; viewOffsetY=0; draw(); };
+  document.getElementById('btnResetPoints').onclick = () => init();
+  
+  // Indicator events
+  document.getElementById('useIndicator').onchange = (e) => {
+    document.getElementById('indicatorOpts').style.display = e.target.checked ? 'block' : 'none';
+    document.getElementById('indicatorSection').classList.toggle('indicator-active', e.target.checked);
+    updateIndicatorStats(); updatePointsTable(); draw();
+  };
+  document.getElementById('indicatorCutoff').onchange = () => { updateIndicatorStats(); updatePointsTable(); draw(); };
+  
+  // Variogram structure events
+  document.getElementById('useStruct1').onchange = (e) => {
+    document.getElementById('struct1Box').classList.toggle('disabled', !e.target.checked);
+    updateModelSummary();
+  };
+  document.getElementById('useStruct2').onchange = (e) => {
+    document.getElementById('struct2Opts').style.display = e.target.checked ? 'block' : 'none';
+    document.getElementById('struct2Box').classList.toggle('disabled', !e.target.checked);
+    updateModelSummary();
+  };
+  
+  // Update model summary on any variogram change
+  ['nugget','varioType1','sill1','range1','rangeOrtho1','varioType2','sill2','range2','rangeOrtho2','anisoAngle'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.onchange = updateModelSummary;
+  });
+  
+  document.getElementById('dataSource').onchange = (e) => {
+    document.getElementById('csvGroup').style.display = e.target.value === 'csv' ? '' : 'none';
+  };
+  document.getElementById('csvFile').onchange = (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => { try { parseCSVHeaders(ev.target.result); } catch(err) { alert('Error: '+err.message); } };
+    reader.readAsText(file);
+  };
+  document.getElementById('btnLoadCSV').onclick = () => loadCSVWithSelectedColumns();
+  document.getElementById('estMethod').onchange = () => {
+    document.getElementById('krigingOpts').style.display = document.getElementById('estMethod').value === 'kriging' ? '' : 'none';
+    document.getElementById('idwOpts').style.display = document.getElementById('estMethod').value === 'idw' ? '' : 'none';
+  };
+  document.getElementById('useSearchRadius').onchange = (e) => {
+    document.getElementById('radiusGroup').style.display = e.target.checked ? '' : 'none'; draw();
+  };
+  const searchMajorEl = document.getElementById('searchRadiusMajor');
+  const searchMinorEl = document.getElementById('searchRadiusMinor');
+  if (searchMajorEl) searchMajorEl.onchange = () => draw();
+  if (searchMinorEl) searchMinorEl.onchange = () => draw();
+  document.getElementById('showPoints').onchange = () => draw();
+  document.getElementById('showPointLabels').onchange = () => draw();
+  
+  ['showEstMap','showVarMap','showSlopeMap','showLagrangeMap'].forEach(id => {
+    document.getElementById(id).onchange = () => { if (document.getElementById(id).checked) computeKrigingMaps(); refreshMapLegend(); draw(); };
+  });
+  document.getElementById('showIDWMap').onchange = () => { if (document.getElementById('showIDWMap').checked) computeIDWMap(); refreshMapLegend(); draw(); };
+  document.getElementById('showNNMap').onchange = () => { if (document.getElementById('showNNMap').checked) computeNNMap(); refreshMapLegend(); draw(); };
+  
+  document.getElementById('btnUpdateTarget').onclick = () => {
+    const tx = parseFloat(document.getElementById('targetX').value), ty = parseFloat(document.getElementById('targetY').value);
+    if (!isFinite(tx) || !isFinite(ty)) return;
+    target = {x: internalX(tx), y: internalY(ty)}; updateTargetInfo(); draw();
+  };
+  
+  document.getElementById('lockTarget').onchange = (e) => {
+    // Muda o cursor do canvas quando o target está bloqueado
+    canvas.style.cursor = e.target.checked ? 'not-allowed' : 'crosshair';
+  };
+  
+  // Grid events
+  ['gridOriginX', 'gridOriginY', 'gridSpacingX', 'gridSpacingY', 'gridNx', 'gridNy'].forEach(id => {
+    document.getElementById(id).onchange = () => { updateGridInfo(); draw(); };
+  });
+  document.getElementById('showGridFrame').onchange = () => draw();
+  
+  canvas.oncontextmenu = (e) => e.preventDefault();
+  canvas.onmousedown = (e) => {
+    const axisMargin = 40;
+    const rect = canvas.getBoundingClientRect(), sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+    if (e.button === 2) { isPanning=true; lastPanX=sx; lastPanY=sy; return; }
+    const x = (sx-viewOffsetX-axisMargin*viewScale)/viewScale, y = (sy-viewOffsetY-axisMargin*viewScale)/viewScale;
+    for (let i=0; i<points.length; i++) {
+      if (Math.sqrt((points[i].x-x)**2+(points[i].y-y)**2)<10) { isDragging=true; draggingIdx=i; return; }
+    }
+    // Só atualiza o target se não estiver bloqueado
+    if (!document.getElementById('lockTarget').checked) {
+      target = {x, y}; updateTargetInfo(); draw();
+    }
+  };
+  canvas.onmousemove = (e) => {
+    const axisMargin = 40;
+    const rect = canvas.getBoundingClientRect(), sx = e.clientX-rect.left, sy = e.clientY-rect.top;
+    if (isPanning) { viewOffsetX += sx-lastPanX; viewOffsetY += sy-lastPanY; lastPanX=sx; lastPanY=sy; draw(); return; }
+    if (isDragging) {
+      points[draggingIdx].x = Math.max(0, Math.min(canvas.width, (sx-viewOffsetX-axisMargin*viewScale)/viewScale));
+      points[draggingIdx].y = Math.max(0, Math.min(canvas.height, (sy-viewOffsetY-axisMargin*viewScale)/viewScale));
+      updatePointsTable(); draw();
+    }
+  };
+  canvas.onmouseup = (e) => { if(e.button===2) isPanning=false; isDragging=false; draggingIdx=null; };
+  canvas.onmouseleave = () => { isPanning=false; isDragging=false; };
+  canvas.onwheel = (e) => {
+    const axisMargin = 40;
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect(), sx = e.clientX-rect.left, sy = e.clientY-rect.top;
+    const beforeX = (sx-viewOffsetX-axisMargin*viewScale)/viewScale, beforeY = (sy-viewOffsetY-axisMargin*viewScale)/viewScale;
+    viewScale = Math.max(0.1, Math.min(20, viewScale*(e.deltaY<0?1.1:1/1.1)));
+    viewOffsetX = sx - beforeX*viewScale - axisMargin*viewScale; viewOffsetY = sy - beforeY*viewScale - axisMargin*viewScale; draw();
+  };
+
+  const vcv = document.getElementById('variogramCanvas');
+  if (vcv) {
+    vcv.addEventListener('mousemove', handleVariogramMouseMove);
+    vcv.addEventListener('mouseleave', handleVariogramMouseLeave);
+  }
+}
+
+function parseCSVHeaders(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) throw new Error('Empty CSV');
+  const delim = lines[0].includes(';') ? ';' : ',';
+  csvHeaders = lines[0].split(delim).map(h => h.trim());
+  csvRawData = { text, delim, lines };
+  ['csvColX','csvColY','csvColZ'].forEach(id => {
+    const sel = document.getElementById(id); sel.innerHTML = '';
+    csvHeaders.forEach((h, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = h || `Col ${i+1}`; sel.appendChild(opt); });
+  });
+  const lh = csvHeaders.map(h => h.toLowerCase());
+  const xIdx = lh.findIndex(h => ['x','easting','longitude','lon'].includes(h));
+  const yIdx = lh.findIndex(h => ['y','northing','latitude','lat'].includes(h));
+  const zIdx = lh.findIndex(h => ['z','value','grade','var'].includes(h));
+  if (xIdx >= 0) document.getElementById('csvColX').value = xIdx;
+  if (yIdx >= 0) document.getElementById('csvColY').value = yIdx;
+  if (zIdx >= 0) document.getElementById('csvColZ').value = zIdx;
+  document.getElementById('csvColumnSelector').style.display = 'block';
+  document.getElementById('csvStatus').textContent = `${csvHeaders.length} columns found`;
+}
+
+function loadCSVWithSelectedColumns() {
+  if (!csvRawData) { alert('Select CSV first'); return; }
+  const idxX = parseInt(document.getElementById('csvColX').value);
+  const idxY = parseInt(document.getElementById('csvColY').value);
+  const idxZ = parseInt(document.getElementById('csvColZ').value);
+  const { lines, delim } = csvRawData;
+  const newPts = [];
+  let minX=Infinity, maxX=-Infinity, minY=Infinity, maxY=-Infinity;
+  for (let i=1; i<lines.length; i++) {
+    const parts = lines[i].split(delim);
+    const x = parseFloat(parts[idxX]?.replace(',','.')), y = parseFloat(parts[idxY]?.replace(',','.')), z = parseFloat(parts[idxZ]?.replace(',','.'));
+    if (!isFinite(x)||!isFinite(y)||!isFinite(z)) continue;
+    newPts.push({x, y, value: z});
+    minX=Math.min(minX,x); maxX=Math.max(maxX,x); minY=Math.min(minY,y); maxY=Math.max(maxY,y);
+  }
+  if (newPts.length === 0) { alert('No valid points'); return; }
+  dataMinX=minX; dataMaxX=maxX; dataMinY=minY; dataMaxY=maxY;
+  updateAspectTransform();
+  points = newPts.map((p,i) => ({
+    id: i+1,
+    x: internalX(p.x),
+    y: internalY(p.y),
+    value: p.value,
+    active: true
+  }));
+  nextId = points.length + 1; target = {x: w/2, y: h/2};
+  document.getElementById('csvStatus').textContent = `${points.length} points loaded`;
+  document.getElementById('csvColumnSelector').style.display = 'none';
+  updatePointsTable(); updateTargetInfo(); updateIndicatorStats(); updateGridInfo(); draw();
+}
+
+function updatePointsTable() {
+  const container = document.getElementById('pointsTableContainer');
+  if (points.length === 0) { container.innerHTML = '<p>No points</p>'; return; }
+  const useInd = document.getElementById('useIndicator').checked;
+  let html = `<table><tr><th></th><th>ID</th><th>x</th><th>y</th><th>val</th>${useInd?'<th>I</th>':''}<th>λ</th><th></th></tr>`;
+  points.forEach((p, i) => {
+    const isUsed = !!lastUsedIds[p.id], indVal = useInd ? getPointValue(p) : null;
+    html += `<tr class="${isUsed?'used-point':''}">
+      <td><input type="checkbox" ${p.active?'checked':''} onchange="togglePoint(${i})"></td>
+      <td>P${p.id}</td>
+      <td><input type="number" value="${worldX(p.x).toFixed(1)}" style="width:55px" onchange="updatePointX(${i}, this.value)"></td>
+      <td><input type="number" value="${worldY(p.y).toFixed(1)}" style="width:55px" onchange="updatePointY(${i}, this.value)"></td>
+      <td><input type="number" value="${p.value.toFixed(2)}" style="width:55px" onchange="updatePointValue(${i}, this.value)"></td>
+      ${useInd?`<td style="color:${indVal===1?'green':'red'};font-weight:bold">${indVal}</td>`:''}
+      <td>${(lambdaById[p.id]||0).toFixed(3)}</td>
+      <td><button onclick="removePoint(${i})">X</button></td></tr>`;
+  });
+  container.innerHTML = html + '</table>';
+}
+
+function togglePoint(i) { points[i].active = !points[i].active; updateIndicatorStats(); draw(); }
+function updatePointX(i, val) { const v=parseFloat(val); if(isFinite(v)) { points[i].x=internalX(v); draw(); } }
+function updatePointY(i, val) { const v=parseFloat(val); if(isFinite(v)) { points[i].y=internalY(v); draw(); } }
+function updatePointValue(i, val) { const v=parseFloat(val); if(isFinite(v)) { points[i].value=v; updateIndicatorStats(); updatePointsTable(); } }
+function removePoint(i) { points.splice(i,1); updatePointsTable(); updateIndicatorStats(); draw(); }
+
+function worldX(xInt) {
+  if (!canvas || !aspectScale) return dataMinX;
+  return dataMinX + ((xInt - aspectOffsetX) / aspectScale);
+}
+function worldY(yInt) {
+  if (!canvas || !aspectScale) return dataMinY;
+  const h = canvas.height;
+  return dataMinY + ((h - yInt - aspectOffsetY) / aspectScale);
+}
+function internalX(xW) {
+  return aspectOffsetX + (xW - dataMinX) * aspectScale;
+}
+function internalY(yW) {
+  const h = canvas ? canvas.height : 0;
+  return h - (aspectOffsetY + (yW - dataMinY) * aspectScale);
+}
+
+function updateGridInfo() {
+  const originX = parseFloat(document.getElementById('gridOriginX').value) || 0;
+  const originY = parseFloat(document.getElementById('gridOriginY').value) || 0;
+  const dx = parseFloat(document.getElementById('gridSpacingX').value) || 20;
+  const dy = parseFloat(document.getElementById('gridSpacingY').value) || 20;
+  const nx = parseInt(document.getElementById('gridNx').value) || 30;
+  const ny = parseInt(document.getElementById('gridNy').value) || 30;
+  
+  const totalWidth = dx * nx;
+  const totalHeight = dy * ny;
+  const totalNodes = nx * ny;
+  const x1 = originX + totalWidth;
+  const y1 = originY + totalHeight;
+  
+  document.getElementById('gridInfo').innerHTML = `
+    <b>Grid extent:</b><br>
+    X: [${originX.toFixed(1)}, ${x1.toFixed(1)}] → Width: ${totalWidth.toFixed(1)}<br>
+    Y: [${originY.toFixed(1)}, ${y1.toFixed(1)}] → Height: ${totalHeight.toFixed(1)}<br>
+    <b>Total nodes:</b> ${totalNodes.toLocaleString()}
+  `;
+}
+
+function updateTargetInfo() {
+  if (!target) { document.getElementById('targetInfo').textContent = 'Click canvas'; return; }
+  document.getElementById('targetInfo').textContent = `Target: (${worldX(target.x).toFixed(2)}, ${worldY(target.y).toFixed(2)})`;
+  document.getElementById('targetX').value = worldX(target.x).toFixed(2);
+  document.getElementById('targetY').value = worldY(target.y).toFixed(2);
+}
+
+function drawAxes() {
+  const axisMargin = 40; // Margem para os eixos
+  const tickSize = 5;
+  
+  // Salvar contexto
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform para desenhar eixos sem zoom
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, axisMargin); // Margem superior
+  ctx.fillRect(0, 0, axisMargin, canvas.height); // Margem esquerda
+  
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 2;
+  ctx.fillStyle = '#333';
+  ctx.font = '11px Arial';
+  
+  // Eixo Y (esquerda)
+  ctx.beginPath();
+  ctx.moveTo(axisMargin, 0);
+  ctx.lineTo(axisMargin, canvas.height);
+  ctx.stroke();
+  
+  // Eixo X (topo)
+  ctx.beginPath();
+  ctx.moveTo(0, axisMargin);
+  ctx.lineTo(canvas.width, axisMargin);
+  ctx.stroke();
+  
+  // Calcular coordenadas visíveis considerando zoom e pan
+  // Ponto superior esquerdo visível (em coordenadas internas do canvas)
+  const topLeftX = (0 - viewOffsetX - axisMargin * viewScale) / viewScale;
+  const topLeftY = (0 - viewOffsetY - axisMargin * viewScale) / viewScale;
+  
+  // Ponto inferior direito visível
+  const bottomRightX = (canvas.width - viewOffsetX - axisMargin * viewScale) / viewScale;
+  const bottomRightY = (canvas.height - viewOffsetY - axisMargin * viewScale) / viewScale;
+  
+  // Converter para coordenadas do mundo
+  const worldLeft = worldX(topLeftX);
+  const worldRight = worldX(bottomRightX);
+  const worldTop = worldY(topLeftY);
+  const worldBottom = worldY(bottomRightY);
+  
+  // Marcas e labels no eixo Y
+  const numTicksY = 8;
+  for (let i = 0; i <= numTicksY; i++) {
+    const yCanvas = axisMargin + (canvas.height - axisMargin) * i / numTicksY;
+    // Interpolar entre as coordenadas do mundo visíveis
+    const yWorld = worldTop + (worldBottom - worldTop) * i / numTicksY;
+    
+    // Tick mark
+    ctx.beginPath();
+    ctx.moveTo(axisMargin - tickSize, yCanvas);
+    ctx.lineTo(axisMargin, yCanvas);
+    ctx.stroke();
+    
+    // Label
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(yWorld.toFixed(1), axisMargin - tickSize - 2, yCanvas);
+  }
+  
+  // Marcas e labels no eixo X
+  const numTicksX = 10;
+  for (let i = 0; i <= numTicksX; i++) {
+    const xCanvas = axisMargin + (canvas.width - axisMargin) * i / numTicksX;
+    // Interpolar entre as coordenadas do mundo visíveis
+    const xWorld = worldLeft + (worldRight - worldLeft) * i / numTicksX;
+    
+    // Tick mark
+    ctx.beginPath();
+    ctx.moveTo(xCanvas, axisMargin - tickSize);
+    ctx.lineTo(xCanvas, axisMargin);
+    ctx.stroke();
+    
+    // Label
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(xWorld.toFixed(1), xCanvas, axisMargin - tickSize - 2);
+  }
+  
+  // Labels dos eixos
+  ctx.save();
+  ctx.translate(12, canvas.height / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 12px Arial';
+  ctx.fillText('Y', 0, 0);
+  ctx.restore();
+  
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 12px Arial';
+  ctx.fillText('X', canvas.width / 2, 12);
+  
+  ctx.restore();
+}
+
+function draw() {
+  const axisMargin = 40;
+  
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  
+  // Desenhar eixos com coordenadas (antes do transform)
+  drawAxes();
+  
+  // Aplicar transform com offset para a margem dos eixos
+  ctx.setTransform(viewScale,0,0,viewScale,viewOffsetX+axisMargin*viewScale,viewOffsetY+axisMargin*viewScale);
+
+  // Maps
+  if (nnMapData && document.getElementById('showNNMap').checked) drawMap(nnMapData);
+  if (idwMapData && document.getElementById('showIDWMap').checked) drawMap(idwMapData);
+  if (lagrangeMapData && document.getElementById('showLagrangeMap').checked) drawMap(lagrangeMapData);
+  if (slopeMapData && document.getElementById('showSlopeMap').checked) drawMap(slopeMapData);
+  if (varMapData && document.getElementById('showVarMap').checked) drawMap(varMapData);
+  if (estMapData && document.getElementById('showEstMap').checked) drawMap(estMapData);
+
+  // Grid Frame (estimation grid boundary)
+  if (document.getElementById('showGridFrame').checked) {
+    const originX = parseFloat(document.getElementById('gridOriginX').value) || 0;
+    const originY = parseFloat(document.getElementById('gridOriginY').value) || 0;
+    const dx = parseFloat(document.getElementById('gridSpacingX').value) || 20;
+    const dy = parseFloat(document.getElementById('gridSpacingY').value) || 20;
+    const nx = parseInt(document.getElementById('gridNx').value) || 30;
+    const ny = parseInt(document.getElementById('gridNy').value) || 30;
+    
+    // Converter coordenadas do mundo para coordenadas internas do canvas
+    const x0 = internalX(originX);
+    const y0 = internalY(originY);
+    const x1 = internalX(originX + dx * nx);
+    const y1 = internalY(originY + dy * ny);
+    
+    // Desenhar retângulo do grid
+    ctx.strokeStyle = 'rgba(128, 128, 128, 0.6)';
+    ctx.lineWidth = 2/viewScale;
+    ctx.setLineDash([8/viewScale, 4/viewScale]);
+    ctx.strokeRect(x0, y1, x1 - x0, y0 - y1);
+    ctx.setLineDash([]);
+    
+    // Desenhar linhas internas do grid (mais finas)
+    ctx.strokeStyle = 'rgba(128, 128, 128, 0.25)';
+    ctx.lineWidth = 0.5/viewScale;
+    for (let i = 1; i < nx; i++) {
+      const x = internalX(originX + dx * i);
+      ctx.beginPath();
+      ctx.moveTo(x, y1);
+      ctx.lineTo(x, y0);
+      ctx.stroke();
+    }
+    for (let j = 1; j < ny; j++) {
+      const y = internalY(originY + dy * j);
+      ctx.beginPath();
+      ctx.moveTo(x0, y);
+      ctx.lineTo(x1, y);
+      ctx.stroke();
+    }
+  }
+
+  // Range ellipses for each structure
+  if (target) {
+    const params = getVarioParams();
+    const colors = ['rgba(255,0,0,0.6)', 'rgba(0,0,255,0.6)'];
+    params.structures.forEach((s, idx) => {
+      if (s.range > 0) {
+        const rxInt = Math.abs(internalX(worldX(target.x) + s.range) - target.x);
+        ctx.strokeStyle = colors[idx] || 'rgba(128,0,128,0.6)';
+        ctx.lineWidth = 2/viewScale;
+        ctx.setLineDash([5/viewScale, 5/viewScale]);
+        ctx.beginPath();
+        ctx.ellipse(target.x, target.y, rxInt, rxInt/params.anisoRatio, params.anisoAngle*Math.PI/180, 0, Math.PI*2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    });
+  }
+
+  // Range ellipses for variogram structures (centered on target)
+  if (target) {
+    const params = getVarioParams();
+    
+    // Convert from geographic convention (0°=N-S, clockwise) to canvas rotation
+    // Canvas Y grows downward, so we need to account for this
+    // User: 0°=North (up), 90°=East (right), clockwise
+    // Canvas: 0°=East (right), 90°=South (down), clockwise
+    // Formula: canvas_angle = user_angle - 90°
+    const rotationRadians = (params.anisoAngle - 90) * Math.PI / 180;
+    
+    // Draw structure 1 ellipse (blue)
+    if (params.structures.length >= 1) {
+      const s1 = params.structures[0];
+      const r1Major = Math.abs(internalX(worldX(target.x) + s1.range) - target.x);
+      const r1Minor = Math.abs(internalY(worldY(target.y) + s1.rangeOrtho) - target.y);
+      
+      ctx.save();
+      ctx.translate(target.x, target.y);
+      ctx.rotate(rotationRadians);
+      
+      ctx.strokeStyle = 'rgba(59, 130, 246, 0.6)'; // Blue
+      ctx.lineWidth = 2/viewScale;
+      ctx.setLineDash([8/viewScale, 4/viewScale]);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r1Major, r1Minor, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      
+      // Draw direction arrow for major axis
+      ctx.strokeStyle = 'rgba(59, 130, 246, 0.8)';
+      ctx.fillStyle = 'rgba(59, 130, 246, 0.8)';
+      ctx.lineWidth = 2/viewScale;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(r1Major * 0.7, 0);
+      ctx.stroke();
+      // Arrowhead
+      ctx.beginPath();
+      ctx.moveTo(r1Major * 0.7, 0);
+      ctx.lineTo(r1Major * 0.7 - 8/viewScale, -4/viewScale);
+      ctx.lineTo(r1Major * 0.7 - 8/viewScale, 4/viewScale);
+      ctx.closePath();
+      ctx.fill();
+      
+      ctx.restore();
+    }
+    
+    // Draw structure 2 ellipse (red)
+    if (params.structures.length >= 2) {
+      const s2 = params.structures[1];
+      const r2Major = Math.abs(internalX(worldX(target.x) + s2.range) - target.x);
+      const r2Minor = Math.abs(internalY(worldY(target.y) + s2.rangeOrtho) - target.y);
+      
+      ctx.save();
+      ctx.translate(target.x, target.y);
+      ctx.rotate(rotationRadians);
+      
+      ctx.strokeStyle = 'rgba(239, 68, 68, 0.6)'; // Red
+      ctx.lineWidth = 2/viewScale;
+      ctx.setLineDash([8/viewScale, 4/viewScale]);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r2Major, r2Minor, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      
+      // Draw direction arrow for major axis
+      ctx.strokeStyle = 'rgba(239, 68, 68, 0.8)';
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.8)';
+      ctx.lineWidth = 2/viewScale;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(r2Major * 0.7, 0);
+      ctx.stroke();
+      // Arrowhead
+      ctx.beginPath();
+      ctx.moveTo(r2Major * 0.7, 0);
+      ctx.lineTo(r2Major * 0.7 - 8/viewScale, -4/viewScale);
+      ctx.lineTo(r2Major * 0.7 - 8/viewScale, 4/viewScale);
+      ctx.closePath();
+      ctx.fill();
+      
+      ctx.restore();
+    }
+  }
+
+  // Search ellipse (green)
+  if (target && document.getElementById('useSearchRadius').checked) {
+    const searchMajorEl = document.getElementById('searchRadiusMajor');
+    const searchMinorEl = document.getElementById('searchRadiusMinor');
+    const radiusMajor = searchMajorEl ? parseFloat(searchMajorEl.value) : 50;
+    const radiusMinor = searchMinorEl ? parseFloat(searchMinorEl.value) : 50;
+    
+    if (isFinite(radiusMajor) && isFinite(radiusMinor) && radiusMajor > 0 && radiusMinor > 0) {
+      // Convert world radii to internal coordinates
+      const rMajorInt = Math.abs(internalX(worldX(target.x) + radiusMajor) - target.x);
+      const rMinorInt = Math.abs(internalY(worldY(target.y) + radiusMinor) - target.y);
+      
+      // Get anisotropy angle from variogram
+      const params = getVarioParams();
+      const rotationRadians = (params.anisoAngle - 90) * Math.PI / 180;
+      
+      ctx.save();
+      ctx.translate(target.x, target.y);
+      ctx.rotate(rotationRadians);
+      
+      ctx.strokeStyle = 'rgba(0,200,0,0.8)'; 
+      ctx.lineWidth = 2/viewScale;
+      ctx.setLineDash([5/viewScale, 5/viewScale]);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, rMajorInt, rMinorInt, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      
+      // Draw direction arrow for major axis
+      ctx.strokeStyle = 'rgba(0,200,0,0.9)';
+      ctx.fillStyle = 'rgba(0,200,0,0.9)';
+      ctx.lineWidth = 2/viewScale;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(rMajorInt * 0.6, 0);
+      ctx.stroke();
+      // Arrowhead
+      ctx.beginPath();
+      ctx.moveTo(rMajorInt * 0.6, 0);
+      ctx.lineTo(rMajorInt * 0.6 - 8/viewScale, -4/viewScale);
+      ctx.lineTo(rMajorInt * 0.6 - 8/viewScale, 4/viewScale);
+      ctx.closePath();
+      ctx.fill();
+      
+      ctx.restore();
+    }
+  }
+
+  // Points
+  if (document.getElementById('showPoints').checked) {
+    const useInd = document.getElementById('useIndicator').checked;
+    const active = points.filter(p => p.active);
+    let minV=Infinity, maxV=-Infinity;
+    active.forEach(p => { const v=getPointValue(p); minV=Math.min(minV,v); maxV=Math.max(maxV,v); });
+    const vRange = (maxV-minV) || 1;
+
+    points.forEach(p => {
+      const r = 4/viewScale, isUsed = !!lastUsedIds[p.id], val = getPointValue(p);
+      if (isUsed && Object.keys(lastUsedIds).length > 0) {
+        ctx.strokeStyle = 'rgba(255,0,0,0.8)'; ctx.lineWidth = 3/viewScale;
+        ctx.beginPath(); ctx.arc(p.x, p.y, r+6/viewScale, 0, Math.PI*2); ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,100,100,0.5)'; ctx.lineWidth = 2/viewScale;
+        ctx.beginPath(); ctx.arc(p.x, p.y, r+10/viewScale, 0, Math.PI*2); ctx.stroke();
+      }
+      ctx.fillStyle = !p.active ? '#bbb' : useInd ? (val===1?'#4caf50':'#f44336') : rainbowColor((val-minV)/vRange, 1);
+      ctx.strokeStyle = p.active ? '#000' : '#777'; ctx.lineWidth = 1.5/viewScale;
+      ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+
+      if (document.getElementById('showPointLabels').checked && (!Object.keys(lastUsedIds).length || isUsed)) {
+        ctx.fillStyle = isUsed ? '#c00' : '#000';
+        ctx.font = `${isUsed?'bold ':''}${13/viewScale}px Arial`;
+        ctx.fillText(`P${p.id}:${useInd?'I='+val:'z='+p.value.toFixed(1)},λ=${(lambdaById[p.id]||0).toFixed(2)}`, p.x+6, p.y-6);
+      }
+    });
+  }
+
+  // Target
+  // Target
+  if (target) {
+    const isLocked = document.getElementById('lockTarget').checked;
+    ctx.strokeStyle = isLocked ? '#9333ea' : '#c00'; // Roxo quando bloqueado, vermelho quando livre
+    ctx.lineWidth = isLocked ? 3/viewScale : 2/viewScale; // Mais grosso quando bloqueado
+    const s = 10/viewScale;
+    ctx.beginPath(); ctx.moveTo(target.x-s, target.y); ctx.lineTo(target.x+s, target.y);
+    ctx.moveTo(target.x, target.y-s); ctx.lineTo(target.x, target.y+s); ctx.stroke();
+    
+    // Adiciona um círculo ao redor quando bloqueado
+    if (isLocked) {
+      ctx.beginPath();
+      ctx.arc(target.x, target.y, 15/viewScale, 0, Math.PI*2);
+      ctx.strokeStyle = 'rgba(147, 51, 234, 0.5)';
+      ctx.lineWidth = 2/viewScale;
+      ctx.stroke();
+    }
+  }
+  
+  // Ellipse legend (top right corner)
+  if (target) {
+    const params = getVarioParams();
+    const hasStructures = params.structures.length > 0;
+    const hasSearch = document.getElementById('useSearchRadius').checked;
+    
+    if (hasStructures || hasSearch) {
+      const legendX = canvas.width / window.devicePixelRatio - 10;
+      const legendY = 10;
+      let yOffset = legendY;
+      
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
+      ctx.textAlign = 'right';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+      
+      // Title with angle
+      ctx.fillText(`Ellipses (${params.anisoAngle}°):`, legendX, yOffset);
+      yOffset += 18;
+      
+      ctx.font = '11px sans-serif';
+      
+      // Structure 1
+      if (params.structures.length >= 1) {
+        const s1 = params.structures[0];
+        ctx.strokeStyle = 'rgba(59, 130, 246, 0.8)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([8, 4]);
+        ctx.beginPath();
+        ctx.moveTo(legendX - 40, yOffset - 3);
+        ctx.lineTo(legendX - 10, yOffset - 3);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillText(`Struct 1: ${s1.range.toFixed(1)}/${s1.rangeOrtho.toFixed(1)}`, legendX - 45, yOffset);
+        yOffset += 16;
+      }
+      
+      // Structure 2
+      if (params.structures.length >= 2) {
+        const s2 = params.structures[1];
+        ctx.strokeStyle = 'rgba(239, 68, 68, 0.8)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([8, 4]);
+        ctx.beginPath();
+        ctx.moveTo(legendX - 40, yOffset - 3);
+        ctx.lineTo(legendX - 10, yOffset - 3);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillText(`Struct 2: ${s2.range.toFixed(1)}/${s2.rangeOrtho.toFixed(1)}`, legendX - 45, yOffset);
+        yOffset += 16;
+      }
+      
+      // Search ellipse
+      if (hasSearch) {
+        const searchMajorEl = document.getElementById('searchRadiusMajor');
+        const searchMinorEl = document.getElementById('searchRadiusMinor');
+        const major = searchMajorEl ? parseFloat(searchMajorEl.value) : 50;
+        const minor = searchMinorEl ? parseFloat(searchMinorEl.value) : 50;
+        
+        ctx.strokeStyle = 'rgba(0, 200, 0, 0.8)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(legendX - 40, yOffset - 3);
+        ctx.lineTo(legendX - 10, yOffset - 3);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillText(`Search: ${major.toFixed(1)}/${minor.toFixed(1)}`, legendX - 45, yOffset);
+      }
+      
+      ctx.restore();
+    }
+  }
+  
+  // Compass indicator (bottom left corner)
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
+  
+  const compassX = 40;
+  const compassY = canvas.height / window.devicePixelRatio - 40;
+  const compassRadius = 25;
+  
+  // Circle background
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+  ctx.beginPath();
+  ctx.arc(compassX, compassY, compassRadius, 0, Math.PI * 2);
+  ctx.fill();
+  
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  
+  // N-S line (vertical)
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(compassX, compassY - compassRadius * 0.7);
+  ctx.lineTo(compassX, compassY + compassRadius * 0.7);
+  ctx.stroke();
+  
+  // E-W line (horizontal)
+  ctx.beginPath();
+  ctx.moveTo(compassX - compassRadius * 0.7, compassY);
+  ctx.lineTo(compassX + compassRadius * 0.7, compassY);
+  ctx.stroke();
+  
+  // Labels
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+  ctx.font = 'bold 11px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  
+  ctx.fillText('N', compassX, compassY - compassRadius * 0.85);
+  ctx.fillText('S', compassX, compassY + compassRadius * 0.85);
+  ctx.fillText('E', compassX + compassRadius * 0.85, compassY);
+  ctx.fillText('W', compassX - compassRadius * 0.85, compassY);
+  
+  // North arrow
+  ctx.fillStyle = 'rgba(239, 68, 68, 0.8)';
+  ctx.beginPath();
+  ctx.moveTo(compassX, compassY - compassRadius * 0.7);
+  ctx.lineTo(compassX - 4, compassY - compassRadius * 0.5);
+  ctx.lineTo(compassX + 4, compassY - compassRadius * 0.5);
+  ctx.closePath();
+  ctx.fill();
+  
+  ctx.restore();
+}
+
+function drawMap(mapData) {
+  const {nx, ny, originX, originY, spacingX, spacingY, values, min, max} = mapData;
+  const range = (max-min) || 1e-12;
+  
+  for (let i=0; i<nx; i++) {
+    for (let j=0; j<ny; j++) {
+      if (!isFinite(values[i][j])) continue;
+      
+      // Calculate world coordinates for this cell
+      const xWorld = originX + i * spacingX;
+      const yWorld = originY + j * spacingY;
+      
+      // Convert to internal canvas coordinates
+      const x0 = internalX(xWorld);
+      const y0 = internalY(yWorld);
+      const x1 = internalX(xWorld + spacingX);
+      const y1 = internalY(yWorld + spacingY);
+      
+      ctx.fillStyle = rainbowColor((values[i][j]-min)/range, 0.6);
+      ctx.fillRect(x0, y1, x1 - x0, y0 - y1);
+    }
+  }
+}
+
+function refreshMapLegend() {
+  const labelsDiv = document.getElementById('legendLabels');
+  if (!legendCtx) return;
+  legendCtx.clearRect(0, 0, legendCanvas.width, legendCanvas.height);
+  let data=null, label='';
+  if (document.getElementById('showEstMap').checked && estMapData) { data=estMapData; label='Z*'; }
+  else if (document.getElementById('showVarMap').checked && varMapData) { data=varMapData; label='σ²'; }
+  else if (document.getElementById('showSlopeMap').checked && slopeMapData) { data=slopeMapData; label='SR'; }
+  else if (document.getElementById('showLagrangeMap').checked && lagrangeMapData) { data=lagrangeMapData; label='μ'; }
+  else if (document.getElementById('showIDWMap').checked && idwMapData) { data=idwMapData; label='IDW'; }
+  else if (document.getElementById('showNNMap').checked && nnMapData) { data=nnMapData; label='NN'; }
+  if (!data) { labelsDiv.innerHTML = '<em>No map</em>'; return; }
+  for (let x=0; x<legendCanvas.width; x++) {
+    legendCtx.strokeStyle = rainbowColor(x/(legendCanvas.width-1), 1);
+    legendCtx.beginPath(); legendCtx.moveTo(x,0); legendCtx.lineTo(x,legendCanvas.height); legendCtx.stroke();
+  }
+  labelsDiv.innerHTML = `<b>${label}</b>: ${data.min.toFixed(3)} — ${data.max.toFixed(3)}`;
+}
+
+function rainbowColor(t, alpha) {
+  t = Math.max(0, Math.min(1, t));
+  let r=0, g=0, b=0;
+  if (t < 0.25) { g=Math.round(255*t/0.25); b=255; }
+  else if (t < 0.5) { g=255; b=Math.round(255*(1-(t-0.25)/0.25)); }
+  else if (t < 0.75) { r=Math.round(255*(t-0.5)/0.25); g=255; }
+  else { r=255; g=Math.round(255*(1-(t-0.75)/0.25)); }
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function compute() {
+  if (!target) { alert('Define target'); return; }
+  if (!points.filter(p=>p.active).length) { alert('No points'); return; }
+  clearResults(false);
+  const method = document.getElementById('estMethod').value;
+  if (method === 'kriging') computeKriging();
+  else if (method === 'nn') computeNN();
+  else computeIDW();
+}
+
+function dist(p1, p2) { return Math.sqrt((p1.x-p2.x)**2 + (p1.y-p2.y)**2); }
+
+function getNearestPoints(x0, y0) {
+  const maxN = parseInt(document.getElementById('maxNeighbors').value) || Infinity;
+  const useRadius = document.getElementById('useSearchRadius').checked;
+  
+  const searchMajorEl = document.getElementById('searchRadiusMajor');
+  const searchMinorEl = document.getElementById('searchRadiusMinor');
+  const searchRadiusMajor = searchMajorEl ? parseFloat(searchMajorEl.value) : 50;
+  const searchRadiusMinor = searchMinorEl ? parseFloat(searchMinorEl.value) : 50;
+  
+  // Get anisotropy angle from variogram model
+  const params = getVarioParams();
+  const anisoAngle = params.anisoAngle;
+  
+  // Use same formula as visualization and calculations
+  const theta = (anisoAngle - 90) * Math.PI / 180;
+  
+  // Convert world radii to internal coordinates (same as visualization)
+  // This ensures consistency between drawn ellipse and selection ellipse
+  const rMajorInt = Math.abs(internalX(worldX(x0) + searchRadiusMajor) - x0);
+  const rMinorInt = Math.abs(internalY(worldY(y0) + searchRadiusMinor) - y0);
+  
+  let candidates = [];
+  for (const p of points) {
+    if (!p.active) continue;
+    const d = dist(p, {x:x0, y:y0});
+    
+    if (useRadius && isFinite(rMajorInt) && isFinite(rMinorInt)) {
+      // Calculate differences in INTERNAL coordinates (canvas space)
+      const dx = p.x - x0;
+      const dy = p.y - y0;
+      
+      // Rotate to ellipse axes (canvas coords, Y grows downward)
+      const xr = dx * Math.cos(theta) + dy * Math.sin(theta);
+      const yr = -dx * Math.sin(theta) + dy * Math.cos(theta);
+      
+      // Check if inside ellipse: (x/a)^2 + (y/b)^2 <= 1
+      const normalized = (xr * xr) / (rMajorInt * rMajorInt) + 
+                        (yr * yr) / (rMinorInt * rMinorInt);
+      
+      if (normalized > 1) continue;
+    }
+    candidates.push({p, d});
+  }
+  candidates.sort((a,b) => a.d - b.d);
+  return candidates.slice(0, maxN).map(c => c.p);
+}
+
+function compareAllMethods() {
+  if (!target || !points.filter(p=>p.active).length) { alert('Need target and points'); return; }
+  const pts = getNearestPoints(target.x, target.y);
+  if (!pts.length) { alert('No neighbors'); return; }
+  const params = getVarioParams();
+  const meanSK = parseFloat(document.getElementById('meanSK').value);
+  const idwPower = parseFloat(document.getElementById('idwPower').value) || 2;
+  const results = {};
+  try { results.ok = computeKrigingResult(pts, 'OK', meanSK, params); } catch(e) {}
+  try { results.sk = computeKrigingResult(pts, 'SK', meanSK, params); } catch(e) {}
+  try { results.idw = computeIDWResult(pts, idwPower); } catch(e) {}
+  try { results.nn = computeNNResult(pts); } catch(e) {}
+  displayMethodComparison(results, idwPower);
+  drawHistogramComparison();
+}
+
+function computeKrigingResult(pts, krigeType, meanSK, params) {
+  const n = pts.length;
+  const Gamma=[], Cov=[];
+  for (let i=0; i<n; i++) {
+    Gamma[i]=[]; Cov[i]=[];
+    for (let j=0; j<n; j++) {
+      Gamma[i][j] = gammaAniso(pts[i], pts[j], params);
+      Cov[i][j] = covarianceAniso(pts[i], pts[j], params);
+    }
+  }
+  const gamma0=[], cov0=[];
+  for (let i=0; i<n; i++) {
+    gamma0[i] = gammaAniso(pts[i], target, params);
+    cov0[i] = covarianceAniso(pts[i], target, params);
+  }
+
+  let lambdas, zstar, sigma2, mu=NaN;
+  if (krigeType === 'OK') {
+    const N=n+1, K=[];
+    for (let i=0; i<N; i++) { K[i]=[];
+      for (let j=0; j<N; j++) {
+        if (i<n && j<n) K[i][j]=Gamma[i][j];
+        else if ((i<n && j===n) || (i===n && j<n)) K[i][j]=1;
+        else K[i][j]=0;
+      }
+    }
+    const d=[...gamma0, 1];
+    const x = solveLinearSystem(K, d);
+    lambdas = x.slice(0,n); mu = x[n];
+    zstar = lambdas.reduce((sum,l,i) => sum + l*getPointValue(pts[i]), 0);
+    sigma2 = lambdas.reduce((sum,l,i) => sum + l*gamma0[i], 0) + mu;
+  } else {
+    lambdas = solveLinearSystem(Cov, cov0);
+    zstar = meanSK + lambdas.reduce((sum,l,i) => sum + l*(getPointValue(pts[i])-meanSK), 0);
+    sigma2 = params.totalSill - lambdas.reduce((sum,l,i) => sum + l*cov0[i], 0);
+  }
+  const covNum = lambdas.reduce((sum,l,i) => sum + l*cov0[i], 0);
+  let varDen = 0;
+  for (let i=0; i<n; i++) for (let j=0; j<n; j++) varDen += lambdas[i]*lambdas[j]*Cov[i][j];
+  const sr = varDen ? covNum/varDen : NaN;
+  return { zstar, sigma2, sr, mu, lambdas, sumLambda: lambdas.reduce((a,b)=>a+b,0) };
+}
+
+function computeIDWResult(pts, power) {
+  let weights=[], total=0, exact=-1;
+  for (let i=0; i<pts.length; i++) {
+    const d = dist(pts[i], target);
+    if (d===0) { exact=i; break; }
+    weights[i] = 1/Math.pow(d, power); total += weights[i];
+  }
+  const lambdas = exact>=0 ? pts.map((_,i)=>i===exact?1:0) : weights.map(w=>w/total);
+  const zstar = lambdas.reduce((s,l,i)=>s+l*getPointValue(pts[i]), 0);
+  return { zstar, sigma2:NaN, sr:NaN, mu:NaN, lambdas, sumLambda:1 };
+}
+
+function computeNNResult(pts) {
+  let best=0, minD=dist(pts[0], target);
+  for (let i=1; i<pts.length; i++) { const d=dist(pts[i],target); if(d<minD){minD=d;best=i;} }
+  return { zstar: getPointValue(pts[best]), sigma2:NaN, sr:NaN, mu:NaN, lambdas: pts.map((_,i)=>i===best?1:0), sumLambda:1 };
+}
+
+function displayMethodComparison(results, idwPower) {
+  const useInd = document.getElementById('useIndicator').checked;
+  let html = `<table class="comparison-table"><thead><tr><th>Method</th><th>${useInd?'P(I=1)':'Z*'}</th><th>σ²</th><th>SR</th><th>μ</th><th>Σλ</th></tr></thead><tbody>`;
+  [{k:'ok',n:'Kriging OK'},{k:'sk',n:'Kriging SK'},{k:'idw',n:`IDW(${idwPower})`},{k:'nn',n:'NN'}].forEach(m => {
+    const r = results[m.k];
+    if (r) html += `<tr><td>${m.n}</td><td>${r.zstar.toFixed(4)}</td><td>${isFinite(r.sigma2)?r.sigma2.toFixed(4):'—'}</td><td>${isFinite(r.sr)?r.sr.toFixed(3):'—'}</td><td>${isFinite(r.mu)?r.mu.toFixed(4):'—'}</td><td>${r.sumLambda.toFixed(3)}</td></tr>`;
+    else html += `<tr><td>${m.n}</td><td colspan="5">Error</td></tr>`;
+  });
+  document.getElementById('methodComparison').innerHTML = html + '</tbody></table>';
+}
+
+// ============ MAP COMPUTATION ============
+function computeKrigingMaps() {
+  const params = getVarioParams();
+  const krigeType = document.getElementById('krigeType').value;
+  const meanSK = parseFloat(document.getElementById('meanSK').value);
+  const showEst = document.getElementById('showEstMap').checked;
+  const showVar = document.getElementById('showVarMap').checked;
+  const showSlope = document.getElementById('showSlopeMap').checked;
+  const showLag = document.getElementById('showLagrangeMap').checked;
+  if (!showEst && !showVar && !showSlope && !showLag) { estMapData=varMapData=slopeMapData=lagrangeMapData=null; return; }
+
+  // Get grid parameters
+  const originX = parseFloat(document.getElementById('gridOriginX').value) || 0;
+  const originY = parseFloat(document.getElementById('gridOriginY').value) || 0;
+  const spacingX = parseFloat(document.getElementById('gridSpacingX').value) || 20;
+  const spacingY = parseFloat(document.getElementById('gridSpacingY').value) || 20;
+  const nx = parseInt(document.getElementById('gridNx').value)||30;
+  const ny = parseInt(document.getElementById('gridNy').value)||30;
+  
+  const estV=[], varV=[], slopeV=[], lagV=[];
+  for (let i=0; i<nx; i++) { estV[i]=[]; varV[i]=[]; slopeV[i]=[]; lagV[i]=[]; for (let j=0; j<ny; j++) { estV[i][j]=varV[i][j]=slopeV[i][j]=lagV[i][j]=NaN; } }
+  let eMin=Infinity, eMax=-Infinity, vMin=Infinity, vMax=-Infinity, sMin=Infinity, sMax=-Infinity, lMin=Infinity, lMax=-Infinity;
+
+  for (let i=0; i<nx; i++) for (let j=0; j<ny; j++) {
+    // Calculate world coordinates for this grid cell
+    const xWorld = originX + (i + 0.5) * spacingX;
+    const yWorld = originY + (j + 0.5) * spacingY;
+    
+    // Convert to internal canvas coordinates
+    const x0 = internalX(xWorld);
+    const y0 = internalY(yWorld);
+    
+    const pts=getNearestPoints(x0,y0);
+    if (!pts.length) continue;
+    try {
+      const tgt={x:x0,y:y0}, n=pts.length, Gamma=[], Cov=[], gamma0=[], cov0=[];
+      for (let ii=0; ii<n; ii++) {
+        Gamma[ii]=[]; Cov[ii]=[];
+        for (let jj=0; jj<n; jj++) {
+          Gamma[ii][jj] = gammaAniso(pts[ii], pts[jj], params);
+          Cov[ii][jj] = covarianceAniso(pts[ii], pts[jj], params);
+        }
+        gamma0[ii] = gammaAniso(pts[ii], tgt, params);
+        cov0[ii] = covarianceAniso(pts[ii], tgt, params);
+      }
+      let lambdas,zstar,sigma2,mu=NaN;
+      if (krigeType==='OK') {
+        const N=n+1, K=[];
+        for (let ii=0; ii<N; ii++) { K[ii]=[];
+          for (let jj=0; jj<N; jj++) K[ii][jj] = (ii<n&&jj<n)?Gamma[ii][jj]:((ii<n&&jj===n)||(ii===n&&jj<n))?1:0;
+        }
+        const x=solveLinearSystem(K,[...gamma0,1]);
+        lambdas=x.slice(0,n); mu=x[n];
+        zstar=lambdas.reduce((s,l,k)=>s+l*getPointValue(pts[k]),0);
+        sigma2=lambdas.reduce((s,l,k)=>s+l*gamma0[k],0)+mu;
+      } else {
+        lambdas=solveLinearSystem(Cov,cov0);
+        zstar=meanSK+lambdas.reduce((s,l,k)=>s+l*(getPointValue(pts[k])-meanSK),0);
+        sigma2=params.totalSill-lambdas.reduce((s,l,k)=>s+l*cov0[k],0);
+      }
+      const covNum=lambdas.reduce((s,l,k)=>s+l*cov0[k],0);
+      let varDen=0; for(let ii=0;ii<n;ii++)for(let jj=0;jj<n;jj++)varDen+=lambdas[ii]*lambdas[jj]*Cov[ii][jj];
+      const sr=varDen?covNum/varDen:NaN;
+      if(showEst&&isFinite(zstar)){estV[i][j]=zstar;eMin=Math.min(eMin,zstar);eMax=Math.max(eMax,zstar);}
+      if(showVar&&isFinite(sigma2)){varV[i][j]=sigma2;vMin=Math.min(vMin,sigma2);vMax=Math.max(vMax,sigma2);}
+      if(showSlope&&isFinite(sr)){slopeV[i][j]=sr;sMin=Math.min(sMin,sr);sMax=Math.max(sMax,sr);}
+      if(showLag&&isFinite(mu)){lagV[i][j]=mu;lMin=Math.min(lMin,mu);lMax=Math.max(lMax,mu);}
+    } catch(e) {}
+  }
+  
+  // Store origin and spacing in map data for proper rendering
+  estMapData=showEst&&isFinite(eMin)?{nx,ny,originX,originY,spacingX,spacingY,values:estV,min:eMin,max:eMax}:null;
+  varMapData=showVar&&isFinite(vMin)?{nx,ny,originX,originY,spacingX,spacingY,values:varV,min:vMin,max:vMax}:null;
+  slopeMapData=showSlope&&isFinite(sMin)?{nx,ny,originX,originY,spacingX,spacingY,values:slopeV,min:sMin,max:sMax}:null;
+  lagrangeMapData=showLag&&isFinite(lMin)?{nx,ny,originX,originY,spacingX,spacingY,values:lagV,min:lMin,max:lMax}:null;
+}
+
+function computeIDWMap() {
+  const power = parseFloat(document.getElementById('idwPower').value)||2;
+  const originX = parseFloat(document.getElementById('gridOriginX').value) || 0;
+  const originY = parseFloat(document.getElementById('gridOriginY').value) || 0;
+  const spacingX = parseFloat(document.getElementById('gridSpacingX').value) || 20;
+  const spacingY = parseFloat(document.getElementById('gridSpacingY').value) || 20;
+  const nx = parseInt(document.getElementById('gridNx').value)||30;
+  const ny = parseInt(document.getElementById('gridNy').value)||30;
+  
+  const vals=[]; for (let i=0; i<nx; i++) { vals[i]=[]; for (let j=0; j<ny; j++) vals[i][j]=NaN; }
+  let vMin=Infinity, vMax=-Infinity;
+  
+  for (let i=0; i<nx; i++) for (let j=0; j<ny; j++) {
+    const xWorld = originX + (i + 0.5) * spacingX;
+    const yWorld = originY + (j + 0.5) * spacingY;
+    const x0 = internalX(xWorld);
+    const y0 = internalY(yWorld);
+    
+    const pts=getNearestPoints(x0,y0); if(!pts.length)continue;
+    const tgt={x:x0,y:y0};
+    let weights=[],total=0,exact=-1;
+    for(let k=0;k<pts.length;k++){const d=dist(pts[k],tgt);if(d===0){exact=k;break;}weights[k]=1/Math.pow(d,power);total+=weights[k];}
+    const z=exact>=0?getPointValue(pts[exact]):weights.reduce((s,w,k)=>s+(w/total)*getPointValue(pts[k]),0);
+    if(isFinite(z)){vals[i][j]=z;vMin=Math.min(vMin,z);vMax=Math.max(vMax,z);}
+  }
+  idwMapData=isFinite(vMin)?{nx,ny,originX,originY,spacingX,spacingY,values:vals,min:vMin,max:vMax}:null;
+}
+
+function computeNNMap() {
+  const originX = parseFloat(document.getElementById('gridOriginX').value) || 0;
+  const originY = parseFloat(document.getElementById('gridOriginY').value) || 0;
+  const spacingX = parseFloat(document.getElementById('gridSpacingX').value) || 20;
+  const spacingY = parseFloat(document.getElementById('gridSpacingY').value) || 20;
+  const nx = parseInt(document.getElementById('gridNx').value)||30;
+  const ny = parseInt(document.getElementById('gridNy').value)||30;
+  
+  const vals=[]; for (let i=0; i<nx; i++) { vals[i]=[]; for (let j=0; j<ny; j++) vals[i][j]=NaN; }
+  let vMin=Infinity, vMax=-Infinity;
+  
+  for (let i=0; i<nx; i++) for (let j=0; j<ny; j++) {
+    const xWorld = originX + (i + 0.5) * spacingX;
+    const yWorld = originY + (j + 0.5) * spacingY;
+    const x0 = internalX(xWorld);
+    const y0 = internalY(yWorld);
+    
+    const pts=getNearestPoints(x0,y0); if(!pts.length)continue;
+    const tgt={x:x0,y:y0};
+    let best=0,minD=dist(pts[0],tgt);for(let k=1;k<pts.length;k++){const d=dist(pts[k],tgt);if(d<minD){minD=d;best=k;}}
+    const z=getPointValue(pts[best]);
+    if(isFinite(z)){vals[i][j]=z;vMin=Math.min(vMin,z);vMax=Math.max(vMax,z);}
+  }
+  nnMapData=isFinite(vMin)?{nx,ny,originX,originY,spacingX,spacingY,values:vals,min:vMin,max:vMax}:null;
+}
+
+// ============ HISTOGRAMS ============
+function drawHistogramComparison() {
+  const active = points.filter(p=>p.active); if(!active.length)return;
+  const input = active.map(p=>getPointValue(p)), output = getGridEstimates();
+  drawHistogram('histInputCanvas', input, 'Input', '#0077cc');
+  displayStats('inputStats', input, 'Input Stats');
+  if (output.length) { drawHistogram('histOutputCanvas', output, 'Estimated', '#28a745'); displayStats('outputStats', output, 'Output Stats'); }
+  else { const c=document.getElementById('histOutputCanvas').getContext('2d'); c.clearRect(0,0,450,300); c.fillStyle='#666'; c.fillText('Enable Z* map',100,150); document.getElementById('outputStats').innerHTML=''; }
+}
+
+function getGridEstimates() {
+  let m=null;
+  if(document.getElementById('showEstMap').checked&&estMapData)m=estMapData;
+  else if(document.getElementById('showIDWMap').checked&&idwMapData)m=idwMapData;
+  else if(document.getElementById('showNNMap').checked&&nnMapData)m=nnMapData;
+  if(!m)return[];
+  const v=[];for(let i=0;i<m.nx;i++)for(let j=0;j<m.ny;j++)if(isFinite(m.values[i][j]))v.push(m.values[i][j]);
+  return v;
+}
+
+function drawHistogram(canvasId, data, title, color) {
+  const c=document.getElementById(canvasId); if(!c||!data.length)return;
+  const ctx2=c.getContext('2d'), w=c.width, h=c.height;
+  ctx2.clearRect(0,0,w,h);
+  const margin={t:40,r:20,b:50,l:60}, pw=w-margin.l-margin.r, ph=h-margin.t-margin.b;
+  const minV=Math.min(...data), maxV=Math.max(...data), range=maxV-minV||1;
+  const nBins=Math.min(20,Math.ceil(Math.sqrt(data.length))), binW=range/nBins;
+  const bins=new Array(nBins).fill(0);
+  data.forEach(v=>{let idx=Math.floor((v-minV)/binW);if(idx>=nBins)idx=nBins-1;if(idx<0)idx=0;bins[idx]++;});
+  const maxC=Math.max(...bins);
+  ctx2.fillStyle='#000';ctx2.font='bold 14px Arial';ctx2.textAlign='center';ctx2.fillText(title,w/2,20);
+  ctx2.strokeStyle='#000';ctx2.beginPath();ctx2.moveTo(margin.l,margin.t);ctx2.lineTo(margin.l,h-margin.b);ctx2.lineTo(w-margin.r,h-margin.b);ctx2.stroke();
+  const bw=pw/nBins;ctx2.fillStyle=color;
+  for(let i=0;i<nBins;i++){const bh=(bins[i]/maxC)*ph;ctx2.fillRect(margin.l+i*bw,h-margin.b-bh,bw-1,bh);}
+  ctx2.fillStyle='#000';ctx2.font='11px Arial';
+  for(let i=0;i<=5;i++)ctx2.fillText((minV+range*i/5).toFixed(2),margin.l+pw*i/5,h-margin.b+18);
+}
+
+function displayStats(id, data, title) {
+  if(!data.length){document.getElementById(id).innerHTML='';return;}
+  const n=data.length, mean=data.reduce((a,b)=>a+b,0)/n;
+  const sorted=[...data].sort((a,b)=>a-b);
+  const med=n%2?sorted[Math.floor(n/2)]:(sorted[n/2-1]+sorted[n/2])/2;
+  const variance=data.reduce((s,v)=>s+(v-mean)**2,0)/n, std=Math.sqrt(variance);
+  document.getElementById(id).innerHTML=`<small><b>${title}</b>: n=${n}, x̄=${mean.toFixed(3)}, med=${med.toFixed(3)}, σ=${std.toFixed(3)}, min=${sorted[0].toFixed(3)}, max=${sorted[n-1].toFixed(3)}</small>`;
+}
+
+// ============ KRIGING COMPUTATION ============
+function computeKriging() {
+  const params = getVarioParams();
+  const krigeType = document.getElementById('krigeType').value;
+  const meanSK = parseFloat(document.getElementById('meanSK').value);
+  const useInd = document.getElementById('useIndicator').checked;
+
+  const pts = getNearestPoints(target.x, target.y);
+  lastUsedIds = {}; pts.forEach(p => lastUsedIds[p.id] = true);
+  const n = pts.length;
+  if (!n) { alert('No neighbors'); return; }
+
+  const H=[], Gamma=[], Cov=[], h0=[], gamma0=[], cov0=[];
+  for (let i=0; i<n; i++) {
+    H[i]=[]; Gamma[i]=[]; Cov[i]=[];
+    for (let j=0; j<n; j++) {
+      // Keep H for display purposes (using first structure's main range)
+      const firstRange = params.structures[0] ? params.structures[0].range : 1;
+      const firstRangeOrtho = params.structures[0] ? params.structures[0].rangeOrtho : 1;
+      const h = anisoDistForStructure(pts[i], pts[j], params.anisoAngle, firstRange, firstRangeOrtho);
+      H[i][j] = h;
+      Gamma[i][j] = gammaAniso(pts[i], pts[j], params);
+      Cov[i][j] = covarianceAniso(pts[i], pts[j], params);
+    }
+    const ht = anisoDistForStructure(pts[i], target, params.anisoAngle, 
+                                      params.structures[0] ? params.structures[0].range : 1,
+                                      params.structures[0] ? params.structures[0].rangeOrtho : 1);
+    h0[i] = ht;
+    gamma0[i] = gammaAniso(pts[i], target, params);
+    cov0[i] = covarianceAniso(pts[i], target, params);
+  }
+
+  let KGamma=null, dGamma=null, KCov=null, dCov=null, lambdas, zstar, sigma2, mu=NaN;
+
+  if (krigeType === 'OK') {
+    const N=n+1; KGamma=[];
+    for (let i=0; i<N; i++) { KGamma[i]=[];
+      for (let j=0; j<N; j++) KGamma[i][j] = (i<n&&j<n)?Gamma[i][j]:((i<n&&j===n)||(i===n&&j<n))?1:0;
+    }
+    dGamma = [...gamma0, 1];
+    KCov = [];
+    for (let i=0; i<N; i++) { KCov[i]=[];
+      for (let j=0; j<N; j++) KCov[i][j] = (i<n&&j<n)?Cov[i][j]:((i<n&&j===n)||(i===n&&j<n))?1:0;
+    }
+    dCov = [...cov0, 1];
+    const x = solveLinearSystem(KGamma, dGamma);
+    lambdas = x.slice(0,n); mu = x[n];
+    zstar = lambdas.reduce((s,l,i) => s + l*getPointValue(pts[i]), 0);
+    sigma2 = lambdas.reduce((s,l,i) => s + l*gamma0[i], 0) + mu;
+  } else {
+    KCov = Cov.map(r=>r.slice()); dCov = cov0.slice();
+    lambdas = solveLinearSystem(Cov, cov0);
+    zstar = meanSK + lambdas.reduce((s,l,i) => s + l*(getPointValue(pts[i])-meanSK), 0);
+    sigma2 = params.totalSill - lambdas.reduce((s,l,i) => s + l*cov0[i], 0);
+  }
+
+  const covNum = lambdas.reduce((s,l,i) => s + l*cov0[i], 0);
+  let varDen = 0; for (let i=0; i<n; i++) for (let j=0; j<n; j++) varDen += lambdas[i]*lambdas[j]*Cov[i][j];
+  const sr = varDen ? covNum/varDen : NaN;
+
+  lambdaById = {}; maxLambdaAbs = 0;
+  for (let i=0; i<n; i++) { lambdaById[pts[i].id]=lambdas[i]; maxLambdaAbs=Math.max(maxLambdaAbs, Math.abs(lambdas[i])); }
+
+  displayKrigingResults(pts, lambdas, zstar, sigma2, sr, mu, krigeType, meanSK, H, h0, Gamma, gamma0, Cov, cov0, KGamma, dGamma, KCov, dCov, params.totalSill, covNum, varDen, params, useInd);
+
+  if (document.getElementById('showEstMap').checked||document.getElementById('showVarMap').checked||document.getElementById('showSlopeMap').checked||document.getElementById('showLagrangeMap').checked) computeKrigingMaps();
+  if (document.getElementById('showIDWMap').checked) computeIDWMap();
+  if (document.getElementById('showNNMap').checked) computeNNMap();
+  
+  updatePointsTable(); draw(); drawHistogramComparison();
+}
+
+function computeNN() {
+  const pts = getNearestPoints(target.x, target.y);
+  if (!pts.length) { alert('No neighbors'); return; }
+  let best=0, minD=dist(pts[0],target);
+  for(let i=1;i<pts.length;i++){const d=dist(pts[i],target);if(d<minD){minD=d;best=i;}}
+  lambdaById = {}; lambdaById[pts[best].id] = 1; maxLambdaAbs = 1;
+  lastUsedIds = {}; lastUsedIds[pts[best].id] = true;
+  const z = getPointValue(pts[best]);
+  document.getElementById('summaryText').innerHTML = `<b>NN</b>: P${pts[best].id}, Z*=${z.toFixed(4)}`;
+  document.getElementById('resultSummary').innerHTML = `Z*=${z.toFixed(4)} (NN)`;
+  updatePointsTable(); draw();
+}
+
+function computeIDW() {
+  const power = parseFloat(document.getElementById('idwPower').value)||2;
+  const pts = getNearestPoints(target.x, target.y);
+  lastUsedIds = {}; pts.forEach(p => lastUsedIds[p.id] = true);
+  if (!pts.length) { alert('No neighbors'); return; }
+  let weights=[], total=0, exact=-1;
+  for (let i=0; i<pts.length; i++) {
+    const d = dist(pts[i], target);
+    if (d===0) { exact=i; break; }
+    weights[i] = 1/Math.pow(d, power); total += weights[i];
+  }
+  lambdaById = {}; maxLambdaAbs = 0;
+  let zstar = 0;
+  if (exact>=0) { zstar = getPointValue(pts[exact]); lambdaById[pts[exact].id]=1; maxLambdaAbs=1; }
+  else { for (let i=0; i<pts.length; i++) { const l=weights[i]/total; zstar+=l*getPointValue(pts[i]); lambdaById[pts[i].id]=l; maxLambdaAbs=Math.max(maxLambdaAbs,l); } }
+  document.getElementById('summaryText').innerHTML = `<b>IDW(${power})</b>: Z*=${zstar.toFixed(4)}`;
+  document.getElementById('resultSummary').innerHTML = `Z*=${zstar.toFixed(4)} (IDW)`;
+  updatePointsTable(); draw();
+}
+
+function solveLinearSystem(A, b) {
+  const n=A.length, M=A.map(r=>r.slice()), B=b.slice(), x=new Array(n);
+  for (let k=0; k<n; k++) {
+    let maxRow=k, maxVal=Math.abs(M[k][k]);
+    for (let i=k+1; i<n; i++) if(Math.abs(M[i][k])>maxVal){maxVal=Math.abs(M[i][k]);maxRow=i;}
+    if (maxVal<1e-12) throw new Error('Singular');
+    if (maxRow!==k) { [M[k],M[maxRow]]=[M[maxRow],M[k]]; [B[k],B[maxRow]]=[B[maxRow],B[k]]; }
+    for (let i=k+1; i<n; i++) { const f=M[i][k]/M[k][k]; for(let j=k;j<n;j++)M[i][j]-=f*M[k][j]; B[i]-=f*B[k]; }
+  }
+  for (let i=n-1; i>=0; i--) { let sum=0; for(let j=i+1;j<n;j++)sum+=M[i][j]*x[j]; x[i]=(B[i]-sum)/M[i][i]; }
+  return x;
+}
+
+function invertMatrix(A) {
+  if(!A||!A.length)return null;
+  const n=A.length, M=[];
+  for(let i=0;i<n;i++){M[i]=[...A[i]];for(let j=0;j<n;j++)M[i][j+n]=(i===j)?1:0;}
+  for(let k=0;k<n;k++){
+    let maxRow=k,maxVal=Math.abs(M[k][k]);
+    for(let i=k+1;i<n;i++)if(Math.abs(M[i][k])>maxVal){maxVal=Math.abs(M[i][k]);maxRow=i;}
+    if(maxVal<1e-12)return null;
+    if(maxRow!==k)[M[k],M[maxRow]]=[M[maxRow],M[k]];
+    const piv=M[k][k];for(let j=0;j<2*n;j++)M[k][j]/=piv;
+    for(let i=0;i<n;i++){if(i===k)continue;const f=M[i][k];for(let j=0;j<2*n;j++)M[i][j]-=f*M[k][j];}
+  }
+  return M.map(r=>r.slice(n,2*n));
+}
+
+function matrixToHTML(mat, dec=3, pts=null) {
+  if(!mat||!mat.length)return'<p>—</p>';
+  const n = mat.length;
+  let html = '<table><thead><tr><th></th>';
+  
+  // Cabeçalho das colunas
+  if (pts && pts.length === n) {
+    for (let j=0; j<n; j++) html += `<th>P${pts[j].id}</th>`;
+  } else {
+    for (let j=0; j<n; j++) html += `<th>${j+1}</th>`;
+  }
+  html += '</tr></thead><tbody>';
+  
+  // Linhas com identificador
+  for (let i=0; i<n; i++) {
+    if (pts && pts.length === n) {
+      html += `<tr><th>P${pts[i].id}</th>`;
+    } else {
+      html += `<tr><th>${i+1}</th>`;
+    }
+    for (let j=0; j<mat[i].length; j++) {
+      html += `<td>${(Math.abs(mat[i][j])<1e-12?0:mat[i][j]).toFixed(dec)}</td>`;
+    }
+    html += '</tr>';
+  }
+  html += '</tbody></table>';
+  return html;
+}
+function vectorToHTML(vec, dec=3, pts=null, isTarget=false) {
+  if(!vec||!vec.length)return'<p>—</p>';
+  const n = vec.length;
+  let html = '<table><thead><tr><th></th><th>Value</th></tr></thead><tbody>';
+  
+  for (let i=0; i<n; i++) {
+    let label;
+    if (isTarget) {
+      label = `T-P${pts[i].id}`;
+    } else if (pts && pts.length === n) {
+      label = `P${pts[i].id}`;
+    } else {
+      label = i+1;
+    }
+    html += `<tr><th>${label}</th><td>${(Math.abs(vec[i])<1e-12?0:vec[i]).toFixed(dec)}</td></tr>`;
+  }
+  html += '</tbody></table>';
+  return html;
+}
+
+function drawVariogram(pts, H, Gamma, h0, gamma0, params) {
+  const cv = document.getElementById('variogramCanvas');
+  if (!cv) return;
+  const c = cv.getContext('2d'), w=cv.width, h=cv.height;
+  c.clearRect(0, 0, w, h);
+  variogramPoints = [];
+
+  // Find max range for x-axis
+  let maxRange = 1;
+  params.structures.forEach(s => { if (s.range > maxRange) maxRange = s.range; });
+  const xMax = maxRange * 1.5;
+  const yMax = params.totalSill * 1.2;
+
+  const mL=70, mR=20, mT=30, mB=50;
+  const pW=w-mL-mR, pH=h-mT-mB;
+  const toX = v => mL + (Math.max(0,Math.min(v,xMax))/xMax)*pW;
+  const toY = v => mT + (1-Math.max(0,Math.min(v,yMax))/yMax)*pH;
+  variogramAxis = {mL, mT, pW, pH, xMax, yMax, width:w, height:h};
+
+  // Axes
+  c.strokeStyle='#000'; c.lineWidth=1;
+  c.beginPath(); c.moveTo(mL, toY(0)); c.lineTo(mL+pW, toY(0)); c.stroke();
+  c.beginPath(); c.moveTo(mL, mT); c.lineTo(mL, mT+pH); c.stroke();
+
+  // Grid
+  c.strokeStyle='#ddd';
+  for (let i=0; i<=6; i++) {
+    const xv=(xMax/6)*i, yv=(yMax/6)*i;
+    c.beginPath(); c.moveTo(toX(xv), mT); c.lineTo(toX(xv), mT+pH); c.stroke();
+    c.beginPath(); c.moveTo(mL, toY(yv)); c.lineTo(mL+pW, toY(yv)); c.stroke();
+    c.fillStyle='#000'; c.font='11px Arial';
+    c.fillText(xv.toFixed(1), toX(xv)-10, toY(0)+15);
+    c.fillText(yv.toFixed(2), mL-45, toY(yv)+4);
+  }
+
+  // Labels
+  c.fillStyle='#000'; c.font='13px Arial';
+  c.fillText('h (distance)', mL+pW/2-40, h-10);
+  c.save(); c.translate(15, mT+pH/2+20); c.rotate(-Math.PI/2); c.fillText('γ(h)', 0, 0); c.restore();
+
+  // Draw individual structures (dashed)
+  const structColors = ['#ff9800', '#9c27b0'];
+  params.structures.forEach((s, idx) => {
+    c.strokeStyle = structColors[idx] || '#666';
+    c.lineWidth = 1.5;
+    c.setLineDash([4, 4]);
+    c.beginPath();
+    for (let i=0; i<=200; i++) {
+      const hv = (xMax*i)/200;
+      const gv = params.nugget + gammaStruct(hv, s.type, s.sill, s.range);
+      if (i===0) c.moveTo(toX(hv), toY(gv)); else c.lineTo(toX(hv), toY(gv));
+    }
+    c.stroke();
+    c.setLineDash([]);
+  });
+
+  // Draw combined model (solid)
+  c.strokeStyle='#0077cc'; c.lineWidth=2.5;
+  c.beginPath();
+  for (let i=0; i<=400; i++) {
+    const hv = (xMax*i)/400;
+    const gv = gamma(hv, params);
+    if (i===0) c.moveTo(toX(hv), toY(gv)); else c.lineTo(toX(hv), toY(gv));
+  }
+  c.stroke();
+
+  // Nugget line
+  if (params.nugget > 0) {
+    c.strokeStyle = '#888'; c.lineWidth = 1; c.setLineDash([2, 2]);
+    c.beginPath(); c.moveTo(mL, toY(params.nugget)); c.lineTo(mL+pW, toY(params.nugget)); c.stroke();
+    c.setLineDash([]);
+    c.fillStyle = '#888'; c.font = '10px Arial';
+    c.fillText(`C₀=${params.nugget.toFixed(2)}`, mL+5, toY(params.nugget)-3);
+  }
+
+  // Sill line
+  c.strokeStyle = '#888'; c.lineWidth = 1; c.setLineDash([2, 2]);
+  c.beginPath(); c.moveTo(mL, toY(params.totalSill)); c.lineTo(mL+pW, toY(params.totalSill)); c.stroke();
+  c.setLineDash([]);
+  c.fillStyle = '#888'; c.fillText(`Sill=${params.totalSill.toFixed(2)}`, mL+pW-60, toY(params.totalSill)-3);
+
+  // Sample-sample points
+  const n = pts.length;
+  const showGuides = document.getElementById('showVarioGuides') ? document.getElementById('showVarioGuides').checked : false;
+
+  for (let i=0; i<n; i++) for (let j=i+1; j<n; j++) {
+    const hx = toX(H[i][j]);
+    const gy = toY(Gamma[i][j]);
+    if (showGuides) {
+      c.save();
+      c.setLineDash([3,4]);
+      c.strokeStyle='#009900';
+      c.lineWidth=1;
+      // vertical
+      c.beginPath(); c.moveTo(hx, mT); c.lineTo(hx, mT+pH); c.stroke();
+      // horizontal
+      c.beginPath(); c.moveTo(mL, gy); c.lineTo(mL+pW, gy); c.stroke();
+      c.restore();
+    }
+    c.fillStyle='#009900';
+    c.beginPath();
+    c.arc(hx, gy, 3, 0, Math.PI*2);
+    c.fill();
+    variogramPoints.push({h:H[i][j], gamma:Gamma[i][j], label:`P${pts[i].id}-P${pts[j].id}`, color:'#009900'});
+  }
+
+  // Target-sample points
+  for (let i=0; i<h0.length; i++) {
+    const hx = toX(h0[i]);
+    const gy = toY(gamma0[i]);
+    if (showGuides) {
+      c.save();
+      c.setLineDash([3,4]);
+      c.strokeStyle='#cc0000';
+      c.lineWidth=1;
+      c.beginPath(); c.moveTo(hx, mT); c.lineTo(hx, mT+pH); c.stroke();
+      c.beginPath(); c.moveTo(mL, gy); c.lineTo(mL+pW, gy); c.stroke();
+      c.restore();
+    }
+    c.fillStyle='#cc0000';
+    c.beginPath();
+    c.arc(hx, gy, 4, 0, Math.PI*2);
+    c.fill();
+    variogramPoints.push({h:h0[i], gamma:gamma0[i], label:`T-P${pts[i].id}`, color:'#cc0000'});
+  }
+
+  // Legend
+  c.font='11px Arial';
+  let lx = mL + 10;
+  c.fillStyle='#0077cc'; c.fillText('— Combined model', lx, mT+15);
+  lx += 110;
+  if (params.structures.length >= 1) { c.fillStyle=structColors[0]; c.fillText('--- Struct 1', lx, mT+15); lx += 70; }
+  if (params.structures.length >= 2) { c.fillStyle=structColors[1]; c.fillText('--- Struct 2', lx, mT+15); lx += 70; }
+  c.fillStyle='#cc0000'; c.fillText('● target-sample', lx, mT+15); lx += 90;
+  c.fillStyle='#009900'; c.fillText('● sample-sample', lx, mT+15);
+}
+
+function displayKrigingResults(pts, lambdas, zstar, sigma2, sr, mu, krigeType, meanSK, H, h0, Gamma, gamma0, Cov, cov0, KGamma, dGamma, KCov, dCov, C0, covNum, varDen, params, useInd) {
+  const n=pts.length, wx=worldX(target.x).toFixed(2), wy=worldY(target.y).toFixed(2);
+  const sumL = lambdas.reduce((a,b)=>a+b, 0);
+  const stdErr = sigma2>0 ? Math.sqrt(sigma2) : NaN;
+  const estLabel = useInd ? 'P(I=1)' : 'Z*';
+
+  drawVariogram(pts, H, Gamma, h0, gamma0, params);
+
+  // Variogram pairs
+  let pairsHTML = '<p><b>Target-sample:</b></p><table><tr><th>Pair</th><th>h</th><th>γ</th></tr>';
+  for (let i=0; i<n; i++) pairsHTML += `<tr><td>T-P${pts[i].id}</td><td>${h0[i].toFixed(2)}</td><td>${gamma0[i].toFixed(4)}</td></tr>`;
+  pairsHTML += '</table><p><b>Sample-sample:</b></p><table><tr><th>Pair</th><th>h</th><th>γ</th></tr>';
+  for (let i=0; i<n; i++) for (let j=i+1; j<n; j++) pairsHTML += `<tr><td>P${pts[i].id}-P${pts[j].id}</td><td>${H[i][j].toFixed(2)}</td><td>${Gamma[i][j].toFixed(4)}</td></tr>`;
+  document.getElementById('variogramPairs').innerHTML = pairsHTML + '</table>';
+
+  document.getElementById('summaryText').innerHTML = `
+    <p><b>Kriging ${krigeType}</b>${useInd?' (Indicator)':''}</p>
+    <p>Target: (${wx}, ${wy}), n=${n}</p>
+    <p><b>${estLabel}:</b> ${zstar.toFixed(4)}</p>
+    <p>σ²=${sigma2.toFixed(4)}, σ=${isFinite(stdErr)?stdErr.toFixed(4):'—'}</p>
+    <p>Σλ=${sumL.toFixed(4)}, SR=${sr.toFixed(3)}${krigeType==='OK'?`, μ=${mu.toFixed(4)}`:''}</p>`;
+  document.getElementById('resultSummary').innerHTML = `${estLabel}=${zstar.toFixed(4)}, σ²=${sigma2.toFixed(4)}`;
+
+  document.getElementById('matrixH').innerHTML = matrixToHTML(H, 3, pts);
+  document.getElementById('matrixH0').innerHTML = vectorToHTML(h0, 3, pts, true);
+  document.getElementById('matrixGamma').innerHTML = matrixToHTML(Gamma, 4, pts);
+  document.getElementById('vectorGamma0').innerHTML = vectorToHTML(gamma0, 4, pts, true);
+  document.getElementById('matrixCov').innerHTML = matrixToHTML(Cov, 4, pts);
+  document.getElementById('vectorCov0').innerHTML = vectorToHTML(cov0, 4, pts, true);
+  document.getElementById('systemGamma').innerHTML = KGamma ? matrixToHTML(KGamma, 4, pts) : '—';
+  document.getElementById('systemCov').innerHTML = KCov ? matrixToHTML(KCov, 4, pts) : '—';
+  
+  // Calcular inversas de ambos os sistemas
+  const invGamma = KGamma ? invertMatrix(KGamma) : null;
+  const invCov = KCov ? invertMatrix(KCov) : null;
+  document.getElementById('inverseGamma').innerHTML = invGamma ? matrixToHTML(invGamma, 4, pts) : '—';
+  document.getElementById('inverseCov').innerHTML = invCov ? matrixToHTML(invCov, 4, pts) : '—';
+  
+  document.getElementById('weights').innerHTML = vectorToHTML(lambdas, 5, pts);
+  document.getElementById('weightsProps').innerHTML = `Σλ=${sumL.toFixed(5)}, max=${Math.max(...lambdas).toFixed(4)}, min=${Math.min(...lambdas).toFixed(4)}, neg=${lambdas.filter(l=>l<0).length}`;
+
+  
+  let estHTML = `<p>${krigeType==='OK'
+    ? `${estLabel}=Σλᵢ zᵢ`
+    : `${estLabel}=m+Σλᵢ(zᵢ−m)`}</p>
+    <table>
+      <tr><th>i</th><th>λᵢ</th><th>zᵢ</th><th>λᵢ zᵢ</th></tr>`;
+  let sumEst = 0;
+  for (let i = 0; i < n; i++) {
+    const v = getPointValue(pts[i]);
+    const term = krigeType === 'OK'
+      ? lambdas[i] * v
+      : lambdas[i] * (v - meanSK);
+    sumEst += term;
+    estHTML += `<tr>
+        <td>${i + 1}</td>
+        <td>${lambdas[i].toFixed(4)}</td>
+        <td>${v.toFixed(4)}</td>
+        <td>${term.toFixed(5)}</td>
+      </tr>`;
+  }
+  estHTML += `</table><p><b>${estLabel}=${zstar.toFixed(5)}</b></p>`;
+  document.getElementById('estimateCalc').innerHTML = estHTML;
+
+  // 6. Error variance
+  let errHTML = '';
+  if (krigeType === 'OK') {
+    // Ordinary kriging: σ²_k = Σ λᵢ γ₀ᵢ + μ
+    let sumLG = 0;
+    let table = `<div class="calc-block">
+        <div class="calc-title">Ordinary kriging error variance</div>
+        <div class="calc-eq">σ²ₖ = Σ λᵢ γ₀ᵢ + μ</div>
+        <div class="calc-steps">
+        <table>
+          <tr><th>i</th><th>λᵢ</th><th>γ₀ᵢ</th><th>λᵢ γ₀ᵢ</th><th>Σ λᵢ γ₀ᵢ (parcial)</th></tr>`;
+    for (let i = 0; i < n; i++) {
+      const term = lambdas[i] * gamma0[i];
+      sumLG += term;
+      table += `<tr>
+            <td>${i + 1}</td>
+            <td>${lambdas[i].toFixed(4)}</td>
+            <td>${gamma0[i].toFixed(5)}</td>
+            <td>${term.toFixed(5)}</td>
+            <td>${sumLG.toFixed(5)}</td>
+          </tr>`;
+    }
+    table += `</table>
+        <p>Σ λᵢ γ₀ᵢ = ${sumLG.toFixed(5)}</p>
+        <p>σ²ₖ = Σ λᵢ γ₀ᵢ + μ
+           = ${sumLG.toFixed(5)} + ${mu.toFixed(5)}
+           = <span class="calc-highlight">${sigma2.toFixed(5)}</span></p>
+        </div></div>`;
+    errHTML = table;
+  } else {
+    // Simple kriging: σ²_k = C(0) − Σ λᵢ c₀ᵢ
+    let sumLC = 0;
+    let table = `<div class="calc-block">
+        <div class="calc-title">Simple kriging error variance</div>
+        <div class="calc-eq">σ²ₖ = C(0) − Σ λᵢ c₀ᵢ</div>
+        <div class="calc-steps">
+        <table>
+          <tr><th>i</th><th>λᵢ</th><th>c₀ᵢ</th><th>λᵢ c₀ᵢ</th><th>Σ λᵢ c₀ᵢ (parcial)</th></tr>`;
+    for (let i = 0; i < n; i++) {
+      const term = lambdas[i] * cov0[i];
+      sumLC += term;
+      table += `<tr>
+            <td>${i + 1}</td>
+            <td>${lambdas[i].toFixed(4)}</td>
+            <td>${cov0[i].toFixed(5)}</td>
+            <td>${term.toFixed(5)}</td>
+            <td>${sumLC.toFixed(5)}</td>
+          </tr>`;
+    }
+    table += `</table>
+        <p>Σ λᵢ c₀ᵢ = ${sumLC.toFixed(5)}</p>
+        <p>σ²ₖ = C(0) − Σ λᵢ c₀ᵢ
+           = ${C0.toFixed(5)} − ${sumLC.toFixed(5)}
+           = <span class="calc-highlight">${sigma2.toFixed(5)}</span></p>
+        </div></div>`;
+    errHTML = table;
+  }
+  document.getElementById('errorVariance').innerHTML = errHTML;
+
+  // 6.2 Decomposition: σ = √σ²
+  let decompHTML = `<div class="calc-block">
+      <div class="calc-title">Standard error</div>
+      <div class="calc-eq">σₖ = √σ²ₖ</div>
+      <div class="calc-steps">
+        <p>σₖ = √${sigma2.toFixed(5)}
+           = <span class="calc-highlight">${isFinite(stdErr) ? stdErr.toFixed(5) : '—'}</span></p>
+      </div>
+    </div>`;
+  document.getElementById('errorVarianceDecomp').innerHTML = decompHTML;
+
+  // 7. Var(Z*)
+  let varHTML = `<div class="calc-block">
+      <div class="calc-title">Estimator variance</div>
+      <div class="calc-eq">Var(Z*) = λᵀ C λ = Σᵢ Σⱼ λᵢ λⱼ Cᵢⱼ</div>
+      <div class="calc-steps">
+        <table>
+          <tr><th>i</th><th>j</th><th>λᵢ</th><th>λⱼ</th><th>Cᵢⱼ</th><th>λᵢ λⱼ Cᵢⱼ</th><th>Soma parcial</th></tr>`;
+  let accVar = 0;
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      const term = lambdas[i] * lambdas[j] * Cov[i][j];
+      accVar += term;
+      varHTML += `<tr>
+            <td>${i + 1}</td>
+            <td>${j + 1}</td>
+            <td>${lambdas[i].toFixed(4)}</td>
+            <td>${lambdas[j].toFixed(4)}</td>
+            <td>${Cov[i][j].toFixed(5)}</td>
+            <td>${term.toFixed(6)}</td>
+            <td>${accVar.toFixed(6)}</td>
+          </tr>`;
+    }
+  }
+  varHTML += `</table>
+        <p>Var(Z*) ≈ ${accVar.toFixed(6)} (cálculo direto)</p>
+        <p>Var(Z*) (do sistema) = <span class="calc-highlight">${varDen.toFixed(6)}</span></p>
+      </div>
+    </div>`;
+  document.getElementById('estimatorVariance').innerHTML = varHTML;
+
+  // 8.1 Definition
+  document.getElementById('slopeDefinition').innerHTML = `
+    <div class="calc-block">
+      <div class="calc-title">Slope of regression</div>
+      <div class="calc-eq">SR = Cov(Z, Z*) / Var(Z*)</div>
+      <div class="calc-steps">
+        <p>Cov(Z, Z*) = Σ λᵢ c₀ᵢ</p>
+        <p>Var(Z*) = λᵀ C λ</p>
+      </div>
+    </div>`;
+
+  // 8.2 Numerator: Cov(Z,Z*) = Σ λᵢ c₀ᵢ
+  let numHTML = `<div class="calc-block">
+      <div class="calc-title">Numerator: Cov(Z, Z*)</div>
+      <div class="calc-eq">Cov(Z, Z*) = Σ λᵢ c₀ᵢ</div>
+      <div class="calc-steps">
+        <table>
+          <tr><th>i</th><th>λᵢ</th><th>c₀ᵢ</th><th>λᵢ c₀ᵢ</th><th>Soma parcial</th></tr>`;
+  let accNum = 0;
+  for (let i = 0; i < n; i++) {
+    const term = lambdas[i] * cov0[i];
+    accNum += term;
+    numHTML += `<tr>
+          <td>${i + 1}</td>
+          <td>${lambdas[i].toFixed(4)}</td>
+          <td>${cov0[i].toFixed(5)}</td>
+          <td>${term.toFixed(5)}</td>
+          <td>${accNum.toFixed(5)}</td>
+        </tr>`;
+  }
+  numHTML += `</table>
+        <p>Cov(Z, Z*) = <span class="calc-highlight">${covNum.toFixed(5)}</span></p>
+      </div>
+    </div>`;
+  document.getElementById('slopeNumerator').innerHTML = numHTML;
+
+  // 8.3 Denominator: Var(Z*)
+  document.getElementById('slopeDenominator').innerHTML = `
+    <div class="calc-block">
+      <div class="calc-title">Denominator: Var(Z*)</div>
+      <div class="calc-eq">Var(Z*) = λᵀ C λ</div>
+      <div class="calc-steps">
+        <p>Var(Z*) = <span class="calc-highlight">${varDen.toFixed(6)}</span> (ver detalhamento no item 7)</p>
+      </div>
+    </div>`;
+
+  // 8.4 Result: SR
+  document.getElementById('slopeResult').innerHTML = `
+    <div class="calc-block">
+      <div class="calc-title">Final SR</div>
+      <div class="calc-steps">
+        <p>SR = Cov(Z, Z*) / Var(Z*)
+           = ${covNum.toFixed(5)} / ${varDen.toFixed(6)}
+           = <span class="calc-highlight">${sr.toFixed(4)}</span></p>
+        <p>${sr < 0.9 ? 'conditional bias: underestimation (SR < 1)'
+                      : sr > 1.1 ? 'conditional bias: overestimation (SR > 1)'
+                                  : 'approximately unbiased (SR ≈ 1)'}</p>
+      </div>
+    </div>`;
+
+}
+
+function clearResults(resetMaps=true) {
+  ['summaryText','resultSummary','weights','weightsProps','matrixH','matrixH0','matrixGamma','vectorGamma0','matrixCov','vectorCov0','systemGamma','systemCov','inverseGamma','inverseCov','estimateCalc','errorVariance','errorVarianceDecomp','estimatorVariance','slopeDefinition','slopeNumerator','slopeDenominator','slopeResult','variogramPairs'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML='';});
+  if (resetMaps) { lambdaById={}; maxLambdaAbs=0; lastUsedIds={}; estMapData=varMapData=slopeMapData=lagrangeMapData=idwMapData=nnMapData=null; updatePointsTable(); refreshMapLegend(); draw(); }
+}
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+else init();
+</script>
+</body>
+</html>

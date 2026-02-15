@@ -1,0 +1,3048 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VarioLab - Variographic Analysis</title>
+  
+<style>
+  :root {
+    --bg-main: #f5f7fa;
+    --bg-panel: #fafbfc;
+    --bg-card: #ffffff;
+    --bg-card-alt: #f8f9fb;
+    --border-subtle: rgba(15,23,42,0.12);
+    --accent: #10b981;
+    --accent-soft: rgba(16,185,129,0.10);
+    --accent-strong: #059669;
+    --accent-orange: #ea580c;
+    --accent-blue: #3b82f6;
+    --accent-red: #ef4444;
+    --text-main: #0f172a;
+    --text-muted: #475569;
+    --text-strong: #020617;
+    --radius-lg: 14px;
+    --radius-md: 10px;
+    --shadow-soft: 0 8px 24px rgba(15,23,42,0.06);
+    --shadow-subtle: 0 4px 14px rgba(15,23,42,0.04);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    padding: 12px;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+    display: flex;
+    height: 100vh;
+    background: var(--bg-main);
+    color: var(--text-main);
+  }
+
+  #left-panel, #right-panel {
+    background: var(--bg-panel);
+    backdrop-filter: blur(20px);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-soft);
+    border: 1px solid rgba(148, 163, 184, 0.25);
+  }
+
+  #left-panel {
+    width: 420px;
+    padding: 16px 18px 20px 18px;
+    margin-right: 12px;
+    overflow-y: auto;
+  }
+
+  #right-panel {
+    flex: 1;
+    padding: 16px 18px 20px 18px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  h1 {
+    margin: 0 0 6px 0;
+    font-size: 1.75rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--text-strong);
+  }
+
+  .subtitle {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin: 0 0 18px 0;
+    font-weight: 400;
+  }
+
+  h2 {
+    margin: 20px 0 12px 0;
+    font-size: 1.1rem;
+    font-weight: 650;
+    color: var(--text-strong);
+    letter-spacing: -0.01em;
+  }
+
+  h2::after {
+    content: "";
+    display: block;
+    width: 50px;
+    height: 2.5px;
+    margin-top: 6px;
+    border-radius: 999px;
+    background: var(--accent);
+  }
+
+  h3 {
+    margin: 16px 0 10px;
+    font-size: 0.92rem;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--text-strong);
+    font-weight: 600;
+  }
+
+  .control-group {
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    margin-bottom: 12px;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    box-shadow: var(--shadow-subtle);
+  }
+
+  .control-row {
+    display: flex;
+    align-items: center;
+    margin: 8px 0;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  label {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  input[type="number"],
+  input[type="file"],
+  select {
+    background: var(--bg-card-alt);
+    border-radius: 8px;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    padding: 6px 10px;
+    color: var(--text-main);
+    font-size: 0.88rem;
+    outline: none;
+    transition: all 0.2s;
+  }
+
+  input[type="number"]:focus,
+  select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-soft);
+  }
+
+  input[type="number"] {
+    width: 85px;
+  }
+
+  select {
+    min-width: 140px;
+  }
+
+  button {
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 8px rgba(16,185,129,0.2);
+  }
+
+  button:hover {
+    background: var(--accent-strong);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(16,185,129,0.3);
+  }
+
+  button:active {
+    transform: translateY(0);
+  }
+
+  button.secondary {
+    background: var(--accent-blue);
+    box-shadow: 0 2px 8px rgba(59,130,246,0.2);
+  }
+
+  button.secondary:hover {
+    background: #2563eb;
+    box-shadow: 0 4px 12px rgba(59,130,246,0.3);
+  }
+
+  button.warning {
+    background: var(--accent-orange);
+    box-shadow: 0 2px 8px rgba(234,88,12,0.2);
+  }
+
+  button.warning:hover {
+    background: #c2410c;
+    box-shadow: 0 4px 12px rgba(234,88,12,0.3);
+  }
+
+  .canvas-container {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .canvas-container h3 {
+    margin-top: 0;
+    margin-bottom: 12px;
+  }
+
+  canvas {
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    background: white;
+    cursor: crosshair;
+    border-radius: var(--radius-md);
+    display: block;
+  }
+
+  #dataCanvas {
+    width: 100%;
+    max-width: 650px;
+    height: 500px;
+  }
+
+  #variogramCanvas {
+    width: 100%;
+    max-width: 100%;
+    height: 500px;
+  }
+
+  table {
+    border-collapse: collapse;
+    font-size: 0.82rem;
+    width: 100%;
+    margin: 8px 0;
+  }
+
+  table th,
+  table td {
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    padding: 6px 8px;
+    text-align: center;
+  }
+
+  table th {
+    background: var(--bg-card-alt);
+    color: var(--text-strong);
+    font-weight: 600;
+    font-size: 0.84rem;
+  }
+
+  table td {
+    background: var(--bg-card);
+  }
+
+  .info-box {
+    background: var(--accent-soft);
+    border-left: 3px solid var(--accent);
+    padding: 10px 12px;
+    margin: 10px 0;
+    border-radius: 6px;
+    font-size: 0.86rem;
+    color: var(--text-muted);
+  }
+
+  .manual-input-controls {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .point-list {
+    max-height: 200px;
+    overflow-y: auto;
+    background: var(--bg-card);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: var(--radius-md);
+    padding: 8px;
+    margin: 8px 0;
+  }
+
+  .point-item {
+    padding: 4px 8px;
+    font-size: 0.82rem;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .point-item:last-child {
+    border-bottom: none;
+  }
+
+  .point-item button {
+    padding: 2px 8px;
+    font-size: 0.75rem;
+    background: var(--accent-orange);
+  }
+
+  .directional-controls {
+    display: none;
+  }
+
+  .directional-controls.active {
+    display: block;
+  }
+
+  .model-params {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .model-params label {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 0.85rem;
+  }
+
+  .model-params input {
+    width: 100%;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin: 10px 0;
+    font-size: 0.85rem;
+  }
+
+  .stat-card {
+    background: var(--bg-card-alt);
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+  }
+
+  .stat-label {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    margin-bottom: 2px;
+  }
+
+  .stat-value {
+    color: var(--text-strong);
+    font-weight: 600;
+    font-size: 1.1rem;
+  }
+
+  .variogram-table-container {
+    max-height: 300px;
+    overflow-y: auto;
+    margin: 10px 0;
+  }
+
+  #csvColumnSelector {
+    display: none;
+    margin-top: 10px;
+    padding: 12px;
+    border-radius: var(--radius-md);
+    background: var(--bg-card-alt);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+  }
+
+  .zoom-controls {
+    margin-top: 10px;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .zoom-controls button {
+    padding: 6px 12px;
+    font-size: 0.82rem;
+  }
+
+  .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+  }
+
+  .checkbox-label input[type="checkbox"] {
+    cursor: pointer;
+  }
+
+  .structure-group {
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: var(--radius-md);
+    padding: 10px;
+    margin: 8px 0;
+    background: var(--bg-card-alt);
+  }
+
+  .structure-group h4 {
+    margin: 0 0 8px 0;
+    font-size: 0.88rem;
+    color: var(--text-strong);
+  }
+
+  .structure-params {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .measurement-display {
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin-top: 8px;
+    font-size: 0.88rem;
+    color: #92400e;
+    display: none;
+  }
+
+  .measurement-display.active {
+    display: block;
+  }
+
+  .image-preview {
+    max-width: 100%;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    border-radius: var(--radius-md);
+    margin: 10px 0;
+    display: block;
+  }
+
+  .section-divider {
+    border: 0;
+    height: 2px;
+    background: linear-gradient(to right, var(--accent), transparent);
+    margin: 24px 0;
+  }
+
+  @media (max-width: 1200px) {
+    body {
+      flex-direction: column;
+    }
+    #left-panel {
+      width: 100%;
+      margin-right: 0;
+      margin-bottom: 12px;
+    }
+  }
+
+  /* Toast Notification */
+  .toast-notification {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--bg-card);
+    color: var(--text-main);
+    padding: 14px 20px;
+    border-radius: var(--radius-md);
+    box-shadow: 0 8px 32px rgba(15,23,42,0.18);
+    border-left: 4px solid var(--accent);
+    max-width: 380px;
+    z-index: 9999;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    white-space: pre-line;
+  }
+
+  .toast-notification.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .toast-notification.error {
+    border-left-color: var(--accent-red);
+  }
+
+  .toast-notification.warning {
+    border-left-color: var(--accent-orange);
+  }
+
+  .toast-notification.success {
+    border-left-color: var(--accent);
+  }
+</style>
+</head>
+<body>
+
+<div id="left-panel">
+  <h1>🗺️ VarioLab</h1>
+  <p class="subtitle">Interactive Variographic Analysis</p>
+
+  <!-- DATA INPUT SECTION -->
+  <h2>Data</h2>
+  <div class="control-group">
+    <h3>Import CSV</h3>
+    <input type="file" id="csvFileInput" accept=".csv">
+    
+    <div id="csvColumnSelector">
+      <label>X Column: <select id="xColumnSelect"></select></label><br>
+      <label>Y Column: <select id="yColumnSelect"></select></label><br>
+      <label>Value Column: <select id="valueColumnSelect"></select></label><br>
+      <button onclick="applyCSVColumns()">Apply</button>
+    </div>
+
+    <div class="info-box" style="margin-top: 10px;">
+      Expected format: CSV with X, Y and value columns
+    </div>
+  </div>
+
+  <div class="control-group">
+    <h3>Manual Input</h3>
+    <div class="control-row">
+      <label>X: <input type="number" id="manualX" value="50" step="1"></label>
+      <label>Y: <input type="number" id="manualY" value="50" step="1"></label>
+      <label>Value: <input type="number" id="manualValue" value="100" step="0.1"></label>
+    </div>
+    <div class="manual-input-controls">
+      <button onclick="addManualPoint()">Add Point</button>
+      <button class="warning" onclick="clearAllPoints()">Clear All</button>
+    </div>
+    
+    <div id="pointsList" class="point-list"></div>
+  </div>
+
+  <div class="control-group">
+    <h3>Transformation</h3>
+    <button onclick="applyNScore()" style="width: 100%;">Apply Normal Score</button>
+    <button class="secondary" onclick="revertNScore()" style="width: 100%; margin-top: 6px;">Revert to Original</button>
+    <div class="info-box" style="margin-top: 8px;">
+      Normal Score transforms data to Gaussian distribution (useful for SGS)
+    </div>
+  </div>
+
+  <div class="control-group">
+    <h3>Indicator Transform</h3>
+    <label class="checkbox-label">
+      <input type="checkbox" id="useIndicatorCheck" onchange="toggleIndicatorOptions()">
+      Apply Indicator Coding
+    </label>
+    
+    <div id="indicatorOptions" style="display: none; margin-top: 10px;">
+      <div class="control-row">
+        <label>Cutoff Value: <input type="number" id="indicatorCutoff" value="0" step="0.1"></label>
+      </div>
+      <button onclick="applyIndicator()" style="width: 100%; margin-top: 8px;">Apply Transform</button>
+      <button class="secondary" onclick="revertIndicator()" style="width: 100%; margin-top: 6px;">Revert to Original</button>
+      
+      <div class="info-box" style="margin-top: 8px;">
+        Values below cutoff → 0 | Values ≥ cutoff → 1
+      </div>
+    </div>
+  </div>
+
+  <!-- VARIOGRAM CALCULATION SECTION -->
+  <h2>Variogram Calculation</h2>
+  
+  <div class="control-group">
+    <h3>Variogram Type</h3>
+    <div class="control-row">
+      <select id="variogramType" onchange="toggleDirectionalControls()">
+        <option value="omnidirectional">Omnidirectional</option>
+        <option value="directional">Directional</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="control-group">
+    <h3>Lag Parameters</h3>
+    <div class="control-row">
+      <label>Lag Size: <input type="number" id="lagSize" value="20" min="1" step="1"></label>
+    </div>
+    <div class="control-row">
+      <label>Number of Lags: <input type="number" id="numLags" value="15" min="1" max="30" step="1"></label>
+    </div>
+    <div class="info-box">
+      Lag Tolerance: 0.5 × Lag Size
+    </div>
+  </div>
+
+  <div class="control-group directional-controls" id="directionalControls">
+    <h3>Directional Parameters</h3>
+    <div class="control-row">
+      <label>Angle (°): <input type="number" id="directionAngle" value="0" min="0" max="180" step="1" onchange="drawDataCanvas()"></label>
+    </div>
+    <div class="control-row">
+      <label>Angle Tolerance (°): <input type="number" id="angleTolerance" value="22.5" min="1" max="90" step="0.5"></label>
+    </div>
+    <div class="control-row">
+      <label>Bandwidth: <input type="number" id="bandwidth" value="50" min="1" step="1"></label>
+    </div>
+    <div class="info-box">
+      <strong>Convention:</strong><br>
+      0° = North-South | 90° = East-West<br>
+      Clockwise rotation<br>
+      <em>Calculates main direction + orthogonal (90°)</em>
+    </div>
+  </div>
+
+  <button onclick="calculateVariogram()" style="width: 100%; margin-top: 10px;">
+    Calculate Experimental Variogram
+  </button>
+
+  <!-- MODEL FITTING SECTION -->
+  <h2>Model Fitting</h2>
+  
+  <div class="control-group">
+    <h3>Variogram Model</h3>
+    <div class="control-row">
+      <label>Type: 
+        <select id="modelType">
+          <option value="spherical">Spherical</option>
+          <option value="exponential">Exponential</option>
+          <option value="gaussian">Gaussian</option>
+        </select>
+      </label>
+    </div>
+  </div>
+
+  <div class="control-group">
+    <h3>Model Parameters</h3>
+    
+    <!-- Number of Structures -->
+    <div style="margin-bottom: 10px;">
+      <label style="display: block; margin-bottom: 4px;">Number of Structures:</label>
+      <select id="numStructures" onchange="toggleStructure2()" style="width: 100%;">
+        <option value="1">1 Structure (Nugget + C₁)</option>
+        <option value="2" selected>2 Structures (Nugget + C₁ + C₂)</option>
+      </select>
+    </div>
+    
+    <!-- Nugget -->
+    <div style="margin-bottom: 10px;">
+      <label style="display: block; margin-bottom: 4px;">Nugget (C₀):</label>
+      <input type="number" id="modelNugget" value="0" min="0" step="0.1" style="width: 100%;">
+    </div>
+
+    <!-- Structure 1 -->
+    <div class="structure-group">
+      <h4>Structure 1</h4>
+      <div class="structure-params">
+        <div>
+          <label>Contribution (C₁):</label>
+          <input type="number" id="modelC1" value="500" min="0" step="1">
+        </div>
+        <div>
+          <label>Range (a₁):</label>
+          <input type="number" id="modelRange1" value="50" min="1" step="1">
+        </div>
+      </div>
+      <div class="structure-params" style="margin-top: 6px;" id="rangeOrtho1Container">
+        <div>
+          <label>Orthogonal Range:</label>
+          <input type="number" id="modelRangeOrtho1" value="50" min="1" step="1">
+        </div>
+      </div>
+    </div>
+
+    <!-- Structure 2 -->
+    <div class="structure-group" id="structure2Container">
+      <h4>Structure 2</h4>
+      <div class="structure-params">
+        <div>
+          <label>Contribution (C₂):</label>
+          <input type="number" id="modelC2" value="500" min="0" step="1">
+        </div>
+        <div>
+          <label>Range (a₂):</label>
+          <input type="number" id="modelRange2" value="100" min="1" step="1">
+        </div>
+      </div>
+      <div class="structure-params" style="margin-top: 6px;" id="rangeOrtho2Container">
+        <div>
+          <label>Orthogonal Range:</label>
+          <input type="number" id="modelRangeOrtho2" value="100" min="1" step="1">
+        </div>
+      </div>
+    </div>
+    
+    <button onclick="autoFitModel()" style="width: 100%; margin-top: 10px;">
+      Auto-Fit
+    </button>
+    
+    <button class="secondary" onclick="updateModelPlot()" style="width: 100%; margin-top: 6px;">
+      Update Model
+    </button>
+  </div>
+
+  <hr class="section-divider">
+
+  <!-- IMAGE VARIOGRAPHY SECTION -->
+  <h2>Image Variography</h2>
+  
+  <div class="control-group">
+    <h3>Load Image</h3>
+    <input type="file" id="imageFileInput" accept="image/*">
+    
+    <div id="imagePreviewContainer" style="display: none; margin-top: 10px;">
+      <canvas id="imagePreviewCanvas" style="max-width: 100%; border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 8px;"></canvas>
+      <div style="margin-top: 8px; font-size: 0.85rem; color: var(--text-muted);">
+        Image size: <span id="imageSizeText">-</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="control-group">
+    <h3>Sample Points</h3>
+    <div class="control-row">
+      <label>Number of Points: <input type="number" id="numSamplePoints" value="100" min="10" max="5000" step="10"></label>
+    </div>
+    <div class="control-row">
+      <label class="checkbox-label">
+        <input type="checkbox" id="useGridSampling">
+        Use grid-based sampling
+      </label>
+    </div>
+    <div class="control-row">
+      <label>Grid cell size (pixels): <input type="number" id="gridSamplingSize" value="20" min="1" step="1"></label>
+    </div>
+    <div class="control-row">
+      <label>Noise level (0–1): <input type="number" id="gridSamplingNoise" value="0.3" min="0" max="1" step="0.05"></label>
+    </div>
+    <button onclick="sampleImagePoints()" style="width: 100%; margin-top: 8px;">Sample Random Points</button>
+
+    <div class="info-box" style="margin-top: 10px;">
+      Randomly or grid-based samples points from the grayscale image
+    </div>
+  </div>
+
+  <div class="control-group">
+    <h3>Visualization</h3>
+    <label class="checkbox-label">
+      <input type="checkbox" id="showImageBackgroundCheck" onchange="drawDataCanvas()" checked>
+      Show Image Background
+    </label>
+    
+    <div style="margin-top: 10px;">
+      <button class="secondary" onclick="exportImagePoints()" style="width: 100%;">Export Points to CSV</button>
+    </div>
+    
+    <div class="info-box" style="margin-top: 8px;">
+      Export sampled points for use in estimation/simulation scripts
+    </div>
+  </div>
+</div>
+
+<div id="right-panel">
+  <!-- DATA CANVAS -->
+  <div class="canvas-container">
+    <h3>Data Map</h3>
+    <canvas id="dataCanvas"></canvas>
+    <div class="zoom-controls">
+      <button onclick="zoomIn()">🔍 Zoom In</button>
+      <button onclick="zoomOut()">🔍 Zoom Out</button>
+      <button onclick="resetZoom()">↺ Reset</button>
+      <label class="checkbox-label">
+        <input type="checkbox" id="showValuesCheck" onchange="drawDataCanvas()" checked>
+        Show Values
+      </label>
+      <button class="secondary" onclick="toggleMeasurementMode()">📏 Measure Distance</button>
+    </div>
+    
+    <div id="measurementDisplay" class="measurement-display">
+      <strong>Distance Measurement:</strong> <span id="measurementText">Click two points on the map</span>
+    </div>
+    
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Points</div>
+        <div class="stat-value" id="numPointsStat">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Mean</div>
+        <div class="stat-value" id="meanStat">-</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Variance</div>
+        <div class="stat-value" id="varianceStat">-</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Std. Deviation</div>
+        <div class="stat-value" id="stdStat">-</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Avg. Distance</div>
+        <div class="stat-value" id="avgDistStat">-</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Min Distance</div>
+        <div class="stat-value" id="minDistStat">-</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VARIOGRAM PLOT -->
+  <div class="canvas-container">
+    <h3 id="variogramMainTitle">Experimental Variogram and Model</h3>
+    <canvas id="variogramCanvas"></canvas>
+    
+    <div class="zoom-controls" style="margin-top: 10px;">
+      <label class="checkbox-label">
+        <input type="checkbox" id="showPairsCheck" onchange="drawVariogramPlot()">
+        Show Number of Pairs
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="normalizeCheck" onchange="toggleNormalization()">
+        Normalize by Variance
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="showVarianceLineCheck" onchange="drawVariogramPlot()">
+        Show Variance Line
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="connectPointsCheck" onchange="drawVariogramPlot()">
+        Connect Points
+      </label>
+    </div>
+    
+    <div class="variogram-table-container" id="variogramTableContainer" style="display: none;">
+      <table id="variogramTable">
+        <thead>
+          <tr>
+            <th>Direction</th>
+            <th>Lag</th>
+            <th>Distance</th>
+            <th>Semivariance</th>
+            <th>N° Pairs</th>
+          </tr>
+        </thead>
+        <tbody id="variogramTableBody">
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================
+// GLOBAL VARIABLES
+// ============================================
+let dataPoints = [];
+let originalDataPoints = [];
+let isNScoreApplied = false;
+let nscoreMapping = [];
+
+// Indicator transformation
+let isIndicatorApplied = false;
+let indicatorCutoff = 0;
+
+let variogramData = null;
+let variogramDataOrtho = null;
+let modelParams = {
+  nugget: 0,
+  c1: 500,
+  range1: 50,
+  rangeOrtho1: 50,
+  c2: 500,
+  range2: 100,
+  rangeOrtho2: 100
+};
+
+// Track normalization state
+let isNormalized = false;
+let unnormalizedModelParams = null;
+
+// Image variography
+let loadedImage = null;
+let imageGrayscaleData = null;
+let imageSampledPoints = [];
+let imageWidth = 0;
+
+// ============================================
+// TOAST NOTIFICATION SYSTEM
+// ============================================
+function showNotification(message, type = 'success', duration = 3500) {
+  // Remove existing notifications
+  const existing = document.querySelector('.toast-notification');
+  if (existing) {
+    existing.remove();
+  }
+  
+  // Create notification element
+  const toast = document.createElement('div');
+  toast.className = `toast-notification ${type}`;
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  
+  // Trigger animation
+  requestAnimationFrame(() => {
+    toast.classList.add('show');
+  });
+  
+  // Auto-remove after duration
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 300);
+  }, duration);
+}
+let imageHeight = 0;
+
+// Canvas and zoom variables
+let dataCanvas, dataCtx;
+let variogramCanvas, variogramCtx;
+
+let zoomLevel = 1.0;
+let panX = 0;
+let panY = 0;
+let isDragging = false;
+let lastMouseX = 0;
+let lastMouseY = 0;
+
+let minX = 0, maxX = 100, minY = 0, maxY = 100;
+
+// Measurement mode
+let measurementMode = false;
+let measurementPoints = [];
+
+// ============================================
+// INITIALIZATION
+// ============================================
+window.onload = function() {
+  dataCanvas = document.getElementById('dataCanvas');
+  dataCtx = dataCanvas.getContext('2d');
+  
+  variogramCanvas = document.getElementById('variogramCanvas');
+  variogramCtx = variogramCanvas.getContext('2d');
+  
+  setupCanvasInteraction();
+  setupCSVUpload();
+  setupImageUpload();
+  drawDataCanvas();
+  updateOrthoFieldsVisibility();
+};
+
+// ============================================
+// CSV HANDLING
+// ============================================
+function setupCSVUpload() {
+  document.getElementById('csvFileInput').addEventListener('change', handleCSVUpload);
+}
+
+function handleCSVUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const text = e.target.result;
+    parseCSV(text);
+  };
+  reader.readAsText(file);
+}
+
+function parseCSV(text) {
+  const lines = text.split('\n').filter(line => line.trim());
+  if (lines.length < 2) {
+    showNotification('Invalid CSV', 'error');
+    return;
+  }
+  
+  const headers = lines[0].split(',').map(h => h.trim());
+  
+  const xSelect = document.getElementById('xColumnSelect');
+  const ySelect = document.getElementById('yColumnSelect');
+  const valueSelect = document.getElementById('valueColumnSelect');
+  
+  xSelect.innerHTML = '';
+  ySelect.innerHTML = '';
+  valueSelect.innerHTML = '';
+  
+  headers.forEach((header, idx) => {
+    xSelect.innerHTML += `<option value="${idx}">${header}</option>`;
+    ySelect.innerHTML += `<option value="${idx}">${header}</option>`;
+    valueSelect.innerHTML += `<option value="${idx}">${header}</option>`;
+  });
+  
+  const xIdx = headers.findIndex(h => h.toLowerCase() === 'x');
+  const yIdx = headers.findIndex(h => h.toLowerCase() === 'y');
+  const vIdx = headers.findIndex(h => h.toLowerCase() === 'v' || h.toLowerCase() === 'value');
+  
+  if (xIdx >= 0) xSelect.value = xIdx;
+  if (yIdx >= 0) ySelect.value = yIdx;
+  if (vIdx >= 0) valueSelect.value = vIdx;
+  
+  window.csvRawData = lines.slice(1).map(line => line.split(',').map(v => v.trim()));
+  
+  document.getElementById('csvColumnSelector').style.display = 'block';
+}
+
+// ============================================
+// IMAGE VARIOGRAPHY
+// ============================================
+function setupImageUpload() {
+  document.getElementById('imageFileInput').addEventListener('change', handleImageUpload);
+}
+
+function handleImageUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  if (!file.type.startsWith('image/')) {
+    showNotification('Please select a valid image file', 'error');
+    return;
+  }
+  
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      loadedImage = img;
+      imageWidth = img.width;
+      imageHeight = img.height;
+      
+      // Convert to grayscale
+      convertImageToGrayscale(img);
+      
+      // Show preview
+      displayImagePreview(img);
+      
+      showNotification(`Image loaded: ${imageWidth}x${imageHeight} pixels\nConverted to grayscale`, 'success');
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function convertImageToGrayscale(img) {
+  // Create temporary canvas to extract pixel data
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = img.width;
+  tempCanvas.height = img.height;
+  const tempCtx = tempCanvas.getContext('2d');
+  
+  // Draw image
+  tempCtx.drawImage(img, 0, 0);
+  
+  // Get pixel data
+  const imageData = tempCtx.getImageData(0, 0, img.width, img.height);
+  const pixels = imageData.data;
+  
+  // Create grayscale array
+  imageGrayscaleData = [];
+  for (let y = 0; y < img.height; y++) {
+    const row = [];
+    for (let x = 0; x < img.width; x++) {
+      const idx = (y * img.width + x) * 4;
+      const r = pixels[idx];
+      const g = pixels[idx + 1];
+      const b = pixels[idx + 2];
+      
+      // Convert to grayscale using luminosity method
+      const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+      row.push(gray);
+    }
+    imageGrayscaleData.push(row);
+  }
+}
+
+function displayImagePreview(img) {
+  const previewCanvas = document.getElementById('imagePreviewCanvas');
+  const previewCtx = previewCanvas.getContext('2d');
+  
+  // Set canvas size to fit container while maintaining aspect ratio
+  const maxWidth = 350;
+  const scale = Math.min(1, maxWidth / img.width);
+  previewCanvas.width = img.width * scale;
+  previewCanvas.height = img.height * scale;
+  
+  // Draw grayscale image
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = img.width;
+  tempCanvas.height = img.height;
+  const tempCtx = tempCanvas.getContext('2d');
+  
+  tempCtx.drawImage(img, 0, 0);
+  const imageData = tempCtx.getImageData(0, 0, img.width, img.height);
+  const pixels = imageData.data;
+  
+  // Convert to grayscale
+  for (let i = 0; i < pixels.length; i += 4) {
+    const gray = 0.299 * pixels[i] + 0.587 * pixels[i + 1] + 0.114 * pixels[i + 2];
+    pixels[i] = gray;
+    pixels[i + 1] = gray;
+    pixels[i + 2] = gray;
+  }
+  
+  tempCtx.putImageData(imageData, 0, 0);
+  previewCtx.drawImage(tempCanvas, 0, 0, previewCanvas.width, previewCanvas.height);
+  
+  document.getElementById('imagePreviewContainer').style.display = 'block';
+  document.getElementById('imageSizeText').textContent = `${img.width} × ${img.height} pixels`;
+}
+
+
+function sampleImagePointsOnGrid(numPoints, gridSize, noiseFrac) {
+  const centers = [];
+  const half = gridSize * 0.5;
+
+  // Generate grid centers over the image extent
+  for (let x = half; x < imageWidth; x += gridSize) {
+    for (let y = half; y < imageHeight; y += gridSize) {
+      centers.push({ x, y });
+    }
+  }
+
+  if (centers.length === 0) {
+    return [];
+  }
+
+  // Shuffle centers to randomize which cells are used first
+  for (let i = centers.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = centers[i];
+    centers[i] = centers[j];
+    centers[j] = tmp;
+  }
+
+  const noiseAmp = Math.max(0, Math.min(1, noiseFrac)) * gridSize;
+  const usedPositions = new Set();
+  const samples = [];
+
+  const maxPts = Math.min(numPoints, centers.length);
+
+  for (let k = 0; k < maxPts; k++) {
+    const c = centers[k];
+
+    let px = c.x;
+    let py = c.y;
+
+    if (noiseAmp > 0) {
+      const dx = (Math.random() - 0.5) * 2 * noiseAmp;
+      const dy = (Math.random() - 0.5) * 2 * noiseAmp;
+      px = c.x + dx;
+      py = c.y + dy;
+    }
+
+    // Clamp to image bounds and convert to integer pixel indices
+    let ix = Math.round(px);
+    let iy = Math.round(py);
+
+    if (ix < 0) ix = 0;
+    if (ix >= imageWidth) ix = imageWidth - 1;
+    if (iy < 0) iy = 0;
+    if (iy >= imageHeight) iy = imageHeight - 1;
+
+    const posKey = ix + ',' + iy;
+    if (usedPositions.has(posKey)) {
+      continue;
+    }
+    usedPositions.add(posKey);
+
+    const grayValue = imageGrayscaleData[iy][ix];
+
+    const point = {
+      x: ix,
+      y: imageHeight - 1 - iy,
+      value: grayValue
+    };
+
+    samples.push(point);
+  }
+
+  return samples;
+}
+
+
+function sampleImagePoints() {
+  if (!imageGrayscaleData || imageGrayscaleData.length === 0) {
+    showNotification('Please load an image first', 'warning');
+    return;
+  }
+
+  const numPoints = parseInt(document.getElementById('numSamplePoints').value);
+
+  if (numPoints < 1 || numPoints > imageWidth * imageHeight) {
+    showNotification(`Number of points must be between 1 and ${imageWidth * imageHeight}`, 'error');
+    return;
+  }
+
+  // Clear existing data
+  dataPoints = [];
+  imageSampledPoints = [];
+
+  const useGrid = document.getElementById('useGridSampling')?.checked;
+
+  if (useGrid) {
+    const gridSize = parseFloat(document.getElementById('gridSamplingSize').value) || 10;
+    let noiseFrac = parseFloat(document.getElementById('gridSamplingNoise').value);
+    if (!isFinite(noiseFrac) || noiseFrac < 0) noiseFrac = 0;
+    if (noiseFrac > 1) noiseFrac = 1;
+
+    const samples = sampleImagePointsOnGrid(numPoints, gridSize, noiseFrac);
+    if (samples.length === 0) {
+      showNotification('No grid-based samples could be generated. Try a smaller grid size or disable grid sampling.', 'error');
+      return;
+    }
+
+    dataPoints = samples.slice();
+    imageSampledPoints = samples.slice();
+  } else {
+    // Generate purely random sample points (original behavior)
+    const usedPositions = new Set();
+
+    for (let i = 0; i < numPoints; i++) {
+      let x, y, posKey;
+
+      // Find unique position
+      do {
+        x = Math.floor(Math.random() * imageWidth);
+        y = Math.floor(Math.random() * imageHeight);
+        posKey = `${x},${y}`;
+      } while (usedPositions.has(posKey));
+
+      usedPositions.add(posKey);
+
+      // Get grayscale value (0-255)
+      const grayValue = imageGrayscaleData[y][x];
+
+      // Store point (y is inverted for image coordinates)
+      const point = {
+        x: x,
+        y: imageHeight - 1 - y,
+        value: grayValue
+      };
+
+      dataPoints.push(point);
+      imageSampledPoints.push(point);
+    }
+  }
+
+  // Update data bounds and stats
+  minX = 0;
+  maxX = imageWidth;
+  minY = 0;
+  maxY = imageHeight;
+
+  // Add small padding
+  const padX = imageWidth * 0.05;
+  const padY = imageHeight * 0.05;
+  minX -= padX;
+  maxX += padX;
+  minY -= padY;
+  maxY += padY;
+
+  originalDataPoints = JSON.parse(JSON.stringify(dataPoints));
+  isNScoreApplied = false;
+  isIndicatorApplied = false;
+
+  // Reset normalization
+  document.getElementById('normalizeCheck').checked = false;
+  isNormalized = false;
+  unnormalizedModelParams = null;
+
+  updatePointsList();
+  updateDataStats();
+  resetZoom();
+  drawDataCanvas();
+
+  showNotification(`${numPoints} points sampled from image!\nGrayscale values: 0 (black) to 255 (white)`, 'success');
+}
+
+function exportImagePoints() {
+  if (imageSampledPoints.length === 0) {
+    showNotification('No sampled points to export. Please sample points from an image first.', 'warning');
+    return;
+  }
+  
+  // Create CSV content
+  let csvContent = 'X,Y,GrayValue\n';
+  
+  imageSampledPoints.forEach(pt => {
+    csvContent += `${pt.x},${pt.y},${pt.value.toFixed(2)}\n`;
+  });
+  
+  // Create blob and download
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  
+  link.setAttribute('href', url);
+  link.setAttribute('download', 'image_sampled_points.csv');
+  link.style.visibility = 'hidden';
+  
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  
+  showNotification(`Exported ${imageSampledPoints.length} points to CSV file!`, 'success');
+}
+
+function applyCSVColumns() {
+  const xIdx = parseInt(document.getElementById('xColumnSelect').value);
+  const yIdx = parseInt(document.getElementById('yColumnSelect').value);
+  const vIdx = parseInt(document.getElementById('valueColumnSelect').value);
+  
+  dataPoints = [];
+  window.csvRawData.forEach(row => {
+    const x = parseFloat(row[xIdx]);
+    const y = parseFloat(row[yIdx]);
+    const v = parseFloat(row[vIdx]);
+    
+    if (!isNaN(x) && !isNaN(y) && !isNaN(v)) {
+      dataPoints.push({ x, y, value: v });
+    }
+  });
+  
+  originalDataPoints = JSON.parse(JSON.stringify(dataPoints));
+  isNScoreApplied = false;
+  isIndicatorApplied = false;
+  imageSampledPoints = []; // Clear image data
+  
+  // Reset normalization when loading new data
+  document.getElementById('normalizeCheck').checked = false;
+  isNormalized = false;
+  unnormalizedModelParams = null;
+  
+  document.getElementById('csvColumnSelector').style.display = 'none';
+  updatePointsList();
+  updateDataStats();
+  calculateDataBounds();
+  resetZoom();
+  drawDataCanvas();
+  showNotification(`${dataPoints.length} points loaded successfully!`, 'success');
+}
+
+// ============================================
+// MANUAL POINT INPUT
+// ============================================
+function addManualPoint() {
+  const x = parseFloat(document.getElementById('manualX').value);
+  const y = parseFloat(document.getElementById('manualY').value);
+  const value = parseFloat(document.getElementById('manualValue').value);
+  
+  if (isNaN(x) || isNaN(y) || isNaN(value)) {
+    showNotification('Please enter valid values', 'error');
+    return;
+  }
+  
+  dataPoints.push({ x, y, value });
+  originalDataPoints = JSON.parse(JSON.stringify(dataPoints));
+  isNScoreApplied = false;
+  isIndicatorApplied = false;
+  imageSampledPoints = []; // Clear image data when manually adding points
+  
+  updatePointsList();
+  updateDataStats();
+  calculateDataBounds();
+  drawDataCanvas();
+}
+
+function removePoint(index) {
+  dataPoints.splice(index, 1);
+  originalDataPoints = JSON.parse(JSON.stringify(dataPoints));
+  isNScoreApplied = false;
+  isIndicatorApplied = false;
+  imageSampledPoints = []; // Clear image data when removing points
+  
+  updatePointsList();
+  updateDataStats();
+  calculateDataBounds();
+  drawDataCanvas();
+}
+
+function clearAllPoints() {
+  if (confirm('Are you sure you want to remove all points?')) {
+    dataPoints = [];
+    originalDataPoints = [];
+    isNScoreApplied = false;
+    isIndicatorApplied = false;
+    nscoreMapping = [];
+    imageSampledPoints = [];
+    
+    // Reset normalization
+    document.getElementById('normalizeCheck').checked = false;
+    isNormalized = false;
+    unnormalizedModelParams = null;
+    
+    updatePointsList();
+    updateDataStats();
+    drawDataCanvas();
+    variogramData = null;
+    variogramDataOrtho = null;
+    document.getElementById('variogramTableContainer').style.display = 'none';
+  }
+}
+
+function updatePointsList() {
+  const listDiv = document.getElementById('pointsList');
+  listDiv.innerHTML = '';
+  
+  dataPoints.slice(0, 50).forEach((pt, idx) => {
+    const item = document.createElement('div');
+    item.className = 'point-item';
+    item.innerHTML = `
+      <span>P${idx + 1}: (${pt.x.toFixed(1)}, ${pt.y.toFixed(1)}) = ${pt.value.toFixed(2)}</span>
+      <button onclick="removePoint(${idx})">×</button>
+    `;
+    listDiv.appendChild(item);
+  });
+  
+  if (dataPoints.length > 50) {
+    const item = document.createElement('div');
+    item.className = 'point-item';
+    item.innerHTML = `<span style="font-style: italic;">... and ${dataPoints.length - 50} more points</span>`;
+    listDiv.appendChild(item);
+  }
+}
+
+function updateDataStats() {
+  document.getElementById('numPointsStat').textContent = dataPoints.length;
+  
+  if (dataPoints.length > 0) {
+    const values = dataPoints.map(p => p.value);
+    const mean = values.reduce((a, b) => a + b, 0) / values.length;
+    const variance = values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length;
+    const std = Math.sqrt(variance);
+    
+    document.getElementById('meanStat').textContent = mean.toFixed(2);
+    document.getElementById('varianceStat').textContent = variance.toFixed(2);
+    document.getElementById('stdStat').textContent = std.toFixed(2);
+    
+    // Calculate average distance between all points
+    if (dataPoints.length > 1) {
+      let sumDist = 0;
+      let count = 0;
+      let minDist = Infinity;
+      
+      for (let i = 0; i < dataPoints.length; i++) {
+        for (let j = i + 1; j < dataPoints.length; j++) {
+          const dx = dataPoints[j].x - dataPoints[i].x;
+          const dy = dataPoints[j].y - dataPoints[i].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          sumDist += dist;
+          count++;
+          if (dist < minDist) minDist = dist;
+        }
+      }
+      
+      const avgDist = sumDist / count;
+      document.getElementById('avgDistStat').textContent = avgDist.toFixed(2);
+      document.getElementById('minDistStat').textContent = minDist.toFixed(2);
+    } else {
+      document.getElementById('avgDistStat').textContent = '-';
+      document.getElementById('minDistStat').textContent = '-';
+    }
+  } else {
+    document.getElementById('meanStat').textContent = '-';
+    document.getElementById('varianceStat').textContent = '-';
+    document.getElementById('stdStat').textContent = '-';
+    document.getElementById('avgDistStat').textContent = '-';
+    document.getElementById('minDistStat').textContent = '-';
+  }
+}
+
+function calculateDataBounds() {
+  if (dataPoints.length === 0) {
+    minX = 0; maxX = 100;
+    minY = 0; maxY = 100;
+    return;
+  }
+  
+  const xs = dataPoints.map(p => p.x);
+  const ys = dataPoints.map(p => p.y);
+  const dataMinX = Math.min(...xs);
+  const dataMaxX = Math.max(...xs);
+  const dataMinY = Math.min(...ys);
+  const dataMaxY = Math.max(...ys);
+  
+  const rangeX = dataMaxX - dataMinX;
+  const rangeY = dataMaxY - dataMinY;
+  
+  // Use the SAME scale for both axes (largest range)
+  const maxRange = Math.max(rangeX, rangeY) || 10;
+  const padding = maxRange * 0.1;
+  
+  // Center the data in both axes with equal scale
+  const centerX = (dataMinX + dataMaxX) / 2;
+  const centerY = (dataMinY + dataMaxY) / 2;
+  const halfRange = (maxRange + 2 * padding) / 2;
+  
+  minX = centerX - halfRange;
+  maxX = centerX + halfRange;
+  minY = centerY - halfRange;
+  maxY = centerY + halfRange;
+}
+
+// ============================================
+// NSCORE TRANSFORMATION
+// ============================================
+function applyNScore() {
+  if (dataPoints.length === 0) {
+    showNotification('No data to transform', 'warning');
+    return;
+  }
+  
+  if (isNScoreApplied) {
+    showNotification('Normal Score already applied', 'warning');
+    return;
+  }
+  
+  if (isIndicatorApplied) {
+    showNotification('Cannot apply Normal Score when Indicator coding is active. Please revert Indicator coding first.', 'error');
+    return;
+  }
+  
+  const sortedData = dataPoints.map((pt, idx) => ({
+    index: idx,
+    value: pt.value
+  })).sort((a, b) => a.value - b.value);
+  
+  nscoreMapping = [];
+  const n = sortedData.length;
+  
+  sortedData.forEach((item, rank) => {
+    const p = (rank + 0.5) / n;
+    const nscore = normalInv(p);
+    
+    nscoreMapping.push({
+      originalValue: item.value,
+      nscore: nscore
+    });
+    
+    dataPoints[item.index].value = nscore;
+  });
+  
+  isNScoreApplied = true;
+  
+  // Reset normalization when applying nscore (variance changes drastically)
+  document.getElementById('normalizeCheck').checked = false;
+  isNormalized = false;
+  unnormalizedModelParams = null;
+  
+  updateDataStats();
+  drawDataCanvas();
+  
+  showNotification('Normal Score applied! Data now follows Gaussian distribution N(0,1).', 'success');
+}
+
+function revertNScore() {
+  if (!isNScoreApplied) {
+    showNotification('Normal Score not applied', 'warning');
+    return;
+  }
+  
+  dataPoints = JSON.parse(JSON.stringify(originalDataPoints));
+  isNScoreApplied = false;
+  nscoreMapping = [];
+  
+  // Reset normalization when reverting (variance changes back)
+  document.getElementById('normalizeCheck').checked = false;
+  isNormalized = false;
+  unnormalizedModelParams = null;
+  
+  updateDataStats();
+  drawDataCanvas();
+  
+  showNotification('Data reverted to original values.', 'success');
+}
+
+// ============================================
+// INDICATOR TRANSFORMATION
+// ============================================
+function resetAllTransformations() {
+  isNScoreApplied = false;
+  nscoreMapping = [];
+  isIndicatorApplied = false;
+  indicatorCutoff = 0;
+  document.getElementById('useIndicatorCheck').checked = false;
+  document.getElementById('indicatorOptions').style.display = 'none';
+}
+
+function toggleIndicatorOptions() {
+  const checked = document.getElementById('useIndicatorCheck').checked;
+  document.getElementById('indicatorOptions').style.display = checked ? 'block' : 'none';
+}
+
+function applyIndicator() {
+  if (dataPoints.length === 0) {
+    showNotification('No data to transform', 'warning');
+    return;
+  }
+  
+  if (isIndicatorApplied) {
+    showNotification('Indicator coding already applied', 'warning');
+    return;
+  }
+  
+  if (isNScoreApplied) {
+    showNotification('Cannot apply indicator coding when Normal Score is active. Please revert Normal Score first.', 'error');
+    return;
+  }
+  
+  // Get cutoff value
+  const cutoff = parseFloat(document.getElementById('indicatorCutoff').value);
+  
+  if (!isFinite(cutoff)) {
+    showNotification('Please enter a valid cutoff value', 'error');
+    return;
+  }
+  
+  // Store cutoff
+  indicatorCutoff = cutoff;
+  
+  // Apply indicator transformation
+  let countBelow = 0;
+  let countAbove = 0;
+  
+  dataPoints.forEach(pt => {
+    if (pt.value < cutoff) {
+      pt.value = 0;
+      countBelow++;
+    } else {
+      pt.value = 1;
+      countAbove++;
+    }
+  });
+  
+  isIndicatorApplied = true;
+  
+  // Reset normalization when applying indicators (variance changes)
+  document.getElementById('normalizeCheck').checked = false;
+  isNormalized = false;
+  unnormalizedModelParams = null;
+  
+  updateDataStats();
+  drawDataCanvas();
+  
+  showNotification(`Indicator coding applied!\nCutoff: ${cutoff}\nBelow (0): ${countBelow} points\nAbove (1): ${countAbove} points`, 'success');
+}
+
+function revertIndicator() {
+  if (!isIndicatorApplied) {
+    showNotification('Indicator coding not applied', 'warning');
+    return;
+  }
+  
+  dataPoints = JSON.parse(JSON.stringify(originalDataPoints));
+  isIndicatorApplied = false;
+  indicatorCutoff = 0;
+  
+  // Reset normalization when reverting (variance changes back)
+  document.getElementById('normalizeCheck').checked = false;
+  isNormalized = false;
+  unnormalizedModelParams = null;
+  
+  updateDataStats();
+  drawDataCanvas();
+  
+  showNotification('Data reverted to original values.', 'success');
+}
+
+function normalInv(p) {
+  const a = [
+    -39.69683028665376,
+    220.9460984245205,
+    -275.9285104469687,
+    138.3577518672690,
+    -30.66479806614716,
+    2.506628277459239
+  ];
+  
+  const b = [
+    -54.47609879822406,
+    161.5858368580409,
+    -155.6989798598866,
+    66.80131188771972,
+    -13.28068155288572
+  ];
+  
+  const c = [
+    -0.007784894002430293,
+    -0.3223964580411365,
+    -2.400758277161838,
+    -2.549732539343734,
+    4.374664141464968,
+    2.938163982698783
+  ];
+  
+  const d = [
+    0.007784695709041462,
+    0.3224671290700398,
+    2.445134137142996,
+    3.754408661907416
+  ];
+  
+  const pLow = 0.02425;
+  const pHigh = 1 - pLow;
+  
+  let q, r, x;
+  
+  if (p < pLow) {
+    q = Math.sqrt(-2 * Math.log(p));
+    x = (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) /
+        ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1);
+  } else if (p <= pHigh) {
+    q = p - 0.5;
+    r = q * q;
+    x = (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q /
+        (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1);
+  } else {
+    q = Math.sqrt(-2 * Math.log(1 - p));
+    x = -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) /
+         ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1);
+  }
+  
+  return x;
+}
+
+// ============================================
+// MEASUREMENT MODE
+// ============================================
+function toggleMeasurementMode() {
+  measurementMode = !measurementMode;
+  measurementPoints = [];
+  
+  const display = document.getElementById('measurementDisplay');
+  const text = document.getElementById('measurementText');
+  
+  if (measurementMode) {
+    display.classList.add('active');
+    text.textContent = 'Click two points on the map';
+    dataCanvas.style.cursor = 'crosshair';
+  } else {
+    display.classList.remove('active');
+    dataCanvas.style.cursor = 'default';
+  }
+  
+  drawDataCanvas();
+}
+
+function handleMeasurementClick(worldX, worldY) {
+  measurementPoints.push({ x: worldX, y: worldY });
+  
+  if (measurementPoints.length === 2) {
+    const dx = measurementPoints[1].x - measurementPoints[0].x;
+    const dy = measurementPoints[1].y - measurementPoints[0].y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    
+    const text = document.getElementById('measurementText');
+    text.textContent = `Distance: ${dist.toFixed(2)} units | Click to measure again`;
+    
+    measurementPoints = [];
+  }
+  
+  drawDataCanvas();
+}
+
+// ============================================
+// DATA CANVAS INTERACTION
+// ============================================
+function setupCanvasInteraction() {
+  dataCanvas.addEventListener('mousedown', onCanvasMouseDown);
+  dataCanvas.addEventListener('mousemove', onCanvasMouseMove);
+  dataCanvas.addEventListener('mouseup', onCanvasMouseUp);
+  dataCanvas.addEventListener('mouseleave', onCanvasMouseUp);
+  dataCanvas.addEventListener('wheel', onCanvasWheel, { passive: false });
+}
+
+function onCanvasMouseDown(e) {
+  const rect = dataCanvas.getBoundingClientRect();
+  const mouseX = e.clientX - rect.left;
+  const mouseY = e.clientY - rect.top;
+  
+  if (measurementMode) {
+    const worldCoords = screenToWorld(mouseX, mouseY);
+    handleMeasurementClick(worldCoords.x, worldCoords.y);
+    return;
+  }
+  
+  isDragging = true;
+  lastMouseX = mouseX;
+  lastMouseY = mouseY;
+}
+
+function onCanvasMouseMove(e) {
+  if (!isDragging) return;
+  
+  const rect = dataCanvas.getBoundingClientRect();
+  const mouseX = e.clientX - rect.left;
+  const mouseY = e.clientY - rect.top;
+  
+  const dx = (mouseX - lastMouseX) * (maxX - minX) / (dataCanvas.offsetWidth - 100);
+  const dy = (mouseY - lastMouseY) * (maxY - minY) / (dataCanvas.offsetHeight - 100);
+  
+  panX -= dx / zoomLevel;
+  panY += dy / zoomLevel;
+  
+  lastMouseX = mouseX;
+  lastMouseY = mouseY;
+  
+  drawDataCanvas();
+}
+
+function onCanvasMouseUp(e) {
+  isDragging = false;
+}
+
+function onCanvasWheel(e) {
+  e.preventDefault();
+  
+  const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+  zoomLevel = Math.max(0.1, Math.min(20, zoomLevel * zoomFactor));
+  
+  drawDataCanvas();
+}
+
+function zoomIn() {
+  zoomLevel = Math.min(20, zoomLevel * 1.3);
+  drawDataCanvas();
+}
+
+function zoomOut() {
+  zoomLevel = Math.max(0.1, zoomLevel / 1.3);
+  drawDataCanvas();
+}
+
+function resetZoom() {
+  zoomLevel = 1.0;
+  panX = 0;
+  panY = 0;
+  drawDataCanvas();
+}
+
+function screenToWorld(sx, sy) {
+  const margin = 50;
+  const plotW = dataCanvas.offsetWidth - 2 * margin;
+  const plotH = dataCanvas.offsetHeight - 2 * margin;
+  
+  const rangeX = (maxX - minX) / zoomLevel;
+  const rangeY = (maxY - minY) / zoomLevel;
+  const viewMinX = minX + panX;
+  const viewMinY = minY + panY;
+  
+  // Use uniform scale (same as toScreen)
+  const scale = Math.min(plotW / rangeX, plotH / rangeY);
+  const actualPlotW = rangeX * scale;
+  const actualPlotH = rangeY * scale;
+  const offsetX = (plotW - actualPlotW) / 2;
+  const offsetY = (plotH - actualPlotH) / 2;
+  
+  const wx = viewMinX + ((sx - margin - offsetX) / actualPlotW) * rangeX;
+  const wy = viewMinY + ((dataCanvas.offsetHeight - margin - offsetY - sy) / actualPlotH) * rangeY;
+  
+  return { x: wx, y: wy };
+}
+
+// ============================================
+// IMAGE BACKGROUND DRAWING
+// ============================================
+function drawImageBackground(margin, actualPlotW, actualPlotH, offsetX, offsetY, canvasW, canvasH, viewMinX, viewMaxX, viewMinY, viewMaxY, rangeX, rangeY) {
+  if (!imageGrayscaleData || !loadedImage) return;
+  
+  const imageWidth = imageGrayscaleData[0].length;
+  const imageHeight = imageGrayscaleData.length;
+  
+  // Create temporary canvas with grayscale image
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = imageWidth;
+  tempCanvas.height = imageHeight;
+  const tempCtx = tempCanvas.getContext('2d');
+  
+  // Create ImageData from grayscale array
+  const imageData = tempCtx.createImageData(imageWidth, imageHeight);
+  const pixels = imageData.data;
+  
+  for (let y = 0; y < imageHeight; y++) {
+    for (let x = 0; x < imageWidth; x++) {
+      const idx = (y * imageWidth + x) * 4;
+      const gray = imageGrayscaleData[y][x]; // Don't invert - already correct orientation
+      
+      pixels[idx] = gray;
+      pixels[idx + 1] = gray;
+      pixels[idx + 2] = gray;
+      pixels[idx + 3] = 180; // Semi-transparent
+    }
+  }
+  
+  tempCtx.putImageData(imageData, 0, 0);
+  
+  // Calculate where to draw the image in canvas coordinates using uniform scale
+  // Image occupies 0 to imageWidth in X and 0 to imageHeight in Y
+  const imgLeft = margin + offsetX + ((0 - viewMinX) / rangeX) * actualPlotW;
+  const imgRight = margin + offsetX + ((imageWidth - viewMinX) / rangeX) * actualPlotW;
+  const imgBottom = canvasH - margin - offsetY - ((0 - viewMinY) / rangeY) * actualPlotH;
+  const imgTop = canvasH - margin - offsetY - ((imageHeight - viewMinY) / rangeY) * actualPlotH;
+  
+  const imgDrawW = imgRight - imgLeft;
+  const imgDrawH = imgBottom - imgTop;
+  
+  // Draw image
+  dataCtx.globalAlpha = 0.7;
+  dataCtx.drawImage(tempCanvas, imgLeft, imgTop, imgDrawW, imgDrawH);
+  dataCtx.globalAlpha = 1.0;
+}
+
+// ============================================
+// DATA CANVAS DRAWING
+// ============================================
+function drawDataCanvas() {
+  const width = dataCanvas.width = dataCanvas.offsetWidth * window.devicePixelRatio;
+  const height = dataCanvas.height = dataCanvas.offsetHeight * window.devicePixelRatio;
+  dataCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  
+  const w = dataCanvas.offsetWidth;
+  const h = dataCanvas.offsetHeight;
+  
+  dataCtx.fillStyle = 'white';
+  dataCtx.fillRect(0, 0, w, h);
+  
+  if (dataPoints.length === 0) {
+    dataCtx.fillStyle = '#94a3b8';
+    dataCtx.font = '14px sans-serif';
+    dataCtx.textAlign = 'center';
+    dataCtx.fillText('No data loaded', w / 2, h / 2);
+    return;
+  }
+  
+  const margin = 50;
+  const plotW = w - 2 * margin;
+  const plotH = h - 2 * margin;
+  
+  const rangeX = (maxX - minX) / zoomLevel;
+  const rangeY = (maxY - minY) / zoomLevel;
+  const viewMinX = minX + panX;
+  const viewMaxX = viewMinX + rangeX;
+  const viewMinY = minY + panY;
+  const viewMaxY = viewMinY + rangeY;
+  
+  // Calculate uniform scale
+  const scale = Math.min(plotW / rangeX, plotH / rangeY);
+  const actualPlotW = rangeX * scale;
+  const actualPlotH = rangeY * scale;
+  const offsetX = (plotW - actualPlotW) / 2;
+  const offsetY = (plotH - actualPlotH) / 2;
+  
+  // Draw image background if enabled and available
+  const showImageBackground = document.getElementById('showImageBackgroundCheck').checked;
+  if (showImageBackground && loadedImage && imageGrayscaleData) {
+    drawImageBackground(margin, actualPlotW, actualPlotH, offsetX, offsetY, w, h, viewMinX, viewMaxX, viewMinY, viewMaxY, rangeX, rangeY);
+  }
+  
+  // Draw axes
+  dataCtx.strokeStyle = '#cbd5e1';
+  dataCtx.lineWidth = 2;
+  dataCtx.beginPath();
+  dataCtx.moveTo(margin, margin);
+  dataCtx.lineTo(margin, h - margin);
+  dataCtx.lineTo(w - margin, h - margin);
+  dataCtx.stroke();
+  
+  // Labels
+  dataCtx.fillStyle = '#475569';
+  dataCtx.font = '12px sans-serif';
+  dataCtx.textAlign = 'center';
+  dataCtx.fillText('X', w / 2, h - 10);
+  dataCtx.save();
+  dataCtx.translate(15, h / 2);
+  dataCtx.rotate(-Math.PI / 2);
+  dataCtx.fillText('Y', 0, 0);
+  dataCtx.restore();
+  
+  // Grid and ticks
+  dataCtx.strokeStyle = '#e2e8f0';
+  dataCtx.lineWidth = 1;
+  dataCtx.fillStyle = '#64748b';
+  dataCtx.font = '10px sans-serif';
+  
+  for (let i = 0; i <= 5; i++) {
+    const val = viewMinX + (rangeX * i) / 5;
+    const x = margin + (plotW * i) / 5;
+    dataCtx.textAlign = 'center';
+    dataCtx.fillText(val.toFixed(0), x, h - margin + 15);
+    dataCtx.beginPath();
+    dataCtx.moveTo(x, margin);
+    dataCtx.lineTo(x, h - margin);
+    dataCtx.stroke();
+  }
+  
+  for (let i = 0; i <= 5; i++) {
+    const val = viewMinY + (rangeY * i) / 5;
+    const y = h - margin - (plotH * i) / 5;
+    dataCtx.textAlign = 'right';
+    dataCtx.fillText(val.toFixed(0), margin - 8, y + 4);
+    dataCtx.beginPath();
+    dataCtx.moveTo(margin, y);
+    dataCtx.lineTo(w - margin, y);
+    dataCtx.stroke();
+  }
+  
+  function toScreen(x, y) {
+    // Use the scale, actualPlotW, actualPlotH, offsetX, offsetY already calculated
+    const sx = margin + offsetX + ((x - viewMinX) / rangeX) * actualPlotW;
+    const sy = h - margin - offsetY - ((y - viewMinY) / rangeY) * actualPlotH;
+    return [sx, sy];
+  }
+  
+  // Draw directional cross if directional mode is active
+  const isDirectional = document.getElementById('variogramType').value === 'directional';
+  if (isDirectional) {
+    drawDirectionalCross(toScreen, viewMinX, viewMaxX, viewMinY, viewMaxY, margin, w, h);
+  }
+  
+  // Draw measurement lines
+  if (measurementMode && measurementPoints.length > 0) {
+    measurementPoints.forEach(pt => {
+      const [sx, sy] = toScreen(pt.x, pt.y);
+      dataCtx.fillStyle = '#f59e0b';
+      dataCtx.beginPath();
+      dataCtx.arc(sx, sy, 6, 0, Math.PI * 2);
+      dataCtx.fill();
+      dataCtx.strokeStyle = '#78350f';
+      dataCtx.lineWidth = 2;
+      dataCtx.stroke();
+    });
+    
+    if (measurementPoints.length === 2) {
+      const [sx1, sy1] = toScreen(measurementPoints[0].x, measurementPoints[0].y);
+      const [sx2, sy2] = toScreen(measurementPoints[1].x, measurementPoints[1].y);
+      
+      dataCtx.strokeStyle = '#f59e0b';
+      dataCtx.lineWidth = 2;
+      dataCtx.setLineDash([5, 5]);
+      dataCtx.beginPath();
+      dataCtx.moveTo(sx1, sy1);
+      dataCtx.lineTo(sx2, sy2);
+      dataCtx.stroke();
+      dataCtx.setLineDash([]);
+    }
+  }
+  
+  // Draw points
+  const showValues = document.getElementById('showValuesCheck').checked;
+  const values = dataPoints.map(p => p.value);
+  const minVal = Math.min(...values);
+  const maxVal = Math.max(...values);
+  const valRange = maxVal - minVal || 1;
+  
+  dataPoints.forEach(pt => {
+    const [sx, sy] = toScreen(pt.x, pt.y);
+    
+    if (sx < margin || sx > w - margin || sy < margin || sy > h - margin) {
+      return;
+    }
+    
+    const norm = (pt.value - minVal) / valRange;
+    const color = getColorGradient(norm);
+    
+    dataCtx.fillStyle = color;
+    dataCtx.beginPath();
+    dataCtx.arc(sx, sy, 5, 0, Math.PI * 2);
+    dataCtx.fill();
+    
+    dataCtx.strokeStyle = '#1e293b';
+    dataCtx.lineWidth = 1.5;
+    dataCtx.stroke();
+    
+    if (showValues) {
+      dataCtx.fillStyle = '#1e293b';
+      dataCtx.font = '9px sans-serif';
+      dataCtx.textAlign = 'center';
+      dataCtx.fillText(pt.value.toFixed(1), sx, sy - 8);
+    }
+  });
+}
+
+function drawDirectionalCross(toScreen, viewMinX, viewMaxX, viewMinY, viewMaxY, margin, w, h) {
+  const angle = parseFloat(document.getElementById('directionAngle').value);
+  const range1 = parseFloat(document.getElementById('modelRange1').value);
+  const range2 = parseFloat(document.getElementById('modelRange2').value);
+  const rangeOrtho1 = parseFloat(document.getElementById('modelRangeOrtho1').value);
+  const rangeOrtho2 = parseFloat(document.getElementById('modelRangeOrtho2').value);
+  
+  const maxRange = Math.max(range1, range2);
+  const maxRangeOrtho = Math.max(rangeOrtho1, rangeOrtho2);
+  
+  const centerX = (viewMinX + viewMaxX) / 2;
+  const centerY = (viewMinY + viewMaxY) / 2;
+  
+  // Convert angle: 0° = North (up), clockwise
+  // North = 90° in standard coords (counter-clockwise from East)
+  // So: userAngle 0° -> 90° standard, userAngle 90° -> 0° standard
+  // Formula: standardAngle = 90° - userAngle
+  const angleRad = ((90 - angle) * Math.PI) / 180;
+  const orthoAngleRad = angleRad - Math.PI / 2; // orthogonal (90° less in standard coords = 90° more in user coords)
+  
+  // Main direction
+  const x1Main = centerX + maxRange * Math.cos(angleRad);
+  const y1Main = centerY + maxRange * Math.sin(angleRad);
+  const x2Main = centerX - maxRange * Math.cos(angleRad);
+  const y2Main = centerY - maxRange * Math.sin(angleRad);
+  
+  // Orthogonal direction
+  const x1Ortho = centerX + maxRangeOrtho * Math.cos(orthoAngleRad);
+  const y1Ortho = centerY + maxRangeOrtho * Math.sin(orthoAngleRad);
+  const x2Ortho = centerX - maxRangeOrtho * Math.cos(orthoAngleRad);
+  const y2Ortho = centerY - maxRangeOrtho * Math.sin(orthoAngleRad);
+  
+  const [sx1Main, sy1Main] = toScreen(x1Main, y1Main);
+  const [sx2Main, sy2Main] = toScreen(x2Main, y2Main);
+  const [sx1Ortho, sy1Ortho] = toScreen(x1Ortho, y1Ortho);
+  const [sx2Ortho, sy2Ortho] = toScreen(x2Ortho, y2Ortho);
+  const [sxCenter, syCenter] = toScreen(centerX, centerY);
+  
+  // Draw main direction (red)
+  dataCtx.strokeStyle = '#ef4444';
+  dataCtx.lineWidth = 3;
+  dataCtx.setLineDash([5, 5]);
+  dataCtx.beginPath();
+  dataCtx.moveTo(sx1Main, sy1Main);
+  dataCtx.lineTo(sx2Main, sy2Main);
+  dataCtx.stroke();
+  
+  drawArrowHead(dataCtx, sxCenter, syCenter, sx1Main, sy1Main, '#ef4444');
+  drawArrowHead(dataCtx, sxCenter, syCenter, sx2Main, sy2Main, '#ef4444');
+  
+  // Draw orthogonal direction (blue)
+  dataCtx.strokeStyle = '#3b82f6';
+  dataCtx.lineWidth = 3;
+  dataCtx.beginPath();
+  dataCtx.moveTo(sx1Ortho, sy1Ortho);
+  dataCtx.lineTo(sx2Ortho, sy2Ortho);
+  dataCtx.stroke();
+  
+  drawArrowHead(dataCtx, sxCenter, syCenter, sx1Ortho, sy1Ortho, '#3b82f6');
+  drawArrowHead(dataCtx, sxCenter, syCenter, sx2Ortho, sy2Ortho, '#3b82f6');
+  
+  dataCtx.setLineDash([]);
+  
+  // Labels
+  dataCtx.fillStyle = '#ef4444';
+  dataCtx.font = 'bold 11px sans-serif';
+  dataCtx.textAlign = 'center';
+  dataCtx.fillText(`${angle}°`, sx1Main + 15, sy1Main - 10);
+  
+  const orthoAngle = (angle + 90) % 180;
+  dataCtx.fillStyle = '#3b82f6';
+  dataCtx.fillText(`${orthoAngle}°`, sx1Ortho + 15, sy1Ortho - 10);
+}
+
+function drawArrowHead(ctx, fromX, fromY, toX, toY, color) {
+  const headLen = 12;
+  const angle = Math.atan2(toY - fromY, toX - fromX);
+  
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(toX, toY);
+  ctx.lineTo(
+    toX - headLen * Math.cos(angle - Math.PI / 6),
+    toY - headLen * Math.sin(angle - Math.PI / 6)
+  );
+  ctx.lineTo(
+    toX - headLen * Math.cos(angle + Math.PI / 6),
+    toY - headLen * Math.sin(angle + Math.PI / 6)
+  );
+  ctx.closePath();
+  ctx.fill();
+}
+
+function getColorGradient(t) {
+  t = Math.max(0, Math.min(1, t));
+  
+  if (t < 0.25) {
+    const s = t / 0.25;
+    return `rgb(${Math.round(0 + 0 * s)}, ${Math.round(100 + 155 * s)}, ${Math.round(255 - 155 * s)})`;
+  } else if (t < 0.5) {
+    const s = (t - 0.25) / 0.25;
+    return `rgb(${Math.round(0 + 100 * s)}, ${Math.round(255)}, ${Math.round(100 - 100 * s)})`;
+  } else if (t < 0.75) {
+    const s = (t - 0.5) / 0.25;
+    return `rgb(${Math.round(100 + 155 * s)}, ${Math.round(255 - 100 * s)}, ${Math.round(0)})`;
+  } else {
+    const s = (t - 0.75) / 0.25;
+    return `rgb(${Math.round(255)}, ${Math.round(155 - 155 * s)}, ${Math.round(0)})`;
+  }
+}
+
+// ============================================
+// VARIOGRAM CONTROLS
+// ============================================
+function toggleDirectionalControls() {
+  const type = document.getElementById('variogramType').value;
+  const controls = document.getElementById('directionalControls');
+  
+  if (type === 'directional') {
+    controls.classList.add('active');
+  } else {
+    controls.classList.remove('active');
+  }
+  
+  updateOrthoFieldsVisibility();
+  drawDataCanvas();
+}
+
+function toggleStructure2() {
+  const numStructures = parseInt(document.getElementById('numStructures').value);
+  const structure2Container = document.getElementById('structure2Container');
+  
+  if (numStructures === 2) {
+    structure2Container.style.display = 'block';
+  } else {
+    structure2Container.style.display = 'none';
+  }
+  
+  updateOrthoFieldsVisibility();
+  updateModelPlot();
+}
+
+function updateOrthoFieldsVisibility() {
+  const type = document.getElementById('variogramType').value;
+  const isDirectional = type === 'directional';
+  const numStructures = parseInt(document.getElementById('numStructures').value);
+  
+  document.getElementById('rangeOrtho1Container').style.display = isDirectional ? 'grid' : 'none';
+  document.getElementById('rangeOrtho2Container').style.display = (isDirectional && numStructures === 2) ? 'grid' : 'none';
+}
+
+// ============================================
+// VARIOGRAM CALCULATION
+// ============================================
+function calculateVariogram() {
+  if (dataPoints.length < 2) {
+    showNotification('At least 2 points are required to calculate the variogram', 'error');
+    return;
+  }
+  
+  const type = document.getElementById('variogramType').value;
+  const lagSize = parseFloat(document.getElementById('lagSize').value);
+  const numLags = parseInt(document.getElementById('numLags').value);
+  const lagTolerance = lagSize * 0.5;
+  
+  if (type === 'omnidirectional') {
+    variogramData = calculateOmnidirectionalVariogram(lagSize, numLags, lagTolerance);
+    variogramDataOrtho = null;
+    
+    document.getElementById('variogramMainTitle').textContent = 'Omnidirectional Variogram';
+  } else {
+    const angle = parseFloat(document.getElementById('directionAngle').value);
+    const angleTol = parseFloat(document.getElementById('angleTolerance').value);
+    const bandwidth = parseFloat(document.getElementById('bandwidth').value);
+    
+    variogramData = calculateDirectionalVariogram(lagSize, numLags, lagTolerance, angle, angleTol, bandwidth);
+    
+    const orthoAngle = (angle + 90) % 180;
+    variogramDataOrtho = calculateDirectionalVariogram(lagSize, numLags, lagTolerance, orthoAngle, angleTol, bandwidth);
+    
+    document.getElementById('variogramMainTitle').textContent = `Directional Variogram (${angle}° and ${orthoAngle}°)`;
+  }
+  
+  displayVariogramTable();
+  drawVariogramPlot();
+}
+
+function calculateOmnidirectionalVariogram(lagSize, numLags, lagTolerance) {
+  const lags = [];
+  
+  for (let lagIdx = 1; lagIdx <= numLags; lagIdx++) {
+    const targetDist = lagIdx * lagSize;
+    const minDist = targetDist - lagTolerance;
+    const maxDist = targetDist + lagTolerance;
+    
+    let sumSqDiff = 0;
+    let count = 0;
+    
+    for (let i = 0; i < dataPoints.length; i++) {
+      for (let j = i + 1; j < dataPoints.length; j++) {
+        const dx = dataPoints[j].x - dataPoints[i].x;
+        const dy = dataPoints[j].y - dataPoints[i].y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        
+        if (dist >= minDist && dist <= maxDist) {
+          const diff = dataPoints[j].value - dataPoints[i].value;
+          sumSqDiff += diff * diff;
+          count++;
+        }
+      }
+    }
+    
+    if (count > 0) {
+      const semivariance = sumSqDiff / (2 * count);
+      lags.push({
+        lag: lagIdx,
+        distance: targetDist,
+        semivariance: semivariance,
+        pairs: count
+      });
+    }
+  }
+  
+  return lags;
+}
+
+function calculateDirectionalVariogram(lagSize, numLags, lagTolerance, angle, angleTol, bandwidth) {
+  const lags = [];
+  
+  // Convert: user angle 0° = North -> standard 90°
+  const angleRad = ((90 - angle) * Math.PI) / 180;
+  const angleTolRad = (angleTol * Math.PI) / 180;
+  
+  for (let lagIdx = 1; lagIdx <= numLags; lagIdx++) {
+    const targetDist = lagIdx * lagSize;
+    const minDist = targetDist - lagTolerance;
+    const maxDist = targetDist + lagTolerance;
+    
+    let sumSqDiff = 0;
+    let count = 0;
+    
+    for (let i = 0; i < dataPoints.length; i++) {
+      for (let j = i + 1; j < dataPoints.length; j++) {
+        const dx = dataPoints[j].x - dataPoints[i].x;
+        const dy = dataPoints[j].y - dataPoints[i].y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        
+        if (dist >= minDist && dist <= maxDist) {
+          let pairAngle = Math.atan2(dy, dx);
+          
+          if (pairAngle < 0) pairAngle += Math.PI;
+          
+          let angleDiff = Math.abs(pairAngle - angleRad);
+          if (angleDiff > Math.PI / 2) angleDiff = Math.PI - angleDiff;
+          
+          if (angleDiff <= angleTolRad) {
+            const perpDist = Math.abs(dx * Math.sin(angleRad) - dy * Math.cos(angleRad));
+            
+            if (perpDist <= bandwidth) {
+              const diff = dataPoints[j].value - dataPoints[i].value;
+              sumSqDiff += diff * diff;
+              count++;
+            }
+          }
+        }
+      }
+    }
+    
+    if (count > 0) {
+      const semivariance = sumSqDiff / (2 * count);
+      lags.push({
+        lag: lagIdx,
+        distance: targetDist,
+        semivariance: semivariance,
+        pairs: count
+      });
+    }
+  }
+  
+  return lags;
+}
+
+function displayVariogramTable() {
+  if (!variogramData || variogramData.length === 0) return;
+  
+  const tbody = document.getElementById('variogramTableBody');
+  tbody.innerHTML = '';
+  
+  const type = document.getElementById('variogramType').value;
+  
+  if (type === 'omnidirectional') {
+    variogramData.forEach(lag => {
+      const row = tbody.insertRow();
+      row.insertCell(0).textContent = 'Omni';
+      row.insertCell(1).textContent = lag.lag;
+      row.insertCell(2).textContent = lag.distance.toFixed(2);
+      row.insertCell(3).textContent = lag.semivariance.toFixed(2);
+      row.insertCell(4).textContent = lag.pairs;
+    });
+  } else {
+    const angle = parseFloat(document.getElementById('directionAngle').value);
+    const orthoAngle = (angle + 90) % 180;
+    
+    const maxLags = Math.max(variogramData.length, variogramDataOrtho ? variogramDataOrtho.length : 0);
+    
+    for (let i = 0; i < maxLags; i++) {
+      if (i < variogramData.length) {
+        const lag = variogramData[i];
+        const row = tbody.insertRow();
+        row.insertCell(0).textContent = `${angle}°`;
+        row.insertCell(1).textContent = lag.lag;
+        row.insertCell(2).textContent = lag.distance.toFixed(2);
+        row.insertCell(3).textContent = lag.semivariance.toFixed(2);
+        row.insertCell(4).textContent = lag.pairs;
+      }
+      
+      if (variogramDataOrtho && i < variogramDataOrtho.length) {
+        const lag = variogramDataOrtho[i];
+        const row = tbody.insertRow();
+        row.insertCell(0).textContent = `${orthoAngle}°`;
+        row.insertCell(1).textContent = lag.lag;
+        row.insertCell(2).textContent = lag.distance.toFixed(2);
+        row.insertCell(3).textContent = lag.semivariance.toFixed(2);
+        row.insertCell(4).textContent = lag.pairs;
+      }
+    }
+  }
+  
+  document.getElementById('variogramTableContainer').style.display = 'block';
+}
+
+// ============================================
+// NORMALIZATION TOGGLE
+// ============================================
+function toggleNormalization() {
+  const normalize = document.getElementById('normalizeCheck').checked;
+  
+  if (dataPoints.length === 0) {
+    document.getElementById('normalizeCheck').checked = false;
+    showNotification('Load data first before normalizing', 'warning');
+    return;
+  }
+  
+  // Calculate variance
+  const values = dataPoints.map(p => p.value);
+  const mean = values.reduce((a, b) => a + b, 0) / values.length;
+  const variance = values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length;
+  
+  if (variance === 0) {
+    document.getElementById('normalizeCheck').checked = false;
+    showNotification('Cannot normalize: variance is zero', 'error');
+    return;
+  }
+  
+  if (normalize) {
+    // Activating normalization: save current values and divide by variance
+    if (!isNormalized) {
+      unnormalizedModelParams = {
+        nugget: parseFloat(document.getElementById('modelNugget').value),
+        c1: parseFloat(document.getElementById('modelC1').value),
+        c2: parseFloat(document.getElementById('modelC2').value)
+      };
+      
+      // Normalize and update UI
+      document.getElementById('modelNugget').value = (unnormalizedModelParams.nugget / variance).toFixed(4);
+      document.getElementById('modelC1').value = (unnormalizedModelParams.c1 / variance).toFixed(4);
+      document.getElementById('modelC2').value = (unnormalizedModelParams.c2 / variance).toFixed(4);
+      
+      isNormalized = true;
+    }
+  } else {
+    // Deactivating normalization: restore original values
+    if (isNormalized && unnormalizedModelParams) {
+      document.getElementById('modelNugget').value = unnormalizedModelParams.nugget.toFixed(2);
+      document.getElementById('modelC1').value = unnormalizedModelParams.c1.toFixed(2);
+      document.getElementById('modelC2').value = unnormalizedModelParams.c2.toFixed(2);
+      
+      unnormalizedModelParams = null;
+      isNormalized = false;
+    }
+  }
+  
+  drawVariogramPlot();
+}
+
+// ============================================
+// VARIOGRAM PLOTTING - COMBINED
+// ============================================
+function drawVariogramPlot() {
+  if (!variogramData || variogramData.length === 0) return;
+  
+  const width = variogramCanvas.width = variogramCanvas.offsetWidth * window.devicePixelRatio;
+  const height = variogramCanvas.height = variogramCanvas.offsetHeight * window.devicePixelRatio;
+  variogramCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  
+  const w = variogramCanvas.offsetWidth;
+  const h = variogramCanvas.offsetHeight;
+  
+  variogramCtx.fillStyle = 'white';
+  variogramCtx.fillRect(0, 0, w, h);
+  
+  const margin = 60;
+  const plotW = w - 2 * margin;
+  const plotH = h - 2 * margin;
+  
+  // Get normalization settings
+  const normalize = document.getElementById('normalizeCheck').checked;
+  const showVarianceLine = document.getElementById('showVarianceLineCheck').checked;
+  
+  // Calculate variance of data
+  let dataVariance = 0;
+  if (dataPoints.length > 0) {
+    const values = dataPoints.map(p => p.value);
+    const mean = values.reduce((a, b) => a + b, 0) / values.length;
+    dataVariance = values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length;
+  }
+  
+  // Get max values from both variograms
+  let allDistances = variogramData.map(d => d.distance);
+  let allSemivars = variogramData.map(d => normalize && dataVariance > 0 ? d.semivariance / dataVariance : d.semivariance);
+  
+  if (variogramDataOrtho) {
+    allDistances = allDistances.concat(variogramDataOrtho.map(d => d.distance));
+    allSemivars = allSemivars.concat(variogramDataOrtho.map(d => normalize && dataVariance > 0 ? d.semivariance / dataVariance : d.semivariance));
+  }
+  
+  const maxDist = Math.max(...allDistances) * 1.1;
+  let maxSemivar = Math.max(...allSemivars) * 1.2;
+  
+  // If showing variance line, make sure it fits
+  if (showVarianceLine) {
+    const varianceValue = normalize ? 1.0 : dataVariance;
+    maxSemivar = Math.max(maxSemivar, varianceValue * 1.3);
+  }
+  
+  drawVariogramAxes(variogramCtx, w, h, margin, plotW, plotH, maxDist, maxSemivar, normalize);
+  
+  // Draw variance line if enabled
+  if (showVarianceLine && dataVariance > 0) {
+    const varianceValue = normalize ? 1.0 : dataVariance;
+    const yVariance = h - margin - (varianceValue / maxSemivar) * plotH;
+    
+    variogramCtx.strokeStyle = '#10b981';
+    variogramCtx.lineWidth = 2;
+    variogramCtx.setLineDash([10, 5]);
+    variogramCtx.beginPath();
+    variogramCtx.moveTo(margin, yVariance);
+    variogramCtx.lineTo(w - margin, yVariance);
+    variogramCtx.stroke();
+    variogramCtx.setLineDash([]);
+    
+    // Label for variance line
+    variogramCtx.fillStyle = '#10b981';
+    variogramCtx.font = 'bold 11px sans-serif';
+    variogramCtx.textAlign = 'left';
+    variogramCtx.fillText(`Variance = ${varianceValue.toFixed(3)}`, margin + 10, yVariance - 5);
+  }
+  
+  const showPairs = document.getElementById('showPairsCheck').checked;
+  const connectPoints = document.getElementById('connectPointsCheck').checked;
+  
+  // Plot main direction experimental points (red/orange)
+  variogramCtx.fillStyle = '#ef4444';
+  variogramCtx.strokeStyle = '#991b1b';
+  variogramCtx.lineWidth = 2;
+  
+  // Draw connecting lines first (if enabled)
+  if (connectPoints && variogramData.length > 1) {
+    variogramCtx.strokeStyle = '#fca5a5';
+    variogramCtx.lineWidth = 2;
+    variogramCtx.beginPath();
+    
+    variogramData.forEach((lag, idx) => {
+      const semivar = normalize && dataVariance > 0 ? lag.semivariance / dataVariance : lag.semivariance;
+      const x = margin + (lag.distance / maxDist) * plotW;
+      const y = h - margin - (semivar / maxSemivar) * plotH;
+      
+      if (idx === 0) {
+        variogramCtx.moveTo(x, y);
+      } else {
+        variogramCtx.lineTo(x, y);
+      }
+    });
+    
+    variogramCtx.stroke();
+  }
+  
+  // Now draw the points on top
+  variogramCtx.fillStyle = '#ef4444';
+  variogramCtx.strokeStyle = '#991b1b';
+  variogramCtx.lineWidth = 2;
+  
+  variogramData.forEach(lag => {
+    const semivar = normalize && dataVariance > 0 ? lag.semivariance / dataVariance : lag.semivariance;
+    const x = margin + (lag.distance / maxDist) * plotW;
+    const y = h - margin - (semivar / maxSemivar) * plotH;
+    
+    variogramCtx.beginPath();
+    variogramCtx.arc(x, y, 5, 0, Math.PI * 2);
+    variogramCtx.fill();
+    variogramCtx.stroke();
+    
+    if (showPairs) {
+      variogramCtx.fillStyle = '#0f172a';
+      variogramCtx.font = '9px sans-serif';
+      variogramCtx.textAlign = 'center';
+      variogramCtx.fillText(lag.pairs.toString(), x, y - 10);
+      variogramCtx.fillStyle = '#ef4444';
+    }
+  });
+  
+  // Plot orthogonal direction experimental points (blue)
+  if (variogramDataOrtho) {
+    // Draw connecting lines first (if enabled)
+    if (connectPoints && variogramDataOrtho.length > 1) {
+      variogramCtx.strokeStyle = '#93c5fd';
+      variogramCtx.lineWidth = 2;
+      variogramCtx.beginPath();
+      
+      variogramDataOrtho.forEach((lag, idx) => {
+        const semivar = normalize && dataVariance > 0 ? lag.semivariance / dataVariance : lag.semivariance;
+        const x = margin + (lag.distance / maxDist) * plotW;
+        const y = h - margin - (semivar / maxSemivar) * plotH;
+        
+        if (idx === 0) {
+          variogramCtx.moveTo(x, y);
+        } else {
+          variogramCtx.lineTo(x, y);
+        }
+      });
+      
+      variogramCtx.stroke();
+    }
+    
+    // Now draw the points on top
+    variogramCtx.fillStyle = '#3b82f6';
+    variogramCtx.strokeStyle = '#1e40af';
+    variogramCtx.lineWidth = 2;
+    
+    variogramDataOrtho.forEach(lag => {
+      const semivar = normalize && dataVariance > 0 ? lag.semivariance / dataVariance : lag.semivariance;
+      const x = margin + (lag.distance / maxDist) * plotW;
+      const y = h - margin - (semivar / maxSemivar) * plotH;
+      
+      variogramCtx.beginPath();
+      variogramCtx.arc(x, y, 5, 0, Math.PI * 2);
+      variogramCtx.fill();
+      variogramCtx.stroke();
+      
+      if (showPairs) {
+        variogramCtx.fillStyle = '#0f172a';
+        variogramCtx.font = '9px sans-serif';
+        variogramCtx.textAlign = 'center';
+        variogramCtx.fillText(lag.pairs.toString(), x, y - 10);
+        variogramCtx.fillStyle = '#3b82f6';
+      }
+    });
+  }
+  
+  // Plot models
+  drawModelOnVariogram(variogramCtx, margin, w, h, plotW, plotH, maxDist, maxSemivar, normalize, dataVariance);
+  
+  // Draw legend
+  drawVariogramLegend(variogramCtx, w, h, margin, showVarianceLine && dataVariance > 0);
+}
+
+function drawVariogramAxes(ctx, w, h, margin, plotW, plotH, maxDist, maxSemivar, normalize) {
+  ctx.strokeStyle = '#cbd5e1';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(margin, margin);
+  ctx.lineTo(margin, h - margin);
+  ctx.lineTo(w - margin, h - margin);
+  ctx.stroke();
+  
+  ctx.fillStyle = '#0f172a';
+  ctx.font = 'bold 13px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('Distance (h)', w / 2, h - 15);
+  
+  ctx.save();
+  ctx.translate(20, h / 2);
+  ctx.rotate(-Math.PI / 2);
+  const yLabel = normalize ? 'Normalized Semivariance γ(h)/Var' : 'Semivariance γ(h)';
+  ctx.fillText(yLabel, 0, 0);
+  ctx.restore();
+  
+  ctx.strokeStyle = '#e2e8f0';
+  ctx.lineWidth = 1;
+  ctx.fillStyle = '#64748b';
+  ctx.font = '11px sans-serif';
+  
+  for (let i = 0; i <= 5; i++) {
+    const val = (maxDist * i) / 5;
+    const x = margin + (plotW * i) / 5;
+    ctx.textAlign = 'center';
+    ctx.fillText(val.toFixed(0), x, h - margin + 18);
+    ctx.beginPath();
+    ctx.moveTo(x, margin);
+    ctx.lineTo(x, h - margin);
+    ctx.stroke();
+  }
+  
+  for (let i = 0; i <= 5; i++) {
+    const val = (maxSemivar * i) / 5;
+    const y = h - margin - (plotH * i) / 5;
+    ctx.textAlign = 'right';
+    ctx.fillText(val.toFixed(3), margin - 8, y + 4);
+    ctx.beginPath();
+    ctx.moveTo(margin, y);
+    ctx.lineTo(w - margin, y);
+    ctx.stroke();
+  }
+}
+
+function drawModelOnVariogram(ctx, margin, w, h, plotW, plotH, maxDist, maxSemivar, normalize, dataVariance) {
+  const nugget = parseFloat(document.getElementById('modelNugget').value);
+  const c1 = parseFloat(document.getElementById('modelC1').value);
+  const numStructures = parseInt(document.getElementById('numStructures').value);
+  const c2 = numStructures === 2 ? parseFloat(document.getElementById('modelC2').value) : 0;
+  const modelType = document.getElementById('modelType').value;
+  
+  const type = document.getElementById('variogramType').value;
+  
+  // NOTE: No need to normalize here - the values in the input fields are already
+  // in the correct scale (normalized if normalize=true, absolute if normalize=false)
+  
+  if (type === 'omnidirectional') {
+    // Draw single model
+    const range1 = parseFloat(document.getElementById('modelRange1').value);
+    const range2 = numStructures === 2 ? parseFloat(document.getElementById('modelRange2').value) : 0;
+    
+    ctx.strokeStyle = '#ea580c';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    
+    const steps = 100;
+    for (let i = 0; i <= steps; i++) {
+      const dist = (maxDist * i) / steps;
+      
+      let gamma = nugget;
+      gamma += calculateStructureValue(dist, c1, range1, modelType);
+      if (numStructures === 2) {
+        gamma += calculateStructureValue(dist, c2, range2, modelType);
+      }
+      
+      const x = margin + (dist / maxDist) * plotW;
+      const y = h - margin - (gamma / maxSemivar) * plotH;
+      
+      if (i === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    }
+    ctx.stroke();
+  } else {
+    // Draw two models: main direction (red) and orthogonal (blue)
+    const range1 = parseFloat(document.getElementById('modelRange1').value);
+    const range2 = numStructures === 2 ? parseFloat(document.getElementById('modelRange2').value) : 0;
+    const rangeOrtho1 = parseFloat(document.getElementById('modelRangeOrtho1').value);
+    const rangeOrtho2 = numStructures === 2 ? parseFloat(document.getElementById('modelRangeOrtho2').value) : 0;
+    
+    // Main direction model (red)
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    
+    const steps = 100;
+    for (let i = 0; i <= steps; i++) {
+      const dist = (maxDist * i) / steps;
+      
+      let gamma = nugget;
+      gamma += calculateStructureValue(dist, c1, range1, modelType);
+      if (numStructures === 2) {
+        gamma += calculateStructureValue(dist, c2, range2, modelType);
+      }
+      
+      const x = margin + (dist / maxDist) * plotW;
+      const y = h - margin - (gamma / maxSemivar) * plotH;
+      
+      if (i === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    }
+    ctx.stroke();
+    
+    // Orthogonal model (blue)
+    ctx.strokeStyle = '#3b82f6';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    
+    for (let i = 0; i <= steps; i++) {
+      const dist = (maxDist * i) / steps;
+      
+      let gamma = nugget;
+      gamma += calculateStructureValue(dist, c1, rangeOrtho1, modelType);
+      if (numStructures === 2) {
+        gamma += calculateStructureValue(dist, c2, rangeOrtho2, modelType);
+      }
+      
+      const x = margin + (dist / maxDist) * plotW;
+      const y = h - margin - (gamma / maxSemivar) * plotH;
+      
+      if (i === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    }
+    ctx.stroke();
+  }
+}
+
+function drawVariogramLegend(ctx, w, h, margin, showVarianceLine) {
+  const legendX = w - margin - 180;
+  let legendY = margin + 20;
+  const lineHeight = 20;
+  
+  const type = document.getElementById('variogramType').value;
+  
+  if (type === 'omnidirectional') {
+    // Experimental
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath();
+    ctx.arc(legendX, legendY, 5, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.fillStyle = '#0f172a';
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('Experimental', legendX + 12, legendY + 4);
+    
+    // Model
+    ctx.strokeStyle = '#ea580c';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(legendX - 10, legendY + lineHeight);
+    ctx.lineTo(legendX + 10, legendY + lineHeight);
+    ctx.stroke();
+    
+    ctx.fillStyle = '#0f172a';
+    ctx.fillText('Model', legendX + 12, legendY + lineHeight + 4);
+    
+    legendY += 2 * lineHeight;
+  } else {
+    const angle = parseFloat(document.getElementById('directionAngle').value);
+    const orthoAngle = (angle + 90) % 180;
+    
+    // Main direction experimental
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath();
+    ctx.arc(legendX, legendY, 5, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.fillStyle = '#0f172a';
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(`Exp ${angle}°`, legendX + 12, legendY + 4);
+    
+    // Main direction model
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(legendX - 10, legendY + lineHeight);
+    ctx.lineTo(legendX + 10, legendY + lineHeight);
+    ctx.stroke();
+    
+    ctx.fillStyle = '#0f172a';
+    ctx.fillText(`Model ${angle}°`, legendX + 12, legendY + lineHeight + 4);
+    
+    // Orthogonal experimental
+    ctx.fillStyle = '#3b82f6';
+    ctx.beginPath();
+    ctx.arc(legendX, legendY + 2 * lineHeight, 5, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.fillStyle = '#0f172a';
+    ctx.fillText(`Exp ${orthoAngle}°`, legendX + 12, legendY + 2 * lineHeight + 4);
+    
+    // Orthogonal model
+    ctx.strokeStyle = '#3b82f6';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(legendX - 10, legendY + 3 * lineHeight);
+    ctx.lineTo(legendX + 10, legendY + 3 * lineHeight);
+    ctx.stroke();
+    
+    ctx.fillStyle = '#0f172a';
+    ctx.fillText(`Model ${orthoAngle}°`, legendX + 12, legendY + 3 * lineHeight + 4);
+    
+    legendY += 4 * lineHeight;
+  }
+  
+  // Add variance line to legend if shown
+  if (showVarianceLine) {
+    ctx.strokeStyle = '#10b981';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([10, 5]);
+    ctx.beginPath();
+    ctx.moveTo(legendX - 10, legendY + 10);
+    ctx.lineTo(legendX + 10, legendY + 10);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
+    ctx.fillStyle = '#10b981';
+    ctx.font = '12px sans-serif';
+    ctx.fillText('Variance', legendX + 12, legendY + 14);
+  }
+}
+
+function calculateStructureValue(h, contribution, range, modelType) {
+  if (h === 0 || contribution === 0) return 0;
+  
+  switch (modelType) {
+    case 'spherical':
+      if (h >= range) {
+        return contribution;
+      } else {
+        return contribution * (1.5 * (h / range) - 0.5 * Math.pow(h / range, 3));
+      }
+      
+    case 'exponential':
+      return contribution * (1 - Math.exp(-3 * h / range));
+      
+    case 'gaussian':
+      return contribution * (1 - Math.exp(-3 * Math.pow(h / range, 2)));
+      
+    default:
+      return contribution;
+  }
+}
+
+// ============================================
+// MODEL FITTING
+// ============================================
+function updateModelPlot() {
+  const numStructures = parseInt(document.getElementById('numStructures').value);
+  
+  modelParams.nugget = parseFloat(document.getElementById('modelNugget').value);
+  modelParams.c1 = parseFloat(document.getElementById('modelC1').value);
+  modelParams.range1 = parseFloat(document.getElementById('modelRange1').value);
+  modelParams.rangeOrtho1 = parseFloat(document.getElementById('modelRangeOrtho1').value);
+  
+  if (numStructures === 2) {
+    modelParams.c2 = parseFloat(document.getElementById('modelC2').value);
+    modelParams.range2 = parseFloat(document.getElementById('modelRange2').value);
+    modelParams.rangeOrtho2 = parseFloat(document.getElementById('modelRangeOrtho2').value);
+  } else {
+    modelParams.c2 = 0;
+    modelParams.range2 = 0;
+    modelParams.rangeOrtho2 = 0;
+  }
+  
+  // If normalized, update the unnormalized backup
+  if (isNormalized && dataPoints.length > 0) {
+    const values = dataPoints.map(p => p.value);
+    const mean = values.reduce((a, b) => a + b, 0) / values.length;
+    const variance = values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length;
+    
+    unnormalizedModelParams = {
+      nugget: modelParams.nugget * variance,
+      c1: modelParams.c1 * variance,
+      c2: modelParams.c2 * variance
+    };
+  }
+  
+  drawVariogramPlot();
+  drawDataCanvas();
+}
+
+function autoFitModel() {
+  if (!variogramData || variogramData.length === 0) {
+    showNotification('Calculate the experimental variogram first', 'warning');
+    return;
+  }
+  
+  const normalize = document.getElementById('normalizeCheck').checked;
+  const numStructures = parseInt(document.getElementById('numStructures').value);
+  
+  // Calculate variance for normalization if needed
+  let variance = 1.0;
+  if (dataPoints.length > 0) {
+    const values = dataPoints.map(p => p.value);
+    const mean = values.reduce((a, b) => a + b, 0) / values.length;
+    variance = values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length;
+  }
+  
+  // Work with normalized or unnormalized semivars depending on mode
+  const semivars = variogramData.map(d => normalize ? d.semivariance / variance : d.semivariance);
+  const distances = variogramData.map(d => d.distance);
+  
+  const nugget = Math.max(0, semivars[0] * 0.3);
+  
+  const lastValues = semivars.slice(-3);
+  const sill = lastValues.reduce((a, b) => a + b, 0) / lastValues.length;
+  
+  const totalC = sill - nugget;
+  
+  // Update UI with appropriate precision
+  const precision = normalize ? 4 : 2;
+  
+  let c1, c2, range1, range2;
+  
+  if (numStructures === 1) {
+    // Single structure: all contribution goes to C1
+    c1 = totalC;
+    c2 = 0;
+    
+    const target1 = nugget + c1 * 0.95;
+    range1 = distances[Math.floor(distances.length * 0.5)];
+    
+    for (let i = 0; i < semivars.length; i++) {
+      if (semivars[i] >= target1) {
+        range1 = distances[i];
+        break;
+      }
+    }
+    range2 = 0;
+  } else {
+    // Two structures: split contribution
+    c1 = totalC * 0.4;
+    c2 = totalC * 0.6;
+    
+    const target1 = nugget + c1 * 0.95;
+    const target2 = nugget + (c1 + c2) * 0.95;
+    
+    range1 = distances[Math.floor(distances.length * 0.3)];
+    range2 = distances[Math.floor(distances.length * 0.7)];
+    
+    for (let i = 0; i < semivars.length; i++) {
+      if (semivars[i] >= target1 && range1 === distances[Math.floor(distances.length * 0.3)]) {
+        range1 = distances[i];
+      }
+      if (semivars[i] >= target2) {
+        range2 = distances[i];
+        break;
+      }
+    }
+  }
+  
+  document.getElementById('modelNugget').value = nugget.toFixed(precision);
+  document.getElementById('modelC1').value = c1.toFixed(precision);
+  document.getElementById('modelRange1').value = range1.toFixed(2);
+  document.getElementById('modelRangeOrtho1').value = range1.toFixed(2);
+  
+  if (numStructures === 2) {
+    document.getElementById('modelC2').value = c2.toFixed(precision);
+    document.getElementById('modelRange2').value = range2.toFixed(2);
+    document.getElementById('modelRangeOrtho2').value = range2.toFixed(2);
+  }
+  
+  // Update backup if normalized
+  if (normalize) {
+    unnormalizedModelParams = {
+      nugget: nugget * variance,
+      c1: c1 * variance,
+      c2: c2 * variance
+    };
+    isNormalized = true;
+  }
+  
+  updateModelPlot();
+  
+  showNotification('Model auto-fitted! You can refine the parameters manually.', 'success');
+}
+
+</script>
+
+</body>
+</html>

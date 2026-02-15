@@ -1,0 +1,2881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Declustering Laboratory v2</title>
+  
+<style>
+  :root {
+    --bg-main: #f3f4f6;
+    --bg-panel: #f9fafb;
+    --bg-card: #ffffff;
+    --bg-card-alt: #f3f4f6;
+    --border-subtle: rgba(15,23,42,0.12);
+    --accent: #2563eb;
+    --accent-soft: rgba(37,99,235,0.10);
+    --accent-strong: #1d4ed8;
+    --accent-green: #15803d;
+    --accent-amber: #b45309;
+    --accent-purple: #7c3aed;
+    --accent-orange: #ea580c;
+    --accent-teal: #0d9488;
+    --accent-rose: #e11d48;
+    --text-main: #111827;
+    --text-muted: #4b5563;
+    --text-strong: #0f172a;
+    --radius-lg: 14px;
+    --radius-md: 10px;
+    --shadow-soft: 0 8px 24px rgba(15,23,42,0.06);
+    --shadow-subtle: 0 4px 14px rgba(15,23,42,0.04);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 12px;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+    display: flex;
+    height: 100vh;
+    background: var(--bg-main);
+    color: var(--text-main);
+  }
+
+  #left-panel, #right-panel {
+    background: var(--bg-panel);
+    backdrop-filter: blur(20px);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-soft);
+    border: 1px solid rgba(148, 163, 184, 0.35);
+  }
+
+  #left-panel {
+    width: 820px;
+    padding: 14px 16px 18px 16px;
+    margin-right: 12px;
+    overflow-y: auto;
+  }
+
+  #right-panel {
+    flex: 1;
+    padding: 16px 18px 20px 18px;
+    overflow-y: auto;
+  }
+
+  #left-panel h2 {
+    margin-top: 0;
+    margin-bottom: 12px;
+    font-size: 1.45rem;
+    letter-spacing: 0.03em;
+    font-weight: 650;
+    color: var(--text-strong);
+  }
+
+  #left-panel h2::after {
+    content: "";
+    display: block;
+    width: 84px;
+    height: 2px;
+    margin-top: 6px;
+    border-radius: 999px;
+    background: var(--bg-main);
+  }
+
+  #left-panel h3, #right-panel h3 {
+    margin: 12px 0 10px;
+    font-size: 0.96rem;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #111827;
+    font-weight: 600;
+  }
+
+  #right-panel h3 { margin-top: 0; margin-bottom: 8px; }
+
+  #left-panel h3::before, #right-panel h3::before {
+    content: "●";
+    margin-right: 6px;
+    font-size: 0.65em;
+    color: var(--accent);
+  }
+
+  h4 { margin: 0 0 6px 0; font-size: 0.9rem; color: var(--text-strong); }
+  h5 { margin: 0 0 4px 0; font-size: 0.9rem; color: var(--text-main); }
+
+  canvas {
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    background: #ffffff;
+    cursor: crosshair;
+    box-shadow: var(--shadow-subtle);
+  }
+
+  #mainCanvas {
+    width: 740px;
+    height: 600px;
+    display: block;
+    margin: 4px 0 10px 0;
+    background: #ffffff;
+  }
+
+  button {
+    margin: 5px 6px 5px 0;
+    padding: 6px 12px;
+    cursor: pointer;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    background: var(--bg-main);
+    color: var(--text-main);
+    font-size: 0.9rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.16s ease-out;
+  }
+
+  button:hover {
+    border-color: var(--accent);
+    background: var(--bg-main);
+    transform: translateY(-1px);
+    box-shadow: 0 10px 25px rgba(37, 99, 235, 0.35);
+  }
+
+  button:active { transform: translateY(0); box-shadow: none; }
+
+  .btn-primary {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #ffffff;
+    font-weight: 600;
+  }
+
+  .btn-primary:hover {
+    background: #1d4ed8;
+    border-color: #1d4ed8;
+    color: #ffffff;
+  }
+
+  .btn-cell {
+    background: #7c3aed;
+    border-color: #7c3aed;
+    color: #ffffff;
+    font-weight: 600;
+  }
+
+  .btn-cell:hover {
+    background: #6d28d9;
+    border-color: #6d28d9;
+    color: #ffffff;
+  }
+
+  .btn-voronoi {
+    background: #ea580c;
+    border-color: #ea580c;
+    color: #ffffff;
+    font-weight: 600;
+  }
+
+  .btn-voronoi:hover {
+    background: #c2410c;
+    border-color: #c2410c;
+    color: #ffffff;
+  }
+
+  .btn-kriging {
+    background: #0d9488;
+    border-color: #0d9488;
+    color: #ffffff;
+    font-weight: 600;
+  }
+
+  .btn-kriging:hover {
+    background: #0f766e;
+    border-color: #0f766e;
+    color: #ffffff;
+  }
+
+  .btn-idw {
+    background: #e11d48;
+    border-color: #e11d48;
+    color: #ffffff;
+    font-weight: 600;
+  }
+
+  .btn-idw:hover {
+    background: #be123c;
+    border-color: #be123c;
+    color: #ffffff;
+  }
+
+  .btn-export {
+    background: #0891b2;
+    border-color: #0891b2;
+    color: #ffffff;
+    font-weight: 600;
+  }
+
+  .btn-export:hover {
+    background: #0e7490;
+    border-color: #0e7490;
+    color: #ffffff;
+  }
+
+  .btn-preview {
+    background: #64748b;
+    border-color: #64748b;
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 0.85rem;
+    padding: 5px 10px;
+  }
+
+  .btn-preview:hover {
+    background: #475569;
+    border-color: #475569;
+    color: #ffffff;
+  }
+
+  .export-section {
+    margin-top: 10px;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(8, 145, 178, 0.5);
+    background: #ecfeff;
+  }
+
+  .export-section h4 {
+    margin: 0 0 8px 0;
+    color: #0891b2;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  select,
+  input[type="number"],
+  input[type="file"] {
+    background: var(--bg-main);
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.5);
+    padding: 4px 9px;
+    color: var(--text-main);
+    font-size: 0.9rem;
+    outline: none;
+    margin: 2px 4px;
+  }
+
+  select:focus,
+  input[type="number"]:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.6);
+  }
+
+  input[type="number"] { width: 80px; }
+  input[type="number"].small { width: 60px; }
+
+  label {
+    font-size: 0.86rem;
+    color: var(--text-muted);
+  }
+
+  label input[type="checkbox"] { margin-right: 4px; }
+
+  table {
+    border-collapse: collapse;
+    font-size: 0.82rem;
+    width: 100%;
+  }
+
+  table th, table td {
+    border: 1px solid rgba(31, 41, 55, 0.9);
+    padding: 3px 6px;
+    text-align: right;
+    background: var(--bg-main);
+  }
+
+  table th {
+    background: #e5e7eb;
+    color: #111827;
+    font-weight: 600;
+    font-size: 0.85rem;
+  }
+
+  .left-block {
+    margin: 10px 0;
+    padding: 12px 14px;
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(148, 163, 184, 0.9);
+    background: #ffffff;
+    box-shadow: var(--shadow-subtle);
+  }
+
+  .method-section {
+    margin: 10px 0;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(124, 58, 237, 0.7);
+    background: #faf5ff;
+  }
+
+  .method-section.cell { border-color: rgba(124, 58, 237, 0.7); background: #faf5ff; }
+  .method-section.voronoi { border-color: rgba(234, 88, 12, 0.7); background: #fff7ed; }
+  .method-section.kriging { border-color: rgba(13, 148, 136, 0.7); background: #f0fdfa; }
+  .method-section.idw { border-color: rgba(225, 29, 72, 0.7); background: #fff1f2; }
+
+  .method-section h4 {
+    margin: 0 0 8px 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
+  .method-section.cell h4 { color: #7c3aed; }
+  .method-section.voronoi h4 { color: #ea580c; }
+  .method-section.kriging h4 { color: #0d9488; }
+  .method-section.idw h4 { color: #e11d48; }
+
+  .param-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin: 6px 0;
+  }
+
+  .param-row label {
+    min-width: 80px;
+  }
+
+  #pointsTableContainer {
+    max-height: 200px;
+    overflow-y: auto;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(148, 163, 184, 0.9);
+    padding: 6px;
+    margin: 10px 0;
+    background: #ffffff;
+  }
+
+  #csvColumnSelector {
+    display: none;
+    margin-top: 10px;
+    padding: 10px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    background: var(--bg-main);
+  }
+
+  #csvColumnSelector label { display: block; margin: 5px 0; }
+  #csvColumnSelector select { margin-left: 10px; min-width: 120px; }
+
+  .stats-card {
+    margin: 8px 0;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(148, 163, 184, 0.5);
+    background: #ffffff;
+  }
+
+  .stats-card h5 {
+    margin: 0 0 8px 0;
+    font-weight: 600;
+    color: var(--text-strong);
+  }
+
+  .comparison-table th.naive { background: #e5e7eb; }
+  .comparison-table th.cell { background: #ede9fe; color: #7c3aed; }
+  .comparison-table th.voronoi { background: #ffedd5; color: #ea580c; }
+  .comparison-table th.kriging { background: #ccfbf1; color: #0d9488; }
+  .comparison-table th.idw { background: #ffe4e6; color: #e11d48; }
+
+  .histogram-container {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+
+  .histogram-box {
+    flex: 1;
+    min-width: 280px;
+  }
+
+  .histogram-box canvas {
+    width: 100%;
+    height: 200px;
+    cursor: default;
+  }
+
+  .weight-comparison-box canvas {
+    width: 100%;
+    height: 300px;
+    cursor: default;
+  }
+
+  .info-box {
+    margin: 10px 0;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(37, 99, 235, 0.5);
+    background: #eff6ff;
+    font-size: 0.85rem;
+    color: #1e40af;
+  }
+
+  .optimize-section {
+    margin: 10px 0;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(16, 185, 129, 0.7);
+    background: #ecfdf5;
+  }
+
+  .optimize-section h4 {
+    margin: 0 0 8px 0;
+    color: #059669;
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
+  .optimize-results {
+    margin-top: 8px;
+    padding: 8px;
+    background: white;
+    border-radius: 6px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.8rem;
+  }
+
+  #mapLegendContainer {
+    margin-top: 10px;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+  }
+
+  .calc-block {
+    margin-top: 6px;
+    padding: 8px 10px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(148, 163, 184, 0.7);
+    background: #ffffff;
+  }
+
+  .calc-title {
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: var(--text-strong);
+    font-size: 0.9rem;
+  }
+
+  .calc-eq {
+    font-family: "JetBrains Mono", "Fira Code", "Courier New", monospace;
+    font-size: 0.86rem;
+    margin-bottom: 4px;
+    color: #111827;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 10px;
+  }
+
+  .tab {
+    padding: 6px 14px;
+    border-radius: 8px 8px 0 0;
+    border: 1px solid rgba(148, 163, 184, 0.5);
+    border-bottom: none;
+    background: var(--bg-main);
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
+
+  .tab.active {
+    background: white;
+    border-color: rgba(148, 163, 184, 0.7);
+  }
+
+  .tab-content {
+    display: none;
+    padding: 10px;
+    border: 1px solid rgba(148, 163, 184, 0.5);
+    border-radius: 0 var(--radius-md) var(--radius-md) var(--radius-md);
+    background: white;
+  }
+
+  .tab-content.active {
+    display: block;
+  }
+
+  /* Toast notifications */
+  .toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    background: #1f2937;
+    color: white;
+    font-size: 0.9rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    z-index: 1000;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .toast.success { background: #059669; }
+  .toast.error { background: #dc2626; }
+  .toast.warning { background: #d97706; }
+</style>
+</head>
+<body>
+
+<div id="left-panel">
+  <h2>Declustering Laboratory v2</h2>
+
+  <div>
+    <button id="btnCellDecluster" class="btn-cell">Cell Decluster</button>
+    <button id="btnVoronoiDecluster" class="btn-voronoi">Polygonal Decluster</button>
+    <button id="btnKrigingDecluster" class="btn-kriging">Kriging Decluster</button>
+    <button id="btnIDWDecluster" class="btn-idw">IDW Decluster</button>
+    <button id="btnClear">Clear</button>
+    <button id="btnResetView">Reset Zoom</button>
+  </div>
+
+  <canvas id="mainCanvas"></canvas>
+
+  <h3>Display Options</h3>
+  <div class="left-block">
+    <label><input type="checkbox" id="showPoints" checked> Show Points</label>
+    <label><input type="checkbox" id="showWeights"> Color by Weight</label>
+    <label><input type="checkbox" id="showCells"> Show Cells</label>
+    <label><input type="checkbox" id="showVoronoi"> Show Voronoi</label>
+    <label><input type="checkbox" id="showLabels"> Show Labels</label>
+    <label><input type="checkbox" id="showGrid"> Show Kriging Grid</label>
+  </div>
+
+  <h3>Data</h3>
+  <div class="left-block">
+    <input type="file" id="csvInput" accept=".csv,.txt">
+    <span id="csvStatus" style="margin-left:8px; font-size:0.85rem; color:var(--text-muted);"></span>
+    
+    <div id="csvColumnSelector">
+      <label>X Column: <select id="csvColX"></select></label>
+      <label>Y Column: <select id="csvColY"></select></label>
+      <label>Z Column: <select id="csvColZ"></select></label>
+      <button id="btnLoadCSV" class="btn-primary">Load Data</button>
+    </div>
+    
+    <div id="pointsTableContainer">
+      <table id="pointsTable">
+        <thead><tr><th>ID</th><th>X</th><th>Y</th><th>Z</th><th>Active</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div style="font-size:0.8rem; color:var(--text-muted);">
+      <span id="pointCount">0 points</span> | Double-click canvas to add points
+    </div>
+    
+    <div class="export-section">
+      <h4>📥 Export Data with Weights</h4>
+      <button id="btnExportAll" class="btn-export">Export All Weights</button>
+    </div>
+  </div>
+
+  <h3>Cell Declustering</h3>
+  <div class="method-section cell">
+    <h4>⬛ Cell Declustering Parameters</h4>
+    <div class="param-row">
+      <label>Cell Size X:</label>
+      <input type="number" id="cellSizeX" value="50" min="1" step="5">
+      <label>Cell Size Y:</label>
+      <input type="number" id="cellSizeY" value="50" min="1" step="5">
+    </div>
+    <div class="param-row">
+      <label>Origin X:</label>
+      <input type="number" id="cellOriginX" value="0" step="5">
+      <label>Origin Y:</label>
+      <input type="number" id="cellOriginY" value="0" step="5">
+    </div>
+    <div class="info-box">
+      <strong>Method:</strong> w<sub>i</sub> = 1/(n<sub>cell</sub> × J) where J is non-empty cells count.
+    </div>
+  </div>
+
+  <h3>Polygonal (Voronoi) Declustering</h3>
+  <div class="method-section voronoi">
+    <h4>⬡ Polygonal Parameters</h4>
+    <div class="param-row">
+      <label>Box Origin X:</label>
+      <input type="number" id="voronoiOriginX" value="0" step="10">
+      <label>Origin Y:</label>
+      <input type="number" id="voronoiOriginY" value="0" step="10">
+    </div>
+    <div class="param-row">
+      <label>Box Size X:</label>
+      <input type="number" id="voronoiSizeX" value="100" min="1" step="10">
+      <label>Size Y:</label>
+      <input type="number" id="voronoiSizeY" value="100" min="1" step="10">
+    </div>
+    <div class="info-box">
+      <strong>Method:</strong> w<sub>i</sub> = A<sub>i</sub> / ΣA<sub>j</sub> (polygon area proportional).
+    </div>
+    <button id="btnPreviewVoronoiBox" class="btn-preview">👁 Preview Box</button>
+  </div>
+
+  <h3>Kriging Declustering</h3>
+  <div class="method-section kriging">
+    <h4>🎯 Kriging Declustering Parameters</h4>
+    <div class="param-row">
+      <label>Origin X:</label>
+      <input type="number" id="krigOriginX" value="0" step="10">
+      <label>Origin Y:</label>
+      <input type="number" id="krigOriginY" value="0" step="10">
+    </div>
+    <div class="param-row">
+      <label>Cell Size X:</label>
+      <input type="number" id="krigSizeX" value="10" min="1" step="5">
+      <label>Cell Size Y:</label>
+      <input type="number" id="krigSizeY" value="10" min="1" step="5">
+    </div>
+    <div class="param-row">
+      <label>Nodes Nx:</label>
+      <input type="number" id="krigNx" value="20" min="2" max="200" class="small">
+      <label>Ny:</label>
+      <input type="number" id="krigNy" value="20" min="2" max="200" class="small">
+    </div>
+    <div class="param-row">
+      <label>Variogram Range:</label>
+      <input type="number" id="krigRange" value="100" min="1" step="10">
+      <label>Nugget:</label>
+      <input type="number" id="krigNugget" value="0.2" min="0" max="1" step="0.05" class="small">
+    </div>
+    <div class="param-row">
+      <label>Sill:</label>
+      <input type="number" id="krigSill" value="1.0" min="0.1" step="0.1" class="small">
+      <label>Kriging Type:</label>
+      <select id="krigType">
+        <option value="SK">Simple Kriging (SK)</option>
+        <option value="OK" selected>Ordinary Kriging (OK)</option>
+      </select>
+    </div>
+    <div class="info-box">
+      <strong>Method:</strong> Sum of kriging weights over all grid blocks, normalized.
+    </div>
+    <button id="btnPreviewKrigingGrid" class="btn-preview">👁 Preview Grid</button>
+  </div>
+
+  <h3>IDW Declustering</h3>
+  <div class="method-section idw">
+    <h4>📍 Inverse Distance Weighting Parameters</h4>
+    <div class="param-row">
+      <label>Origin X:</label>
+      <input type="number" id="idwOriginX" value="0" step="10">
+      <label>Origin Y:</label>
+      <input type="number" id="idwOriginY" value="0" step="10">
+    </div>
+    <div class="param-row">
+      <label>Cell Size X:</label>
+      <input type="number" id="idwSizeX" value="10" min="1" step="5">
+      <label>Cell Size Y:</label>
+      <input type="number" id="idwSizeY" value="10" min="1" step="5">
+    </div>
+    <div class="param-row">
+      <label>Nodes Nx:</label>
+      <input type="number" id="idwNx" value="20" min="2" max="200" class="small">
+      <label>Ny:</label>
+      <input type="number" id="idwNy" value="20" min="2" max="200" class="small">
+    </div>
+    <div class="param-row">
+      <label>Power (c):</label>
+      <input type="number" id="idwPower" value="2.0" min="0.5" max="5" step="0.5" class="small">
+      <label>Max Neighbors:</label>
+      <input type="number" id="idwMaxNeighbors" value="8" min="1" max="50" class="small">
+    </div>
+    <div class="info-box">
+      <strong>Method:</strong> w<sub>i</sub> = Σ(d<sub>i</sub><sup>-c</sup>) / ΣΣ(d<sub>j</sub><sup>-c</sup>) over all grid blocks.
+    </div>
+    <button id="btnPreviewIDWGrid" class="btn-preview">👁 Preview Grid</button>
+  </div>
+
+  <h3>Cell Size Optimization</h3>
+  <div class="optimize-section">
+    <h4>🔍 Find Optimal Cell Size</h4>
+    <div class="param-row">
+      <label>Min Size:</label>
+      <input type="number" id="optMinSize" value="10" min="1">
+      <label>Max Size:</label>
+      <input type="number" id="optMaxSize" value="200" min="1">
+      <label>Steps:</label>
+      <input type="number" id="optSteps" value="20" min="5" max="50">
+    </div>
+    <button id="btnOptimize" class="btn-primary">Run Optimization</button>
+    <div id="optimizeResults" class="optimize-results" style="display:none;"></div>
+  </div>
+
+  <div id="mapLegendContainer">
+    <canvas id="legendCanvas" width="220" height="20"></canvas>
+    <div id="legendLabels"><em>Load data to begin</em></div>
+  </div>
+</div>
+
+<div id="right-panel">
+  <h3>Weight Comparison by Sample</h3>
+  <div class="weight-comparison-box">
+    <canvas id="weightComparisonCanvas" style="height:280px;"></canvas>
+    <div style="display:flex; gap:15px; margin-top:8px; font-size:0.8rem; justify-content:center; flex-wrap:wrap;">
+      <span style="display:flex; align-items:center; gap:4px;">
+        <span style="width:12px; height:12px; background:#7c3aed; border-radius:2px;"></span>
+        <span>Cell</span>
+      </span>
+      <span style="display:flex; align-items:center; gap:4px;">
+        <span style="width:12px; height:12px; background:#ea580c; border-radius:2px;"></span>
+        <span>Polygonal</span>
+      </span>
+      <span style="display:flex; align-items:center; gap:4px;">
+        <span style="width:12px; height:12px; background:#0d9488; border-radius:2px;"></span>
+        <span>Kriging</span>
+      </span>
+      <span style="display:flex; align-items:center; gap:4px;">
+        <span style="width:12px; height:12px; background:#e11d48; border-radius:2px;"></span>
+        <span>IDW</span>
+      </span>
+    </div>
+  </div>
+
+  <h3>Summary Statistics Comparison</h3>
+  <div class="stats-card">
+    <table class="comparison-table">
+      <thead>
+        <tr>
+          <th>Statistic</th>
+          <th class="naive">Naive</th>
+          <th class="cell">Cell</th>
+          <th class="voronoi">Polygonal</th>
+          <th class="kriging">Kriging</th>
+          <th class="idw">IDW</th>
+        </tr>
+      </thead>
+      <tbody id="statsTableBody">
+        <tr><td>Count</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+        <tr><td>Mean</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+        <tr><td>Variance</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+        <tr><td>Std Dev</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+        <tr><td>CV (%)</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+        <tr><td>Min</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+        <tr><td>Median</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+        <tr><td>Max</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>CDF Comparison</h3>
+  <div class="histogram-box" style="max-width: 100%;">
+    <canvas id="cdfCanvas" style="height:250px;"></canvas>
+    <div style="display:flex; gap:15px; margin-top:8px; font-size:0.8rem; justify-content:center; flex-wrap:wrap;">
+      <span style="display:flex; align-items:center; gap:4px;">
+        <span style="width:20px; height:3px; background:#6b7280; display:inline-block;"></span>
+        <span style="color:#6b7280;">Naive</span>
+      </span>
+      <span style="display:flex; align-items:center; gap:4px;">
+        <span style="width:20px; height:3px; background:#7c3aed; display:inline-block;"></span>
+        <span style="color:#7c3aed;">Cell</span>
+      </span>
+      <span style="display:flex; align-items:center; gap:4px;">
+        <span style="width:20px; height:3px; background:#ea580c; display:inline-block;"></span>
+        <span style="color:#ea580c;">Polygonal</span>
+      </span>
+      <span style="display:flex; align-items:center; gap:4px;">
+        <span style="width:20px; height:3px; background:#0d9488; display:inline-block;"></span>
+        <span style="color:#0d9488;">Kriging</span>
+      </span>
+      <span style="display:flex; align-items:center; gap:4px;">
+        <span style="width:20px; height:3px; background:#e11d48; display:inline-block;"></span>
+        <span style="color:#e11d48;">IDW</span>
+      </span>
+    </div>
+  </div>
+
+  <h3>Optimization Curve</h3>
+  <div class="histogram-box">
+    <canvas id="optimizationCanvas" style="height:220px;"></canvas>
+  </div>
+
+  <h3>Declustering Details</h3>
+  <div id="declusterDetails">
+    <div class="info-box">
+      Apply a declustering method to see detailed calculations.
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+// ============ GLOBAL STATE ============
+let canvas, ctx;
+let points = [];
+let nextId = 1;
+
+// View transform
+let viewScale = 1;
+let viewOffsetX = 0;
+let viewOffsetY = 0;
+
+// Data bounds
+let dataMinX = 0, dataMaxX = 100;
+let dataMinY = 0, dataMaxY = 100;
+
+// Aspect ratio transform
+let aspectScale = 1;
+let aspectOffsetX = 0;
+let aspectOffsetY = 0;
+
+// Declustering results
+let cellWeights = [];
+let voronoiWeights = [];
+let krigingWeights = [];
+let idwWeights = [];
+let voronoiPolygons = [];
+let cellGrid = null;
+let krigingGrid = null;
+
+// Preview boxes/grids
+let previewVoronoi = null;
+let previewKriging = null;
+let previewIDW = null;
+
+// CSV parsing
+let csvRawData = null;
+let csvHeaders = [];
+
+// Dragging
+let isDragging = false;
+let dragStart = { x: 0, y: 0 };
+let dragPointId = null;
+
+// ============ TOAST NOTIFICATIONS ============
+function showToast(message, type = 'info') {
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.className = 'toast ' + type;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+// ============ INITIALIZATION ============
+function init() {
+  canvas = document.getElementById('mainCanvas');
+  ctx = canvas.getContext('2d');
+  
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  
+  // Event listeners
+  canvas.addEventListener('mousedown', onMouseDown);
+  canvas.addEventListener('mousemove', onMouseMove);
+  canvas.addEventListener('mouseup', onMouseUp);
+  canvas.addEventListener('wheel', onWheel, { passive: false });
+  canvas.addEventListener('dblclick', onDoubleClick);
+  
+  document.getElementById('btnCellDecluster').addEventListener('click', applyCellDeclustering);
+  document.getElementById('btnVoronoiDecluster').addEventListener('click', applyVoronoiDeclustering);
+  document.getElementById('btnKrigingDecluster').addEventListener('click', applyKrigingDeclustering);
+  document.getElementById('btnIDWDecluster').addEventListener('click', applyIDWDeclustering);
+  document.getElementById('btnClear').addEventListener('click', clearAll);
+  document.getElementById('btnResetView').addEventListener('click', resetView);
+  document.getElementById('btnOptimize').addEventListener('click', runOptimization);
+  document.getElementById('btnLoadCSV').addEventListener('click', loadCSVWithSelectedColumns);
+  document.getElementById('btnExportAll').addEventListener('click', exportAllWeights);
+  
+  // Preview buttons
+  document.getElementById('btnPreviewVoronoiBox').addEventListener('click', previewVoronoiBox);
+  document.getElementById('btnPreviewKrigingGrid').addEventListener('click', previewKrigingGrid);
+  document.getElementById('btnPreviewIDWGrid').addEventListener('click', previewIDWGrid);
+  
+  document.getElementById('csvInput').addEventListener('change', handleCSVUpload);
+  
+  // Display options
+  ['showPoints', 'showWeights', 'showCells', 'showVoronoi', 'showLabels', 'showGrid'].forEach(id => {
+    document.getElementById(id).addEventListener('change', draw);
+  });
+  
+  updateAspectTransform();
+  draw();
+  clearWeightComparisonCanvas();
+  clearCDFCanvas();
+}
+
+// ============ COORDINATE TRANSFORMS ============
+function updateAspectTransform() {
+  if (!canvas) return;
+  
+  const axisMargin = 40;
+  const w = canvas.width / (window.devicePixelRatio || 1) - axisMargin;
+  const h = canvas.height / (window.devicePixelRatio || 1) - axisMargin;
+  
+  const rangeX = dataMaxX - dataMinX || 1;
+  const rangeY = dataMaxY - dataMinY || 1;
+  
+  const scaleX = w / rangeX;
+  const scaleY = h / rangeY;
+  aspectScale = Math.min(scaleX, scaleY);
+  
+  aspectOffsetX = (w - rangeX * aspectScale) / 2;
+  aspectOffsetY = (h - rangeY * aspectScale) / 2;
+}
+
+function worldX(xInt) {
+  if (!canvas || !aspectScale) return dataMinX;
+  const axisMargin = 40;
+  return dataMinX + ((xInt - aspectOffsetX - axisMargin) / aspectScale);
+}
+
+function worldY(yInt) {
+  if (!canvas || !aspectScale) return dataMinY;
+  const h = canvas.height / (window.devicePixelRatio || 1);
+  const axisMargin = 40;
+  return dataMinY + ((h - yInt - aspectOffsetY - axisMargin) / aspectScale);
+}
+
+function internalX(xW) {
+  const axisMargin = 40;
+  return aspectOffsetX + (xW - dataMinX) * aspectScale + axisMargin;
+}
+
+function internalY(yW) {
+  const h = canvas ? canvas.height / (window.devicePixelRatio || 1) : 0;
+  const axisMargin = 40;
+  return h - (aspectOffsetY + (yW - dataMinY) * aspectScale + axisMargin);
+}
+
+// ============ MOUSE EVENTS ============
+function onMouseDown(e) {
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  
+  const clickedPoint = findPointAt(x, y);
+  if (clickedPoint && e.button === 0) {
+    dragPointId = clickedPoint.id;
+    isDragging = true;
+    return;
+  }
+  
+  if (e.button === 0) {
+    isDragging = true;
+    dragStart = { x: e.clientX, y: e.clientY };
+    dragPointId = null;
+  }
+}
+
+function onMouseMove(e) {
+  if (!isDragging) return;
+  
+  const rect = canvas.getBoundingClientRect();
+  
+  if (dragPointId !== null) {
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const wx = worldX((x - viewOffsetX) / viewScale);
+    const wy = worldY((y - viewOffsetY) / viewScale);
+    
+    const pt = points.find(p => p.id === dragPointId);
+    if (pt) {
+      pt.worldX = wx;
+      pt.worldY = wy;
+      pt.x = internalX(wx);
+      pt.y = internalY(wy);
+      draw();
+    }
+  } else {
+    const dx = e.clientX - dragStart.x;
+    const dy = e.clientY - dragStart.y;
+    viewOffsetX += dx;
+    viewOffsetY += dy;
+    dragStart = { x: e.clientX, y: e.clientY };
+    draw();
+  }
+}
+
+function onMouseUp() {
+  isDragging = false;
+  dragPointId = null;
+}
+
+function onWheel(e) {
+  e.preventDefault();
+  
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  
+  const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+  const newScale = viewScale * zoomFactor;
+  
+  viewOffsetX = mx - (mx - viewOffsetX) * zoomFactor;
+  viewOffsetY = my - (my - viewOffsetY) * zoomFactor;
+  viewScale = newScale;
+  
+  draw();
+}
+
+function onDoubleClick(e) {
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  
+  const wx = worldX((x - viewOffsetX) / viewScale);
+  const wy = worldY((y - viewOffsetY) / viewScale);
+  
+  const value = Math.round(Math.random() * 100);
+  points.push({
+    id: nextId++,
+    worldX: wx,
+    worldY: wy,
+    x: internalX(wx),
+    y: internalY(wy),
+    value: value,
+    active: true
+  });
+  
+  updatePointsTable();
+  updateNaiveStats();
+  draw();
+}
+
+function findPointAt(screenX, screenY) {
+  const threshold = 10;
+  for (const p of points) {
+    if (!p.active) continue;
+    const px = p.x * viewScale + viewOffsetX;
+    const py = p.y * viewScale + viewOffsetY;
+    const dist = Math.sqrt((screenX - px) ** 2 + (screenY - py) ** 2);
+    if (dist < threshold) return p;
+  }
+  return null;
+}
+
+function resetView() {
+  viewScale = 1;
+  viewOffsetX = 0;
+  viewOffsetY = 0;
+  draw();
+}
+
+// ============ PREVIEW FUNCTIONS ============
+function previewVoronoiBox() {
+  const originX = parseFloat(document.getElementById('voronoiOriginX').value) || 0;
+  const originY = parseFloat(document.getElementById('voronoiOriginY').value) || 0;
+  const sizeX = parseFloat(document.getElementById('voronoiSizeX').value) || 100;
+  const sizeY = parseFloat(document.getElementById('voronoiSizeY').value) || 100;
+  
+  // Toggle preview
+  if (previewVoronoi && 
+      previewVoronoi.originX === originX && 
+      previewVoronoi.originY === originY &&
+      previewVoronoi.sizeX === sizeX &&
+      previewVoronoi.sizeY === sizeY) {
+    previewVoronoi = null;
+    showToast('Polygonal box preview hidden', 'info');
+  } else {
+    previewVoronoi = { originX, originY, sizeX, sizeY };
+    showToast(`Polygonal box: (${originX}, ${originY}) to (${originX + sizeX}, ${originY + sizeY})`, 'info');
+  }
+  draw();
+}
+
+function previewKrigingGrid() {
+  const originX = parseFloat(document.getElementById('krigOriginX').value) || 0;
+  const originY = parseFloat(document.getElementById('krigOriginY').value) || 0;
+  const sizeX = parseFloat(document.getElementById('krigSizeX').value) || 10;
+  const sizeY = parseFloat(document.getElementById('krigSizeY').value) || 10;
+  const nx = parseInt(document.getElementById('krigNx').value) || 20;
+  const ny = parseInt(document.getElementById('krigNy').value) || 20;
+  
+  // Toggle preview
+  if (previewKriging && 
+      previewKriging.originX === originX && 
+      previewKriging.originY === originY &&
+      previewKriging.sizeX === sizeX &&
+      previewKriging.sizeY === sizeY &&
+      previewKriging.nx === nx &&
+      previewKriging.ny === ny) {
+    previewKriging = null;
+    showToast('Kriging grid preview hidden', 'info');
+  } else {
+    previewKriging = { originX, originY, sizeX, sizeY, nx, ny };
+    const endX = originX + nx * sizeX;
+    const endY = originY + ny * sizeY;
+    showToast(`Kriging grid: ${nx}×${ny} cells, (${originX}, ${originY}) to (${endX.toFixed(0)}, ${endY.toFixed(0)})`, 'info');
+  }
+  draw();
+}
+
+function previewIDWGrid() {
+  const originX = parseFloat(document.getElementById('idwOriginX').value) || 0;
+  const originY = parseFloat(document.getElementById('idwOriginY').value) || 0;
+  const sizeX = parseFloat(document.getElementById('idwSizeX').value) || 10;
+  const sizeY = parseFloat(document.getElementById('idwSizeY').value) || 10;
+  const nx = parseInt(document.getElementById('idwNx').value) || 20;
+  const ny = parseInt(document.getElementById('idwNy').value) || 20;
+  
+  // Toggle preview
+  if (previewIDW && 
+      previewIDW.originX === originX && 
+      previewIDW.originY === originY &&
+      previewIDW.sizeX === sizeX &&
+      previewIDW.sizeY === sizeY &&
+      previewIDW.nx === nx &&
+      previewIDW.ny === ny) {
+    previewIDW = null;
+    showToast('IDW grid preview hidden', 'info');
+  } else {
+    previewIDW = { originX, originY, sizeX, sizeY, nx, ny };
+    const endX = originX + nx * sizeX;
+    const endY = originY + ny * sizeY;
+    showToast(`IDW grid: ${nx}×${ny} cells, (${originX}, ${originY}) to (${endX.toFixed(0)}, ${endY.toFixed(0)})`, 'info');
+  }
+  draw();
+}
+
+function drawPreviewBox(box, strokeColor, fillColor) {
+  const { originX, originY, sizeX, sizeY } = box;
+  
+  const x0 = internalX(originX);
+  const y0 = internalY(originY);
+  const x1 = internalX(originX + sizeX);
+  const y1 = internalY(originY + sizeY);
+  
+  // Fill
+  ctx.fillStyle = fillColor;
+  ctx.fillRect(x0, y1, x1 - x0, y0 - y1);
+  
+  // Stroke
+  ctx.strokeStyle = strokeColor;
+  ctx.lineWidth = 2 / viewScale;
+  ctx.setLineDash([8 / viewScale, 4 / viewScale]);
+  ctx.strokeRect(x0, y1, x1 - x0, y0 - y1);
+  ctx.setLineDash([]);
+  
+  // Label
+  ctx.fillStyle = strokeColor;
+  ctx.font = `bold ${12 / viewScale}px system-ui`;
+  ctx.textAlign = 'left';
+  ctx.fillText('Polygonal Box', x0 + 5 / viewScale, y1 + 15 / viewScale);
+}
+
+function drawPreviewGrid(grid, strokeColor) {
+  const { originX, originY, sizeX, sizeY, nx, ny } = grid;
+  
+  ctx.strokeStyle = strokeColor;
+  ctx.lineWidth = 1 / viewScale;
+  ctx.setLineDash([4 / viewScale, 4 / viewScale]);
+  
+  // Draw vertical lines
+  for (let i = 0; i <= nx; i++) {
+    const x = internalX(originX + i * sizeX);
+    const y0 = internalY(originY);
+    const y1 = internalY(originY + ny * sizeY);
+    ctx.beginPath();
+    ctx.moveTo(x, y0);
+    ctx.lineTo(x, y1);
+    ctx.stroke();
+  }
+  
+  // Draw horizontal lines
+  for (let j = 0; j <= ny; j++) {
+    const y = internalY(originY + j * sizeY);
+    const x0 = internalX(originX);
+    const x1 = internalX(originX + nx * sizeX);
+    ctx.beginPath();
+    ctx.moveTo(x0, y);
+    ctx.lineTo(x1, y);
+    ctx.stroke();
+  }
+  
+  ctx.setLineDash([]);
+  
+  // Border with thicker line
+  ctx.lineWidth = 2 / viewScale;
+  const bx0 = internalX(originX);
+  const by0 = internalY(originY);
+  const bx1 = internalX(originX + nx * sizeX);
+  const by1 = internalY(originY + ny * sizeY);
+  ctx.strokeRect(bx0, by1, bx1 - bx0, by0 - by1);
+  
+  // Label
+  ctx.fillStyle = strokeColor;
+  ctx.font = `bold ${12 / viewScale}px system-ui`;
+  ctx.textAlign = 'left';
+  const label = strokeColor.includes('148, 136') ? 'Kriging Grid' : 'IDW Grid';
+  ctx.fillText(label, bx0 + 5 / viewScale, by1 + 15 / viewScale);
+}
+
+function clearAll() {
+  points = [];
+  nextId = 1;
+  cellWeights = [];
+  voronoiWeights = [];
+  krigingWeights = [];
+  idwWeights = [];
+  voronoiPolygons = [];
+  cellGrid = null;
+  krigingGrid = null;
+  
+  // Clear previews
+  previewVoronoi = null;
+  previewKriging = null;
+  previewIDW = null;
+  
+  dataMinX = 0; dataMaxX = 100;
+  dataMinY = 0; dataMaxY = 100;
+  
+  updateAspectTransform();
+  updatePointsTable();
+  clearStats();
+  clearCDFCanvas();
+  clearWeightComparisonCanvas();
+  draw();
+}
+
+// ============ DRAWING ============
+function draw() {
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.width / dpr;
+  const h = canvas.height / dpr;
+  const axisMargin = 40;
+  
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, w, h);
+  
+  drawGrid();
+  
+  ctx.setTransform(dpr * viewScale, 0, 0, dpr * viewScale, dpr * viewOffsetX, dpr * viewOffsetY);
+  
+  if (document.getElementById('showVoronoi').checked && voronoiPolygons.length > 0) {
+    drawVoronoiPolygons();
+  }
+  
+  if (document.getElementById('showCells').checked && cellGrid) {
+    drawCellGrid();
+  }
+  
+  if (document.getElementById('showGrid').checked && krigingGrid) {
+    drawKrigingGrid();
+  }
+  
+  // Draw previews
+  if (previewVoronoi) {
+    drawPreviewBox(previewVoronoi, 'rgba(234, 88, 12, 0.8)', 'rgba(234, 88, 12, 0.1)');
+  }
+  if (previewKriging) {
+    drawPreviewGrid(previewKriging, 'rgba(13, 148, 136, 0.6)');
+  }
+  if (previewIDW) {
+    drawPreviewGrid(previewIDW, 'rgba(225, 29, 72, 0.6)');
+  }
+  
+  if (document.getElementById('showPoints').checked) {
+    drawPoints();
+  }
+  
+  if (document.getElementById('showLabels').checked) {
+    drawLabels();
+  }
+  
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  drawAxes();
+}
+
+function drawGrid() {
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.width / dpr;
+  const h = canvas.height / dpr;
+  const axisMargin = 40;
+  
+  if (!aspectScale || aspectScale <= 0) {
+    window._visibleBounds = { visibleMinX: dataMinX, visibleMaxX: dataMaxX, visibleMinY: dataMinY, visibleMaxY: dataMaxY };
+    window._axisSteps = { xStep: 10, yStep: 10, xStart: 0, yStart: 0, xEnd: 100, yEnd: 100 };
+    return;
+  }
+  
+  const screenToWorldX = (sx) => {
+    const internalCoord = (sx - viewOffsetX) / viewScale;
+    return dataMinX + (internalCoord - aspectOffsetX - axisMargin) / aspectScale;
+  };
+  
+  const screenToWorldY = (sy) => {
+    const internalCoord = (sy - viewOffsetY) / viewScale;
+    return dataMinY + (h - internalCoord - aspectOffsetY - axisMargin) / aspectScale;
+  };
+  
+  const visibleMinX = screenToWorldX(0);
+  const visibleMaxX = screenToWorldX(w);
+  const visibleMinY = screenToWorldY(h);
+  const visibleMaxY = screenToWorldY(0);
+  
+  window._visibleBounds = { visibleMinX, visibleMaxX, visibleMinY, visibleMaxY };
+  
+  const visibleRangeX = Math.abs(visibleMaxX - visibleMinX);
+  const visibleRangeY = Math.abs(visibleMaxY - visibleMinY);
+  
+  const xStep = calculateNiceStep(visibleRangeX);
+  const yStep = calculateNiceStep(visibleRangeY);
+  
+  const xStart = Math.floor(Math.min(visibleMinX, visibleMaxX) / xStep) * xStep;
+  const yStart = Math.floor(Math.min(visibleMinY, visibleMaxY) / yStep) * yStep;
+  const xEnd = Math.max(visibleMinX, visibleMaxX);
+  const yEnd = Math.max(visibleMinY, visibleMaxY);
+  
+  window._axisSteps = { xStep, yStep, xStart, yStart, xEnd, yEnd };
+  
+  ctx.strokeStyle = '#e5e7eb';
+  ctx.lineWidth = 1;
+  
+  for (let v = xStart; v <= xEnd + xStep; v += xStep) {
+    const x = internalX(v) * viewScale + viewOffsetX;
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, h);
+    ctx.stroke();
+  }
+  
+  for (let v = yStart; v <= yEnd + yStep; v += yStep) {
+    const y = internalY(v) * viewScale + viewOffsetY;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(w, y);
+    ctx.stroke();
+  }
+}
+
+function drawAxes() {
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.width / dpr;
+  const h = canvas.height / dpr;
+  const axisMargin = 40;
+  
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, axisMargin, h);
+  ctx.fillRect(0, h - axisMargin, w, axisMargin);
+  
+  ctx.strokeStyle = '#1f2937';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(axisMargin, 0);
+  ctx.lineTo(axisMargin, h - axisMargin);
+  ctx.lineTo(w, h - axisMargin);
+  ctx.stroke();
+  
+  const steps = window._axisSteps || { xStep: 10, yStep: 10, xStart: 0, yStart: 0, xEnd: 100, yEnd: 100 };
+  
+  ctx.fillStyle = '#374151';
+  ctx.font = '11px system-ui';
+  ctx.textAlign = 'center';
+  ctx.strokeStyle = '#94a3b8';
+  ctx.lineWidth = 1;
+  
+  for (let v = steps.xStart; v <= steps.xEnd + steps.xStep; v += steps.xStep) {
+    const x = internalX(v) * viewScale + viewOffsetX;
+    if (x > axisMargin + 20 && x < w - 10) {
+      const decimals = steps.xStep < 1 ? Math.ceil(-Math.log10(steps.xStep)) : 0;
+      ctx.fillText(v.toFixed(decimals), x, h - axisMargin + 16);
+      ctx.beginPath();
+      ctx.moveTo(x, h - axisMargin);
+      ctx.lineTo(x, h - axisMargin + 5);
+      ctx.stroke();
+    }
+  }
+  
+  ctx.textAlign = 'right';
+  
+  for (let v = steps.yStart; v <= steps.yEnd + steps.yStep; v += steps.yStep) {
+    const y = internalY(v) * viewScale + viewOffsetY;
+    if (y > 12 && y < h - axisMargin - 10) {
+      const decimals = steps.yStep < 1 ? Math.ceil(-Math.log10(steps.yStep)) : 0;
+      ctx.fillText(v.toFixed(decimals), axisMargin - 6, y + 4);
+      ctx.beginPath();
+      ctx.moveTo(axisMargin - 5, y);
+      ctx.lineTo(axisMargin, y);
+      ctx.stroke();
+    }
+  }
+}
+
+function calculateNiceStep(range) {
+  if (!isFinite(range) || range <= 0) return 10;
+  
+  const roughStep = range / 8;
+  if (roughStep <= 0) return 1;
+  
+  const magnitude = Math.pow(10, Math.floor(Math.log10(roughStep)));
+  const residual = roughStep / magnitude;
+  
+  if (residual <= 1.5) return magnitude;
+  if (residual <= 3) return 2 * magnitude;
+  if (residual <= 7) return 5 * magnitude;
+  return 10 * magnitude;
+}
+
+function drawPoints() {
+  const showWeights = document.getElementById('showWeights').checked;
+  const active = points.filter(p => p.active);
+  
+  if (active.length === 0) return;
+  
+  const values = active.map(p => p.value);
+  const minValue = Math.min(...values);
+  const maxValue = Math.max(...values);
+  const valueRange = maxValue - minValue || 1;
+  
+  let weights = null;
+  let maxWeight = 1;
+  
+  if (showWeights) {
+    if (cellWeights.length === active.length) weights = cellWeights;
+    else if (voronoiWeights.length === active.length) weights = voronoiWeights;
+    else if (krigingWeights.length === active.length) weights = krigingWeights;
+    else if (idwWeights.length === active.length) weights = idwWeights;
+    
+    if (weights) maxWeight = Math.max(...weights);
+  }
+  
+  active.forEach((p, i) => {
+    const x = p.x;
+    const y = p.y;
+    const r = 5 / viewScale;
+    
+    let color;
+    if (showWeights && weights) {
+      const t = weights[i] / maxWeight;
+      color = weightToColor(t);
+    } else {
+      const t = (p.value - minValue) / valueRange;
+      color = valueToColor(t);
+    }
+    
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+    ctx.lineWidth = 1 / viewScale;
+    ctx.stroke();
+  });
+  
+  updateLegend(showWeights && weights, minValue, maxValue);
+}
+
+function valueToColor(t) {
+  let r, g, b;
+  if (t < 0.25) {
+    const s = t / 0.25;
+    r = 0; g = Math.round(255 * s); b = 255;
+  } else if (t < 0.5) {
+    const s = (t - 0.25) / 0.25;
+    r = 0; g = 255; b = Math.round(255 * (1 - s));
+  } else if (t < 0.75) {
+    const s = (t - 0.5) / 0.25;
+    r = Math.round(255 * s); g = 255; b = 0;
+  } else {
+    const s = (t - 0.75) / 0.25;
+    r = 255; g = Math.round(255 * (1 - s)); b = 0;
+  }
+  return `rgb(${r},${g},${b})`;
+}
+
+function weightToColor(t) {
+  const r = Math.round(220 - t * 100);
+  const g = Math.round(220 - t * 180);
+  const b = Math.round(220 - t * 180);
+  return `rgb(${r},${g},${b})`;
+}
+
+function updateLegend(showingWeights, minVal, maxVal) {
+  const legendCanvas = document.getElementById('legendCanvas');
+  const legendCtx = legendCanvas.getContext('2d');
+  const labelsDiv = document.getElementById('legendLabels');
+  
+  legendCtx.clearRect(0, 0, 220, 20);
+  
+  if (points.filter(p => p.active).length === 0) {
+    labelsDiv.innerHTML = '<em>Load data to begin</em>';
+    return;
+  }
+  
+  const gradient = legendCtx.createLinearGradient(0, 0, 200, 0);
+  
+  if (showingWeights) {
+    gradient.addColorStop(0, weightToColor(0));
+    gradient.addColorStop(1, weightToColor(1));
+    labelsDiv.innerHTML = `<span style="float:left;">Low weight</span><span style="float:right;">High weight</span>`;
+  } else {
+    gradient.addColorStop(0, valueToColor(0));
+    gradient.addColorStop(0.25, valueToColor(0.25));
+    gradient.addColorStop(0.5, valueToColor(0.5));
+    gradient.addColorStop(0.75, valueToColor(0.75));
+    gradient.addColorStop(1, valueToColor(1));
+    labelsDiv.innerHTML = `<span style="float:left;">${minVal.toFixed(1)}</span><span style="float:right;">${maxVal.toFixed(1)}</span>`;
+  }
+  
+  legendCtx.fillStyle = gradient;
+  legendCtx.fillRect(0, 2, 200, 16);
+  legendCtx.strokeStyle = '#cbd5e1';
+  legendCtx.lineWidth = 1;
+  legendCtx.strokeRect(0, 2, 200, 16);
+}
+
+function drawLabels() {
+  const active = points.filter(p => p.active);
+  
+  ctx.font = `${10 / viewScale}px system-ui`;
+  ctx.fillStyle = '#374151';
+  ctx.textAlign = 'left';
+  
+  active.forEach((p, i) => {
+    const x = p.x + 8 / viewScale;
+    const y = p.y - 5 / viewScale;
+    ctx.fillText(`${p.id}: ${p.value.toFixed(1)}`, x, y);
+  });
+}
+
+function drawCellGrid() {
+  if (!cellGrid) return;
+  
+  const { originX, originY, sizeX, sizeY, nx, ny, counts } = cellGrid;
+  
+  ctx.strokeStyle = 'rgba(124, 58, 237, 0.4)';
+  ctx.lineWidth = 1 / viewScale;
+  
+  for (let i = 0; i <= nx; i++) {
+    const x = internalX(originX + i * sizeX);
+    const y0 = internalY(originY);
+    const y1 = internalY(originY + ny * sizeY);
+    ctx.beginPath();
+    ctx.moveTo(x, y0);
+    ctx.lineTo(x, y1);
+    ctx.stroke();
+  }
+  
+  for (let j = 0; j <= ny; j++) {
+    const y = internalY(originY + j * sizeY);
+    const x0 = internalX(originX);
+    const x1 = internalX(originX + nx * sizeX);
+    ctx.beginPath();
+    ctx.moveTo(x0, y);
+    ctx.lineTo(x1, y);
+    ctx.stroke();
+  }
+  
+  const maxCount = Math.max(...counts.flat().filter(c => c > 0));
+  
+  for (let i = 0; i < nx; i++) {
+    for (let j = 0; j < ny; j++) {
+      if (counts[i][j] > 0) {
+        const x0 = internalX(originX + i * sizeX);
+        const y0 = internalY(originY + (j + 1) * sizeY);
+        const x1 = internalX(originX + (i + 1) * sizeX);
+        const y1 = internalY(originY + j * sizeY);
+        
+        const intensity = counts[i][j] / maxCount;
+        ctx.fillStyle = `rgba(124, 58, 237, ${0.1 + intensity * 0.3})`;
+        ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+        
+        ctx.fillStyle = 'rgba(124, 58, 237, 0.8)';
+        ctx.font = `${11 / viewScale}px system-ui`;
+        ctx.textAlign = 'center';
+        ctx.fillText(counts[i][j].toString(), (x0 + x1) / 2, (y0 + y1) / 2 + 4 / viewScale);
+      }
+    }
+  }
+}
+
+function drawVoronoiPolygons() {
+  if (voronoiPolygons.length === 0) return;
+  
+  const maxArea = Math.max(...voronoiPolygons.map(p => p.area));
+  
+  voronoiPolygons.forEach((poly, i) => {
+    if (poly.vertices.length < 3) return;
+    
+    const intensity = poly.area / maxArea;
+    
+    ctx.beginPath();
+    ctx.moveTo(internalX(poly.vertices[0][0]), internalY(poly.vertices[0][1]));
+    for (let j = 1; j < poly.vertices.length; j++) {
+      ctx.lineTo(internalX(poly.vertices[j][0]), internalY(poly.vertices[j][1]));
+    }
+    ctx.closePath();
+    ctx.fillStyle = `rgba(234, 88, 12, ${0.05 + intensity * 0.25})`;
+    ctx.fill();
+    
+    ctx.strokeStyle = 'rgba(234, 88, 12, 0.5)';
+    ctx.lineWidth = 1 / viewScale;
+    ctx.stroke();
+  });
+}
+
+function drawKrigingGrid() {
+  if (!krigingGrid) return;
+  
+  const { originX, originY, sizeX, sizeY, nx, ny } = krigingGrid;
+  
+  ctx.strokeStyle = 'rgba(13, 148, 136, 0.3)';
+  ctx.lineWidth = 0.5 / viewScale;
+  
+  for (let i = 0; i <= nx; i++) {
+    const x = internalX(originX + i * sizeX);
+    const y0 = internalY(originY);
+    const y1 = internalY(originY + ny * sizeY);
+    ctx.beginPath();
+    ctx.moveTo(x, y0);
+    ctx.lineTo(x, y1);
+    ctx.stroke();
+  }
+  
+  for (let j = 0; j <= ny; j++) {
+    const y = internalY(originY + j * sizeY);
+    const x0 = internalX(originX);
+    const x1 = internalX(originX + nx * sizeX);
+    ctx.beginPath();
+    ctx.moveTo(x0, y);
+    ctx.lineTo(x1, y);
+    ctx.stroke();
+  }
+}
+
+// ============ CELL DECLUSTERING ============
+function applyCellDeclustering() {
+  const active = points.filter(p => p.active);
+  if (active.length === 0) {
+    showToast('No data points to decluster', 'error');
+    return;
+  }
+  
+  const sizeX = parseFloat(document.getElementById('cellSizeX').value) || 50;
+  const sizeY = parseFloat(document.getElementById('cellSizeY').value) || 50;
+  const originX = parseFloat(document.getElementById('cellOriginX').value) || dataMinX;
+  const originY = parseFloat(document.getElementById('cellOriginY').value) || dataMinY;
+  
+  const nx = Math.ceil((dataMaxX - originX) / sizeX) + 1;
+  const ny = Math.ceil((dataMaxY - originY) / sizeY) + 1;
+  
+  const counts = Array(nx).fill(null).map(() => Array(ny).fill(0));
+  const cellAssignment = [];
+  
+  active.forEach(p => {
+    const i = Math.floor((p.worldX - originX) / sizeX);
+    const j = Math.floor((p.worldY - originY) / sizeY);
+    const ci = Math.max(0, Math.min(nx - 1, i));
+    const cj = Math.max(0, Math.min(ny - 1, j));
+    counts[ci][cj]++;
+    cellAssignment.push({ i: ci, j: cj });
+  });
+  
+  let nonEmptyCells = 0;
+  for (let i = 0; i < nx; i++) {
+    for (let j = 0; j < ny; j++) {
+      if (counts[i][j] > 0) nonEmptyCells++;
+    }
+  }
+  
+  cellWeights = [];
+  let sumWeights = 0;
+  
+  active.forEach((p, idx) => {
+    const { i, j } = cellAssignment[idx];
+    const nInCell = counts[i][j];
+    const weight = 1 / (nInCell * nonEmptyCells);
+    cellWeights.push(weight);
+    sumWeights += weight;
+  });
+  
+  cellWeights = cellWeights.map(w => w / sumWeights);
+  cellGrid = { originX, originY, sizeX, sizeY, nx, ny, counts };
+  
+  updateAllStats();
+  drawWeightComparison();
+  drawCDF();
+  
+  document.getElementById('showCells').checked = true;
+  draw();
+  
+  showToast('Cell declustering applied', 'success');
+}
+
+// ============ VORONOI (POLYGONAL) DECLUSTERING ============
+function applyVoronoiDeclustering() {
+  const active = points.filter(p => p.active);
+  if (active.length < 3) {
+    showToast('Need at least 3 points for Voronoi declustering', 'error');
+    return;
+  }
+  
+  const boxOriginX = parseFloat(document.getElementById('voronoiOriginX').value);
+  const boxOriginY = parseFloat(document.getElementById('voronoiOriginY').value);
+  const boxSizeX = parseFloat(document.getElementById('voronoiSizeX').value);
+  const boxSizeY = parseFloat(document.getElementById('voronoiSizeY').value);
+  
+  const bounds = {
+    minX: boxOriginX,
+    maxX: boxOriginX + boxSizeX,
+    minY: boxOriginY,
+    maxY: boxOriginY + boxSizeY
+  };
+  
+  const voronoi = computeVoronoi(active.map(p => [p.worldX, p.worldY]), bounds);
+  voronoiPolygons = voronoi.cells;
+  
+  const areas = voronoiPolygons.map(cell => cell.area);
+  const totalArea = areas.reduce((a, b) => a + b, 0);
+  
+  voronoiWeights = areas.map(a => a / totalArea);
+  
+  // Clear preview since we're applying the actual declustering
+  previewVoronoi = null;
+  
+  updateAllStats();
+  drawWeightComparison();
+  drawCDF();
+  
+  document.getElementById('showVoronoi').checked = true;
+  draw();
+  
+  showToast('Polygonal declustering applied', 'success');
+}
+
+function computeVoronoi(points, bounds) {
+  const n = points.length;
+  const cells = [];
+  
+  for (let i = 0; i < n; i++) {
+    const [px, py] = points[i];
+    
+    let polygon = [
+      [bounds.minX, bounds.minY],
+      [bounds.maxX, bounds.minY],
+      [bounds.maxX, bounds.maxY],
+      [bounds.minX, bounds.maxY]
+    ];
+    
+    for (let j = 0; j < n; j++) {
+      if (i === j) continue;
+      
+      const [qx, qy] = points[j];
+      const mx = (px + qx) / 2;
+      const my = (py + qy) / 2;
+      const nx = px - qx;
+      const ny = py - qy;
+      
+      polygon = clipPolygonToHalfPlane(polygon, mx, my, nx, ny);
+      if (polygon.length < 3) break;
+    }
+    
+    const area = polygonArea(polygon);
+    cells.push({ pointIndex: i, vertices: polygon, area: area });
+  }
+  
+  return { cells };
+}
+
+function clipPolygonToHalfPlane(polygon, mx, my, nx, ny) {
+  if (polygon.length < 3) return [];
+  
+  const output = [];
+  
+  for (let i = 0; i < polygon.length; i++) {
+    const current = polygon[i];
+    const next = polygon[(i + 1) % polygon.length];
+    
+    const currentInside = (current[0] - mx) * nx + (current[1] - my) * ny >= 0;
+    const nextInside = (next[0] - mx) * nx + (next[1] - my) * ny >= 0;
+    
+    if (currentInside) output.push(current);
+    
+    if (currentInside !== nextInside) {
+      const intersection = lineHalfPlaneIntersection(current, next, mx, my, nx, ny);
+      if (intersection) output.push(intersection);
+    }
+  }
+  
+  return output;
+}
+
+function lineHalfPlaneIntersection(p1, p2, mx, my, nx, ny) {
+  const d1 = (p1[0] - mx) * nx + (p1[1] - my) * ny;
+  const d2 = (p2[0] - mx) * nx + (p2[1] - my) * ny;
+  
+  if (Math.abs(d1 - d2) < 1e-10) return null;
+  
+  const t = d1 / (d1 - d2);
+  return [p1[0] + t * (p2[0] - p1[0]), p1[1] + t * (p2[1] - p1[1])];
+}
+
+function polygonArea(vertices) {
+  if (vertices.length < 3) return 0;
+  
+  let area = 0;
+  for (let i = 0; i < vertices.length; i++) {
+    const j = (i + 1) % vertices.length;
+    area += vertices[i][0] * vertices[j][1];
+    area -= vertices[j][0] * vertices[i][1];
+  }
+  
+  return Math.abs(area) / 2;
+}
+
+// ============ KRIGING DECLUSTERING ============
+function applyKrigingDeclustering() {
+  const active = points.filter(p => p.active);
+  if (active.length < 2) {
+    showToast('Need at least 2 points for Kriging declustering', 'error');
+    return;
+  }
+  
+  const originX = parseFloat(document.getElementById('krigOriginX').value) || 0;
+  const originY = parseFloat(document.getElementById('krigOriginY').value) || 0;
+  const sizeX = parseFloat(document.getElementById('krigSizeX').value) || 10;
+  const sizeY = parseFloat(document.getElementById('krigSizeY').value) || 10;
+  const nx = parseInt(document.getElementById('krigNx').value) || 20;
+  const ny = parseInt(document.getElementById('krigNy').value) || 20;
+  const range = parseFloat(document.getElementById('krigRange').value) || 100;
+  const nugget = parseFloat(document.getElementById('krigNugget').value) || 0.2;
+  const sill = parseFloat(document.getElementById('krigSill').value) || 1.0;
+  const ktype = document.getElementById('krigType').value;
+  
+  krigingGrid = { originX, originY, sizeX, sizeY, nx, ny };
+  
+  // Initialize accumulated weights
+  const accumulatedWeights = new Array(active.length).fill(0);
+  
+  // Spherical variogram model
+  function sphericalCovariance(h) {
+    if (h <= 0) return nugget + sill;
+    if (h >= range) return 0;
+    const hr = h / range;
+    return sill * (1 - 1.5 * hr + 0.5 * hr * hr * hr);
+  }
+  
+  // Distance between two points
+  function distance(x1, y1, x2, y2) {
+    return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+  }
+  
+  // For each grid block
+  for (let gi = 0; gi < nx; gi++) {
+    for (let gj = 0; gj < ny; gj++) {
+      const blockX = originX + (gi + 0.5) * sizeX;
+      const blockY = originY + (gj + 0.5) * sizeY;
+      
+      // Find samples within search radius (use 3x range)
+      const searchRadius = range * 3;
+      const nearbyIndices = [];
+      
+      for (let k = 0; k < active.length; k++) {
+        const d = distance(blockX, blockY, active[k].worldX, active[k].worldY);
+        if (d <= searchRadius) {
+          nearbyIndices.push(k);
+        }
+      }
+      
+      if (nearbyIndices.length === 0) continue;
+      
+      const n = nearbyIndices.length;
+      
+      if (ktype === 'OK') {
+        // Ordinary Kriging
+        const neq = n + 1;
+        const A = [];
+        const b = [];
+        
+        // Build kriging matrix
+        for (let i = 0; i < n; i++) {
+          A[i] = [];
+          for (let j = 0; j < n; j++) {
+            const d = distance(
+              active[nearbyIndices[i]].worldX, active[nearbyIndices[i]].worldY,
+              active[nearbyIndices[j]].worldX, active[nearbyIndices[j]].worldY
+            );
+            A[i][j] = sphericalCovariance(d);
+          }
+          A[i][n] = 1; // Lagrange multiplier column
+          
+          // Right hand side
+          const d = distance(blockX, blockY, active[nearbyIndices[i]].worldX, active[nearbyIndices[i]].worldY);
+          b[i] = sphericalCovariance(d);
+        }
+        
+        // Lagrange row
+        A[n] = [];
+        for (let j = 0; j < n; j++) A[n][j] = 1;
+        A[n][n] = 0;
+        b[n] = 1;
+        
+        // Solve system
+        const weights = solveLinearSystem(A, b);
+        
+        if (weights) {
+          for (let i = 0; i < n; i++) {
+            accumulatedWeights[nearbyIndices[i]] += weights[i];
+          }
+        }
+      } else {
+        // Simple Kriging
+        const A = [];
+        const b = [];
+        
+        for (let i = 0; i < n; i++) {
+          A[i] = [];
+          for (let j = 0; j < n; j++) {
+            const d = distance(
+              active[nearbyIndices[i]].worldX, active[nearbyIndices[i]].worldY,
+              active[nearbyIndices[j]].worldX, active[nearbyIndices[j]].worldY
+            );
+            A[i][j] = sphericalCovariance(d);
+          }
+          
+          const d = distance(blockX, blockY, active[nearbyIndices[i]].worldX, active[nearbyIndices[i]].worldY);
+          b[i] = sphericalCovariance(d);
+        }
+        
+        const weights = solveLinearSystem(A, b);
+        
+        if (weights) {
+          for (let i = 0; i < n; i++) {
+            accumulatedWeights[nearbyIndices[i]] += weights[i];
+          }
+        }
+      }
+    }
+  }
+  
+  // Normalize weights
+  const totalWeight = accumulatedWeights.reduce((a, b) => a + b, 0);
+  krigingWeights = accumulatedWeights.map(w => w / totalWeight);
+  
+  // Clear preview since we're applying the actual declustering
+  previewKriging = null;
+  
+  updateAllStats();
+  drawWeightComparison();
+  drawCDF();
+  
+  document.getElementById('showGrid').checked = true;
+  draw();
+  
+  showToast(`Kriging declustering applied (${nx}×${ny} grid)`, 'success');
+}
+
+// Simple Gaussian elimination
+function solveLinearSystem(A, b) {
+  const n = b.length;
+  const augmented = A.map((row, i) => [...row, b[i]]);
+  
+  // Forward elimination
+  for (let i = 0; i < n; i++) {
+    // Find pivot
+    let maxRow = i;
+    for (let k = i + 1; k < n; k++) {
+      if (Math.abs(augmented[k][i]) > Math.abs(augmented[maxRow][i])) {
+        maxRow = k;
+      }
+    }
+    [augmented[i], augmented[maxRow]] = [augmented[maxRow], augmented[i]];
+    
+    if (Math.abs(augmented[i][i]) < 1e-10) return null;
+    
+    for (let k = i + 1; k < n; k++) {
+      const factor = augmented[k][i] / augmented[i][i];
+      for (let j = i; j <= n; j++) {
+        augmented[k][j] -= factor * augmented[i][j];
+      }
+    }
+  }
+  
+  // Back substitution
+  const x = new Array(n);
+  for (let i = n - 1; i >= 0; i--) {
+    x[i] = augmented[i][n];
+    for (let j = i + 1; j < n; j++) {
+      x[i] -= augmented[i][j] * x[j];
+    }
+    x[i] /= augmented[i][i];
+  }
+  
+  return x;
+}
+
+// ============ IDW DECLUSTERING ============
+function applyIDWDeclustering() {
+  const active = points.filter(p => p.active);
+  if (active.length < 2) {
+    showToast('Need at least 2 points for IDW declustering', 'error');
+    return;
+  }
+  
+  const originX = parseFloat(document.getElementById('idwOriginX').value) || 0;
+  const originY = parseFloat(document.getElementById('idwOriginY').value) || 0;
+  const sizeX = parseFloat(document.getElementById('idwSizeX').value) || 10;
+  const sizeY = parseFloat(document.getElementById('idwSizeY').value) || 10;
+  const nx = parseInt(document.getElementById('idwNx').value) || 20;
+  const ny = parseInt(document.getElementById('idwNy').value) || 20;
+  const power = parseFloat(document.getElementById('idwPower').value) || 2.0;
+  const maxNeighbors = parseInt(document.getElementById('idwMaxNeighbors').value) || 8;
+  
+  // Store grid for visualization (reuse krigingGrid variable or create idwGrid)
+  // For now we'll just proceed with the calculation
+  
+  // Initialize accumulated weights
+  const accumulatedWeights = new Array(active.length).fill(0);
+  
+  function distance(x1, y1, x2, y2) {
+    return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+  }
+  
+  // For each grid block
+  for (let gi = 0; gi < nx; gi++) {
+    for (let gj = 0; gj < ny; gj++) {
+      const blockX = originX + (gi + 0.5) * sizeX;
+      const blockY = originY + (gj + 0.5) * sizeY;
+      
+      // Calculate distances to all samples
+      const distances = active.map((p, idx) => ({
+        idx,
+        dist: distance(blockX, blockY, p.worldX, p.worldY)
+      }));
+      
+      // Sort by distance and take closest neighbors
+      distances.sort((a, b) => a.dist - b.dist);
+      const neighbors = distances.slice(0, Math.min(maxNeighbors, distances.length));
+      
+      // Calculate IDW weights for this block
+      let sumInvDist = 0;
+      const invDists = [];
+      
+      for (const n of neighbors) {
+        const invD = n.dist > 1e-10 ? Math.pow(n.dist, -power) : 1e10;
+        invDists.push({ idx: n.idx, invD });
+        sumInvDist += invD;
+      }
+      
+      // Normalize and accumulate
+      for (const { idx, invD } of invDists) {
+        const weight = invD / sumInvDist;
+        accumulatedWeights[idx] += weight;
+      }
+    }
+  }
+  
+  // Normalize weights
+  const totalWeight = accumulatedWeights.reduce((a, b) => a + b, 0);
+  idwWeights = accumulatedWeights.map(w => w / totalWeight);
+  
+  // Clear preview since we're applying the actual declustering
+  previewIDW = null;
+  
+  updateAllStats();
+  drawWeightComparison();
+  drawCDF();
+  
+  draw();
+  
+  showToast(`IDW declustering applied (${nx}×${ny} grid)`, 'success');
+}
+
+// ============ OPTIMIZATION ============
+function runOptimization() {
+  const active = points.filter(p => p.active);
+  if (active.length === 0) {
+    showToast('No data points', 'error');
+    return;
+  }
+  
+  const minSize = parseFloat(document.getElementById('optMinSize').value) || 10;
+  const maxSize = parseFloat(document.getElementById('optMaxSize').value) || 200;
+  const steps = parseInt(document.getElementById('optSteps').value) || 20;
+  
+  const results = [];
+  const originX = dataMinX;
+  const originY = dataMinY;
+  
+  for (let s = 0; s < steps; s++) {
+    const size = minSize + (maxSize - minSize) * s / (steps - 1);
+    const weights = calculateCellWeights(active, size, size, originX, originY);
+    const mean = weightedMean(active.map(p => p.value), weights);
+    results.push({ size, mean });
+  }
+  
+  const minMean = Math.min(...results.map(r => r.mean));
+  const optimalResult = results.find(r => r.mean === minMean);
+  
+  const resultsDiv = document.getElementById('optimizeResults');
+  resultsDiv.style.display = 'block';
+  resultsDiv.innerHTML = `
+    <strong>Optimization Results:</strong><br>
+    Optimal cell size: <span style="color:#059669; font-weight:bold;">${optimalResult.size.toFixed(1)}</span><br>
+    Declustered mean: <span style="color:#059669; font-weight:bold;">${optimalResult.mean.toFixed(2)}</span>
+  `;
+  
+  drawOptimizationCurve(results, optimalResult);
+  
+  document.getElementById('cellSizeX').value = optimalResult.size.toFixed(1);
+  document.getElementById('cellSizeY').value = optimalResult.size.toFixed(1);
+}
+
+function calculateCellWeights(active, sizeX, sizeY, originX, originY) {
+  const nx = Math.ceil((dataMaxX - originX) / sizeX) + 1;
+  const ny = Math.ceil((dataMaxY - originY) / sizeY) + 1;
+  
+  const counts = Array(nx).fill(null).map(() => Array(ny).fill(0));
+  const cellAssignment = [];
+  
+  active.forEach(p => {
+    const i = Math.floor((p.worldX - originX) / sizeX);
+    const j = Math.floor((p.worldY - originY) / sizeY);
+    const ci = Math.max(0, Math.min(nx - 1, i));
+    const cj = Math.max(0, Math.min(ny - 1, j));
+    counts[ci][cj]++;
+    cellAssignment.push({ i: ci, j: cj });
+  });
+  
+  let nonEmptyCells = 0;
+  for (let i = 0; i < nx; i++) {
+    for (let j = 0; j < ny; j++) {
+      if (counts[i][j] > 0) nonEmptyCells++;
+    }
+  }
+  
+  const weights = [];
+  let sumWeights = 0;
+  
+  active.forEach((p, idx) => {
+    const { i, j } = cellAssignment[idx];
+    const weight = 1 / (counts[i][j] * nonEmptyCells);
+    weights.push(weight);
+    sumWeights += weight;
+  });
+  
+  return weights.map(w => w / sumWeights);
+}
+
+function drawOptimizationCurve(results, optimal) {
+  const canvas = document.getElementById('optimizationCanvas');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  
+  const w = rect.width;
+  const h = rect.height;
+  const margin = { top: 20, right: 20, bottom: 40, left: 60 };
+  const plotW = w - margin.left - margin.right;
+  const plotH = h - margin.top - margin.bottom;
+  
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, w, h);
+  
+  const sizes = results.map(r => r.size);
+  const means = results.map(r => r.mean);
+  const minSize = Math.min(...sizes);
+  const maxSize = Math.max(...sizes);
+  const minMean = Math.min(...means) * 0.95;
+  const maxMean = Math.max(...means) * 1.05;
+  
+  ctx.strokeStyle = '#cbd5e1';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(margin.left, margin.top);
+  ctx.lineTo(margin.left, h - margin.bottom);
+  ctx.lineTo(w - margin.right, h - margin.bottom);
+  ctx.stroke();
+  
+  ctx.fillStyle = '#64748b';
+  ctx.font = '12px system-ui';
+  ctx.textAlign = 'center';
+  ctx.fillText('Cell Size', w / 2, h - 8);
+  
+  ctx.save();
+  ctx.translate(15, h / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillText('Declustered Mean', 0, 0);
+  ctx.restore();
+  
+  for (let i = 0; i <= 5; i++) {
+    const v = minSize + (maxSize - minSize) * i / 5;
+    const x = margin.left + plotW * i / 5;
+    ctx.fillText(v.toFixed(0), x, h - margin.bottom + 15);
+  }
+  
+  ctx.textAlign = 'right';
+  for (let i = 0; i <= 5; i++) {
+    const v = minMean + (maxMean - minMean) * i / 5;
+    const y = h - margin.bottom - plotH * i / 5;
+    ctx.fillText(v.toFixed(1), margin.left - 5, y + 4);
+  }
+  
+  ctx.beginPath();
+  ctx.strokeStyle = '#2563eb';
+  ctx.lineWidth = 2;
+  
+  results.forEach((r, i) => {
+    const x = margin.left + plotW * (r.size - minSize) / (maxSize - minSize);
+    const y = h - margin.bottom - plotH * (r.mean - minMean) / (maxMean - minMean);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+  
+  results.forEach(r => {
+    const x = margin.left + plotW * (r.size - minSize) / (maxSize - minSize);
+    const y = h - margin.bottom - plotH * (r.mean - minMean) / (maxMean - minMean);
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#2563eb';
+    ctx.fill();
+  });
+  
+  const optX = margin.left + plotW * (optimal.size - minSize) / (maxSize - minSize);
+  const optY = h - margin.bottom - plotH * (optimal.mean - minMean) / (maxMean - minMean);
+  
+  ctx.beginPath();
+  ctx.arc(optX, optY, 8, 0, Math.PI * 2);
+  ctx.fillStyle = '#059669';
+  ctx.fill();
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+// ============ WEIGHT COMPARISON CHART ============
+function drawWeightComparison() {
+  const canvas = document.getElementById('weightComparisonCanvas');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  
+  const w = rect.width;
+  const h = rect.height;
+  const margin = { top: 20, right: 20, bottom: 50, left: 60 };
+  const plotW = w - margin.left - margin.right;
+  const plotH = h - margin.top - margin.bottom;
+  
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, w, h);
+  
+  const active = points.filter(p => p.active);
+  if (active.length === 0) {
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '12px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText('Load data and apply declustering methods', w / 2, h / 2);
+    return;
+  }
+  
+  // Collect all available weights
+  const allWeights = [];
+  if (cellWeights.length === active.length) allWeights.push({ name: 'Cell', weights: cellWeights, color: '#7c3aed' });
+  if (voronoiWeights.length === active.length) allWeights.push({ name: 'Polygonal', weights: voronoiWeights, color: '#ea580c' });
+  if (krigingWeights.length === active.length) allWeights.push({ name: 'Kriging', weights: krigingWeights, color: '#0d9488' });
+  if (idwWeights.length === active.length) allWeights.push({ name: 'IDW', weights: idwWeights, color: '#e11d48' });
+  
+  if (allWeights.length === 0) {
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '12px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText('Apply declustering methods to see weight comparison', w / 2, h / 2);
+    return;
+  }
+  
+  // Normalize weights to mean = 1 for comparison
+  const normalizedWeights = allWeights.map(aw => ({
+    ...aw,
+    normalized: aw.weights.map(w => w * active.length)
+  }));
+  
+  // Find max weight for Y scale
+  let maxWeight = 0;
+  normalizedWeights.forEach(nw => {
+    maxWeight = Math.max(maxWeight, ...nw.normalized);
+  });
+  maxWeight = Math.max(maxWeight, 2.0) * 1.1;
+  
+  // Draw axes
+  ctx.strokeStyle = '#1f2937';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(margin.left, margin.top);
+  ctx.lineTo(margin.left, h - margin.bottom);
+  ctx.lineTo(w - margin.right, h - margin.bottom);
+  ctx.stroke();
+  
+  // Draw reference line at weight = 1
+  ctx.strokeStyle = '#94a3b8';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([5, 5]);
+  const refY = h - margin.bottom - plotH * (1 / maxWeight);
+  ctx.beginPath();
+  ctx.moveTo(margin.left, refY);
+  ctx.lineTo(w - margin.right, refY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  
+  // X axis labels
+  ctx.fillStyle = '#374151';
+  ctx.font = '11px system-ui';
+  ctx.textAlign = 'center';
+  ctx.fillText('Sample ID', w / 2, h - 8);
+  
+  // Y axis label
+  ctx.save();
+  ctx.translate(15, h / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillText('Normalized Weight (× n)', 0, 0);
+  ctx.restore();
+  
+  // Y axis ticks
+  ctx.textAlign = 'right';
+  const yTicks = 5;
+  for (let i = 0; i <= yTicks; i++) {
+    const v = maxWeight * i / yTicks;
+    const y = h - margin.bottom - plotH * (v / maxWeight);
+    ctx.fillText(v.toFixed(1), margin.left - 5, y + 4);
+    
+    ctx.strokeStyle = '#e5e7eb';
+    ctx.beginPath();
+    ctx.moveTo(margin.left, y);
+    ctx.lineTo(w - margin.right, y);
+    ctx.stroke();
+  }
+  
+  // Bar width calculation
+  const numMethods = normalizedWeights.length;
+  const groupWidth = plotW / active.length;
+  const barWidth = (groupWidth * 0.8) / numMethods;
+  const barGap = (groupWidth * 0.2) / (numMethods + 1);
+  
+  // Draw bars for each method
+  normalizedWeights.forEach((method, mi) => {
+    method.normalized.forEach((weight, si) => {
+      const x = margin.left + si * groupWidth + barGap + mi * (barWidth + barGap / numMethods);
+      const barHeight = plotH * (weight / maxWeight);
+      const y = h - margin.bottom - barHeight;
+      
+      ctx.fillStyle = method.color;
+      ctx.fillRect(x, y, barWidth, barHeight);
+    });
+  });
+  
+  // X axis sample IDs (show fewer labels if many samples)
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#374151';
+  const labelStep = Math.ceil(active.length / 20);
+  for (let i = 0; i < active.length; i += labelStep) {
+    const x = margin.left + (i + 0.5) * groupWidth;
+    ctx.fillText(active[i].id.toString(), x, h - margin.bottom + 15);
+  }
+}
+
+function clearWeightComparisonCanvas() {
+  const canvas = document.getElementById('weightComparisonCanvas');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  
+  ctx.fillStyle = '#f8fafc';
+  ctx.fillRect(0, 0, rect.width, rect.height);
+  
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '12px system-ui';
+  ctx.textAlign = 'center';
+  ctx.fillText('Apply declustering methods to see weight comparison', rect.width / 2, rect.height / 2);
+}
+
+// ============ STATISTICS ============
+function updateNaiveStats() {
+  const active = points.filter(p => p.active);
+  document.getElementById('pointCount').textContent = `${active.length} points`;
+  
+  if (active.length === 0) {
+    clearStats();
+    return;
+  }
+  
+  updateAllStats();
+}
+
+function updateAllStats() {
+  const active = points.filter(p => p.active);
+  if (active.length === 0) return;
+  
+  const values = active.map(p => p.value);
+  
+  const naiveWeights = values.map(() => 1 / values.length);
+  const naiveStats = computeWeightedStats(values, naiveWeights);
+  
+  let cellStats = null, voronoiStats = null, krigingStats = null, idwStats = null;
+  
+  if (cellWeights.length === active.length) {
+    cellStats = computeWeightedStats(values, cellWeights);
+  }
+  if (voronoiWeights.length === active.length) {
+    voronoiStats = computeWeightedStats(values, voronoiWeights);
+  }
+  if (krigingWeights.length === active.length) {
+    krigingStats = computeWeightedStats(values, krigingWeights);
+  }
+  if (idwWeights.length === active.length) {
+    idwStats = computeWeightedStats(values, idwWeights);
+  }
+  
+  updateStatsTable(naiveStats, cellStats, voronoiStats, krigingStats, idwStats);
+}
+
+function computeWeightedStats(values, weights) {
+  const n = values.length;
+  
+  let mean = 0;
+  for (let i = 0; i < n; i++) {
+    mean += values[i] * weights[i];
+  }
+  
+  let variance = 0;
+  for (let i = 0; i < n; i++) {
+    variance += weights[i] * (values[i] - mean) ** 2;
+  }
+  
+  const sorted = values.map((v, i) => ({ v, w: weights[i] })).sort((a, b) => a.v - b.v);
+  
+  function weightedPercentile(p) {
+    let cumWeight = 0;
+    for (let i = 0; i < sorted.length; i++) {
+      cumWeight += sorted[i].w;
+      if (cumWeight >= p) return sorted[i].v;
+    }
+    return sorted[sorted.length - 1].v;
+  }
+  
+  const std = Math.sqrt(variance);
+  const cv = mean !== 0 ? (std / mean) * 100 : 0;
+  
+  return {
+    count: n,
+    mean, variance, std, cv,
+    min: Math.min(...values),
+    max: Math.max(...values),
+    median: weightedPercentile(0.5)
+  };
+}
+
+function weightedMean(values, weights) {
+  let sum = 0;
+  for (let i = 0; i < values.length; i++) {
+    sum += values[i] * weights[i];
+  }
+  return sum;
+}
+
+function updateStatsTable(naive, cell, voronoi, kriging, idw) {
+  const tbody = document.getElementById('statsTableBody');
+  const f = (v) => v !== undefined && v !== null ? v.toFixed(2) : '-';
+  
+  const rows = [
+    ['Count', naive.count, cell?.count, voronoi?.count, kriging?.count, idw?.count],
+    ['Mean', naive.mean, cell?.mean, voronoi?.mean, kriging?.mean, idw?.mean],
+    ['Variance', naive.variance, cell?.variance, voronoi?.variance, kriging?.variance, idw?.variance],
+    ['Std Dev', naive.std, cell?.std, voronoi?.std, kriging?.std, idw?.std],
+    ['CV (%)', naive.cv, cell?.cv, voronoi?.cv, kriging?.cv, idw?.cv],
+    ['Min', naive.min, cell?.min, voronoi?.min, kriging?.min, idw?.min],
+    ['Median', naive.median, cell?.median, voronoi?.median, kriging?.median, idw?.median],
+    ['Max', naive.max, cell?.max, voronoi?.max, kriging?.max, idw?.max],
+  ];
+  
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td>${r[0]}</td>
+      <td>${f(r[1])}</td>
+      <td>${f(r[2])}</td>
+      <td>${f(r[3])}</td>
+      <td>${f(r[4])}</td>
+      <td>${f(r[5])}</td>
+    </tr>
+  `).join('');
+}
+
+function clearStats() {
+  const tbody = document.getElementById('statsTableBody');
+  tbody.innerHTML = Array(8).fill('<tr><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>').join('');
+}
+
+// ============ CDF ============
+function drawCDF() {
+  const canvas = document.getElementById('cdfCanvas');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  
+  const w = rect.width;
+  const h = rect.height;
+  const margin = { top: 20, right: 20, bottom: 40, left: 50 };
+  const plotW = w - margin.left - margin.right;
+  const plotH = h - margin.top - margin.bottom;
+  
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, w, h);
+  
+  const active = points.filter(p => p.active);
+  if (active.length === 0) return;
+  
+  const values = active.map(p => p.value);
+  const minV = Math.min(...values);
+  const maxV = Math.max(...values);
+  const rangeV = maxV - minV || 1;
+  
+  // Draw axes
+  ctx.strokeStyle = '#1f2937';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(margin.left, margin.top);
+  ctx.lineTo(margin.left, h - margin.bottom);
+  ctx.lineTo(w - margin.right, h - margin.bottom);
+  ctx.stroke();
+  
+  // Draw CDFs
+  const allCDFs = [
+    { weights: values.map(() => 1/values.length), color: '#6b7280', width: 2 }
+  ];
+  
+  if (cellWeights.length === active.length) {
+    allCDFs.push({ weights: cellWeights, color: '#7c3aed', width: 2 });
+  }
+  if (voronoiWeights.length === active.length) {
+    allCDFs.push({ weights: voronoiWeights, color: '#ea580c', width: 2 });
+  }
+  if (krigingWeights.length === active.length) {
+    allCDFs.push({ weights: krigingWeights, color: '#0d9488', width: 2 });
+  }
+  if (idwWeights.length === active.length) {
+    allCDFs.push({ weights: idwWeights, color: '#e11d48', width: 2 });
+  }
+  
+  allCDFs.forEach(({ weights, color, width }) => {
+    const sorted = values.map((v, i) => ({ v, w: weights[i] })).sort((a, b) => a.v - b.v);
+    
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    
+    let cumProb = 0;
+    sorted.forEach((item, i) => {
+      const x = margin.left + plotW * (item.v - minV) / rangeV;
+      const y = h - margin.bottom - plotH * cumProb;
+      
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+      
+      cumProb += item.w;
+      ctx.lineTo(x, h - margin.bottom - plotH * cumProb);
+    });
+    
+    ctx.stroke();
+  });
+  
+  // Axis labels
+  ctx.fillStyle = '#374151';
+  ctx.font = '11px system-ui';
+  ctx.textAlign = 'center';
+  ctx.fillText('Value', w / 2, h - 8);
+  
+  ctx.save();
+  ctx.translate(15, h / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillText('Cumulative Probability', 0, 0);
+  ctx.restore();
+}
+
+function clearCDFCanvas() {
+  const canvas = document.getElementById('cdfCanvas');
+  if (!canvas) return;
+  
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  
+  ctx.fillStyle = '#f8fafc';
+  ctx.fillRect(0, 0, rect.width, rect.height);
+  
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '12px system-ui';
+  ctx.textAlign = 'center';
+  ctx.fillText('Load data to see CDF comparison', rect.width / 2, rect.height / 2);
+}
+
+// ============ DATA TABLE ============
+function updatePointsTable() {
+  const tbody = document.querySelector('#pointsTable tbody');
+  
+  tbody.innerHTML = points.map((p, i) => `
+    <tr style="${!p.active ? 'opacity: 0.4;' : ''}">
+      <td>${p.id}</td>
+      <td>${p.worldX.toFixed(2)}</td>
+      <td>${p.worldY.toFixed(2)}</td>
+      <td>${p.value.toFixed(2)}</td>
+      <td><input type="checkbox" ${p.active ? 'checked' : ''} onchange="togglePoint(${p.id})"></td>
+    </tr>
+  `).join('');
+  
+  document.getElementById('pointCount').textContent = `${points.filter(p => p.active).length} points`;
+}
+
+function togglePoint(id) {
+  const pt = points.find(p => p.id === id);
+  if (pt) {
+    pt.active = !pt.active;
+    cellWeights = [];
+    voronoiWeights = [];
+    krigingWeights = [];
+    idwWeights = [];
+    voronoiPolygons = [];
+    cellGrid = null;
+    krigingGrid = null;
+    updateNaiveStats();
+    draw();
+  }
+}
+
+// ============ CSV HANDLING ============
+function handleCSVUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    parseCSVPreview(evt.target.result);
+  };
+  reader.readAsText(file);
+}
+
+function parseCSVPreview(text) {
+  const lines = text.trim().split('\n').filter(l => l.trim());
+  if (lines.length < 2) {
+    document.getElementById('csvStatus').textContent = 'Invalid CSV';
+    return;
+  }
+  
+  const delimiters = [',', ';', '\t', ' '];
+  let delim = ',';
+  let maxCols = 0;
+  
+  delimiters.forEach(d => {
+    const cols = lines[0].split(d).length;
+    if (cols > maxCols) {
+      maxCols = cols;
+      delim = d;
+    }
+  });
+  
+  csvHeaders = lines[0].split(delim).map(h => h.trim().replace(/"/g, ''));
+  csvRawData = { text, delim, lines };
+  
+  ['csvColX', 'csvColY', 'csvColZ'].forEach(id => {
+    const select = document.getElementById(id);
+    select.innerHTML = csvHeaders.map((h, i) => `<option value="${i}">${h}</option>`).join('');
+  });
+  
+  const lh = csvHeaders.map(h => h.toLowerCase());
+  const xIdx = lh.findIndex(h => ['x', 'easting', 'longitude', 'lon', 'east'].includes(h));
+  const yIdx = lh.findIndex(h => ['y', 'northing', 'latitude', 'lat', 'north'].includes(h));
+  const zIdx = lh.findIndex(h => ['z', 'value', 'grade', 'var', 'v'].includes(h));
+  
+  if (xIdx >= 0) document.getElementById('csvColX').value = xIdx;
+  if (yIdx >= 0) document.getElementById('csvColY').value = yIdx;
+  if (zIdx >= 0) document.getElementById('csvColZ').value = zIdx;
+  
+  document.getElementById('csvColumnSelector').style.display = 'block';
+  document.getElementById('csvStatus').textContent = `${csvHeaders.length} columns found`;
+}
+
+function loadCSVWithSelectedColumns() {
+  if (!csvRawData) {
+    showToast('Select CSV file first', 'error');
+    return;
+  }
+  
+  const xCol = parseInt(document.getElementById('csvColX').value);
+  const yCol = parseInt(document.getElementById('csvColY').value);
+  const zCol = parseInt(document.getElementById('csvColZ').value);
+  const { delim, lines } = csvRawData;
+  
+  points = [];
+  let minX = Infinity, maxX = -Infinity;
+  let minY = Infinity, maxY = -Infinity;
+  
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split(delim);
+    const x = parseFloat(cols[xCol]);
+    const y = parseFloat(cols[yCol]);
+    const z = parseFloat(cols[zCol]);
+    
+    if (!isFinite(x) || !isFinite(y) || !isFinite(z)) continue;
+    
+    minX = Math.min(minX, x);
+    maxX = Math.max(maxX, x);
+    minY = Math.min(minY, y);
+    maxY = Math.max(maxY, y);
+    
+    points.push({
+      id: nextId++,
+      worldX: x,
+      worldY: y,
+      value: z,
+      active: true
+    });
+  }
+  
+  if (points.length === 0) {
+    showToast('No valid points found', 'error');
+    return;
+  }
+  
+  const margin = Math.max(maxX - minX, maxY - minY) * 0.1;
+  dataMinX = minX - margin;
+  dataMaxX = maxX + margin;
+  dataMinY = minY - margin;
+  dataMaxY = maxY + margin;
+  
+  // Update parameters with data bounds
+  document.getElementById('cellOriginX').value = Math.floor(minX);
+  document.getElementById('cellOriginY').value = Math.floor(minY);
+  document.getElementById('voronoiOriginX').value = Math.floor(minX - margin/2);
+  document.getElementById('voronoiOriginY').value = Math.floor(minY - margin/2);
+  document.getElementById('voronoiSizeX').value = Math.ceil(maxX - minX + margin);
+  document.getElementById('voronoiSizeY').value = Math.ceil(maxY - minY + margin);
+  
+  // Kriging grid parameters
+  const dataRangeX = maxX - minX;
+  const dataRangeY = maxY - minY;
+  const suggestedCellSize = Math.round(Math.max(dataRangeX, dataRangeY) / 20);
+  
+  document.getElementById('krigOriginX').value = Math.floor(minX - margin/2);
+  document.getElementById('krigOriginY').value = Math.floor(minY - margin/2);
+  document.getElementById('krigSizeX').value = suggestedCellSize || 10;
+  document.getElementById('krigSizeY').value = suggestedCellSize || 10;
+  document.getElementById('krigNx').value = Math.ceil((dataRangeX + margin) / (suggestedCellSize || 10));
+  document.getElementById('krigNy').value = Math.ceil((dataRangeY + margin) / (suggestedCellSize || 10));
+  document.getElementById('krigRange').value = Math.round(Math.max(dataRangeX, dataRangeY) * 0.3);
+  
+  // IDW grid parameters (same as kriging)
+  document.getElementById('idwOriginX').value = Math.floor(minX - margin/2);
+  document.getElementById('idwOriginY').value = Math.floor(minY - margin/2);
+  document.getElementById('idwSizeX').value = suggestedCellSize || 10;
+  document.getElementById('idwSizeY').value = suggestedCellSize || 10;
+  document.getElementById('idwNx').value = Math.ceil((dataRangeX + margin) / (suggestedCellSize || 10));
+  document.getElementById('idwNy').value = Math.ceil((dataRangeY + margin) / (suggestedCellSize || 10));
+  
+  updateAspectTransform();
+  
+  points.forEach(p => {
+    p.x = internalX(p.worldX);
+    p.y = internalY(p.worldY);
+  });
+  
+  cellWeights = [];
+  voronoiWeights = [];
+  krigingWeights = [];
+  idwWeights = [];
+  voronoiPolygons = [];
+  cellGrid = null;
+  krigingGrid = null;
+  
+  updatePointsTable();
+  updateNaiveStats();
+  resetView();
+  
+  showToast(`Loaded ${points.length} points`, 'success');
+}
+
+// ============ EXPORT DATA ============
+function exportAllWeights() {
+  const active = points.filter(p => p.active);
+  
+  if (active.length === 0) {
+    showToast('No data to export', 'error');
+    return;
+  }
+  
+  const hasCellWeights = cellWeights.length === active.length;
+  const hasVoronoiWeights = voronoiWeights.length === active.length;
+  const hasKrigingWeights = krigingWeights.length === active.length;
+  const hasIDWWeights = idwWeights.length === active.length;
+  
+  if (!hasCellWeights && !hasVoronoiWeights && !hasKrigingWeights && !hasIDWWeights) {
+    showToast('No declustering has been applied yet', 'warning');
+    return;
+  }
+  
+  let headers = ['ID', 'X', 'Y', 'Z'];
+  if (hasCellWeights) headers.push('Cell_Weight');
+  if (hasVoronoiWeights) headers.push('Polygonal_Weight');
+  if (hasKrigingWeights) headers.push('Kriging_Weight');
+  if (hasIDWWeights) headers.push('IDW_Weight');
+  
+  let csvContent = headers.join(',') + '\n';
+  
+  active.forEach((p, i) => {
+    let row = [p.id, p.worldX.toFixed(4), p.worldY.toFixed(4), p.value.toFixed(4)];
+    if (hasCellWeights) row.push(cellWeights[i].toFixed(6));
+    if (hasVoronoiWeights) row.push(voronoiWeights[i].toFixed(6));
+    if (hasKrigingWeights) row.push(krigingWeights[i].toFixed(6));
+    if (hasIDWWeights) row.push(idwWeights[i].toFixed(6));
+    csvContent += row.join(',') + '\n';
+  });
+  
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  const timestamp = new Date().toISOString().slice(0, 10);
+  
+  link.setAttribute('href', url);
+  link.setAttribute('download', `declustered_weights_${timestamp}.csv`);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  
+  showToast('Weights exported successfully', 'success');
+}
+
+// ============ INIT ============
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+</script>
+</body>
+</html>

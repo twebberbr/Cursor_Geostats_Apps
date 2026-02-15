@@ -1,0 +1,3783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sequential Gaussian Simulation - Laboratory</title>
+  
+<style>
+  :root {
+    --bg-main: #f3f4f6;
+    --bg-panel: #f9fafb;
+    --bg-card: #ffffff;
+    --bg-card-alt: #f3f4f6;
+    --border-subtle: rgba(15,23,42,0.12);
+    --accent: #2563eb;
+    --accent-soft: rgba(37,99,235,0.10);
+    --accent-strong: #1d4ed8;
+    --accent-green: #15803d;
+    --accent-amber: #b45309;
+    --accent-purple: #7c3aed;
+    --text-main: #111827;
+    --text-muted: #4b5563;
+    --text-strong: #0f172a;
+    --radius-lg: 14px;
+    --radius-md: 10px;
+    --shadow-soft: 0 8px 24px rgba(15,23,42,0.06);
+    --shadow-subtle: 0 4px 14px rgba(15,23,42,0.04);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 12px;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+    display: flex;
+    height: 100vh;
+    background: var(--bg-main);
+    color: var(--text-main);
+  }
+
+  #left-panel, #right-panel {
+    background: var(--bg-panel);
+    backdrop-filter: blur(20px);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-soft);
+    border: 1px solid rgba(148, 163, 184, 0.35);
+  }
+
+  #left-panel {
+    width: 780px;
+    padding: 14px 16px 18px 16px;
+    margin-right: 12px;
+    overflow-y: auto;
+  }
+
+  #right-panel {
+    flex: 1;
+    padding: 16px 18px 20px 18px;
+    overflow-y: auto;
+  }
+
+  #left-panel h2 {
+    margin-top: 0;
+    margin-bottom: 12px;
+    font-size: 1.45rem;
+    letter-spacing: 0.03em;
+    font-weight: 650;
+    color: var(--text-strong);
+  }
+
+  #left-panel h2::after {
+    content: "";
+    display: block;
+    width: 84px;
+    height: 2px;
+    margin-top: 6px;
+    border-radius: 999px;
+    background: var(--bg-main);
+  }
+
+  #left-panel h3, #right-panel h3 {
+    margin: 12px 0 10px;
+    font-size: 0.96rem;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #111827;
+    font-weight: 600;
+  }
+
+  #right-panel h3 { margin-top: 0; margin-bottom: 8px; }
+
+  #left-panel h3::before, #right-panel h3::before {
+    content: "●";
+    margin-right: 6px;
+    font-size: 0.65em;
+    color: var(--accent);
+  }
+
+  h4 { margin: 0 0 6px 0; font-size: 0.9rem; color: var(--text-strong); }
+  h5 { margin: 0 0 4px 0; font-size: 0.9rem; color: var(--text-main); }
+
+  canvas {
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    background: var(--bg-main);
+    cursor: crosshair;
+    box-shadow: var(--shadow-subtle);
+  }
+
+  #simCanvas {
+    width: 700px;
+    height: 700px;
+    display: block;
+    margin: 4px 0 10px 0;
+  }
+
+  button {
+    margin: 5px 6px 5px 0;
+    padding: 6px 12px;
+    cursor: pointer;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    background: var(--bg-main);
+    color: var(--text-main);
+    font-size: 0.9rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.16s ease-out;
+  }
+
+  button:hover {
+    border-color: var(--accent);
+    background: var(--bg-main);
+    transform: translateY(-1px);
+    box-shadow: 0 10px 25px rgba(37, 99, 235, 0.35);
+  }
+
+  button:active { transform: translateY(0); box-shadow: none; }
+
+  .btn-primary {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #ffffff;
+    font-weight: 600;
+  }
+
+  .btn-primary:hover {
+    background: #1d4ed8;
+    border-color: #1d4ed8;
+    color: #ffffff;
+  }
+
+  .btn-simulate {
+    background: #7c3aed;
+    border-color: #7c3aed;
+    color: #ffffff;
+    font-weight: 600;
+  }
+
+  .btn-simulate:hover {
+    background: #6d28d9;
+    border-color: #6d28d9;
+    color: #ffffff;
+  }
+
+  .btn-step {
+    background: #059669;
+    border-color: #059669;
+    color: #ffffff;
+    font-weight: 600;
+  }
+
+  .btn-step:hover {
+    background: #047857;
+    border-color: #047857;
+    color: #ffffff;
+  }
+
+  select, input[type="number"], input[type="file"] {
+    background: var(--bg-main);
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.5);
+    padding: 4px 9px;
+    color: var(--text-main);
+    font-size: 0.9rem;
+    outline: none;
+    margin: 2px 4px;
+  }
+
+  select:focus, input[type="number"]:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.6);
+  }
+
+  input[type="number"] { width: 80px; }
+
+  label {
+    font-size: 0.86rem;
+    color: var(--text-muted);
+  }
+
+  label input[type="checkbox"] { margin-right: 4px; }
+
+  table {
+    border-collapse: collapse;
+    font-size: 0.82rem;
+    width: 100%;
+  }
+
+  table th, table td {
+    border: 1px solid rgba(31, 41, 55, 0.9);
+    padding: 3px 6px;
+    text-align: right;
+    background: var(--bg-main);
+  }
+
+  table th {
+    background: #e5e7eb;
+    color: #111827;
+    font-weight: 600;
+    font-size: 0.85rem;
+  }
+
+  .matrix-block {
+    margin-bottom: 14px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(31, 41, 55, 0.9);
+    padding: 10px 10px 11px 10px;
+    background: var(--bg-main);
+    box-shadow: var(--shadow-subtle);
+  }
+
+  .matrix-block h4 {
+    margin: 0 0 8px 0;
+    font-size: 0.9rem;
+    color: var(--text-strong);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .matrix-block h4::after {
+    content: "";
+    flex: 1;
+    margin-left: 8px;
+    height: 1px;
+    border-radius: 999px;
+    background: var(--bg-main);
+  }
+
+  #pointsTableContainer {
+    max-height: 300px;
+    overflow-y: auto;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(148, 163, 184, 0.9);
+    padding: 6px;
+    margin: 10px 0;
+    background: #ffffff;
+  }
+
+  .used-point { font-weight: 600; background: var(--bg-main); }
+
+  #mapLegendContainer {
+    margin-top: 10px;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+  }
+
+  #legendCanvas {
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.5);
+    display: block;
+    margin-bottom: 4px;
+    width: 220px;
+    height: 20px;
+    background: var(--bg-main);
+  }
+
+  .variogram-section {
+    margin: 10px 0;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(59, 130, 246, 0.7);
+    background: #ffffff;
+  }
+
+  .variogram-section h4 {
+    margin: 0 0 8px 0;
+    color: #1d4ed8;
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
+  .structure-box {
+    margin: 8px 0;
+    padding: 8px 10px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(148, 163, 184, 0.5);
+    background: var(--bg-main);
+  }
+
+  .structure-box.disabled { opacity: 0.5; background: var(--bg-main); }
+
+  .structure-box h5 { margin: 0 0 5px 0; font-size: 0.9rem; }
+  .structure-box label { display: inline-block; margin: 3px 8px 3px 0; }
+
+  .model-summary {
+    margin-top: 10px;
+    padding: 8px 10px;
+    border-radius: var(--radius-md);
+    background: #ffffff;
+    border: 1px dashed rgba(148, 163, 184, 0.8);
+    font-family: "JetBrains Mono", "Fira Code", monospace;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
+  .left-block {
+    margin: 10px 0;
+    padding: 12px 14px;
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(148, 163, 184, 0.9);
+    background: #ffffff;
+    box-shadow: var(--shadow-subtle);
+  }
+
+  .simulation-section {
+    margin: 10px 0;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(124, 58, 237, 0.7);
+    background: #faf5ff;
+  }
+
+  .simulation-section h4 {
+    margin: 0 0 8px 0;
+    color: #7c3aed;
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
+  .nscore-section {
+    margin: 10px 0;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(234, 88, 12, 0.7);
+    background: #fff7ed;
+  }
+
+  .nscore-section h4 {
+    margin: 0 0 8px 0;
+    color: #ea580c;
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
+  .decluster-section {
+    margin: 10px 0;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(124, 58, 237, 0.7);
+    background: #faf5ff;
+  }
+
+  .decluster-section h4 {
+    margin: 0 0 8px 0;
+    color: #7c3aed;
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
+  .decluster-section .param-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin: 6px 0;
+  }
+
+  .decluster-section .param-row label {
+    min-width: 80px;
+  }
+
+  .decluster-info {
+    margin-top: 8px;
+    padding: 6px 8px;
+    background: white;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+  }
+
+  .decluster-stats {
+    margin-top: 8px;
+    padding: 6px 8px;
+    background: white;
+    border-radius: 6px;
+    font-size: 0.82rem;
+  }
+
+  .calc-block {
+    margin-top: 6px;
+    padding: 8px 10px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(148, 163, 184, 0.7);
+    background: #ffffff;
+  }
+
+  .calc-title {
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: var(--text-strong);
+    font-size: 0.9rem;
+  }
+
+  .calc-eq {
+    font-family: "JetBrains Mono", "Fira Code", "Courier New", monospace;
+    font-size: 0.86rem;
+    margin-bottom: 4px;
+    color: #111827;
+  }
+
+  .calc-steps {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
+  .calc-steps table { width: 100%; margin-top: 4px; }
+  .calc-steps th { background: #e5e7eb; }
+
+  .calc-highlight { font-weight: 700; color: #f97316; }
+  .calc-highlight-purple { font-weight: 700; color: #7c3aed; }
+  .calc-highlight-green { font-weight: 700; color: #059669; }
+
+  .step-indicator {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    line-height: 24px;
+    text-align: center;
+    border-radius: 50%;
+    background: #7c3aed;
+    color: white;
+    font-weight: 600;
+    font-size: 0.8rem;
+    margin-right: 8px;
+  }
+
+  .step-active { background: #059669; }
+  .step-complete { background: #6b7280; }
+
+  .progress-bar {
+    width: 100%;
+    height: 8px;
+    background: #e5e7eb;
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 8px 0;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #7c3aed, #a855f7);
+    transition: width 0.3s ease;
+  }
+
+  .histogram-container {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+
+  .histogram-box {
+    flex: 1;
+    min-width: 360px;
+  }
+
+  .stats-table {
+    font-size: 0.78rem;
+    margin-top: 6px;
+  }
+
+  .stats-table th {
+    background: #e5e7eb;
+    color: #111827;
+    font-weight: 600;
+    font-size: 0.85rem;
+  }
+
+  #csvColumnSelector {
+    display: none;
+    margin-top: 10px;
+    padding: 10px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    background: var(--bg-main);
+  }
+
+  #csvColumnSelector label { display: block; margin: 5px 0; }
+  #csvColumnSelector select { margin-left: 10px; min-width: 120px; }
+
+  .map-section {
+    margin: 8px 0;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(148, 163, 184, 0.9);
+    background: #ffffff;
+  }
+
+  .map-section h4 {
+    margin: 0 0 6px 0;
+    font-size: 0.9rem;
+    color: #111827;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .realization-selector {
+    margin-top: 10px;
+    padding: 8px;
+    background: var(--bg-card);
+    border-radius: 6px;
+  }
+
+  .target-histogram-section {
+    margin: 10px 0;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(16, 185, 129, 0.7);
+    background: #ecfdf5;
+  }
+
+  .target-histogram-section h4 {
+    margin: 0 0 8px 0;
+    color: #059669;
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+
+<div id="left-panel">
+  <h2>SGS Simulation - Laboratory</h2>
+
+  <div>
+    <button id="btnRunSimulation" class="btn-simulate">🎲 Run N Simulations</button>
+    <button id="btnStepSimulation" class="btn-step">▶ Step-by-Step</button>
+    <button id="btnNextStep" class="btn-step" style="display:none;">⏭ Next Node</button>
+    <button id="btnClear">Clear</button>
+    <button id="btnResetView">Reset Zoom</button>
+  </div>
+
+  <canvas id="simCanvas"></canvas>
+
+  <!-- Maps -->
+  <h3>Maps</h3>
+  <div class="map-section">
+    <h4>Simulation Results</h4>
+    <label><input type="checkbox" id="showSimMap" checked> Current Realization</label>
+    <label><input type="checkbox" id="showMeanMap"> E-type (Mean)</label>
+    <label><input type="checkbox" id="showStdMap"> Uncertainty (Std)</label>
+    <div class="realization-selector" id="realizationSelector" style="display:none;">
+      <label>Realization: <select id="realizationSelect"></select></label>
+    </div>
+  </div>
+  <div id="mapLegendContainer">
+    <canvas id="legendCanvas" width="220" height="20"></canvas>
+    <div id="legendLabels"><em>No active map</em></div>
+  </div>
+
+  <!-- Normal Score Transform -->
+  <div class="nscore-section">
+    <h4>🔄 Normal Score Transform</h4>
+    <label><input type="checkbox" id="useNscore" checked> Apply Normal Score</label>
+    <div id="nscoreStats" style="margin-top: 8px;"></div>
+    <button id="btnShowNscoreTable" style="margin-top: 5px;">Show Transform Table</button>
+    
+  </div>
+
+  <!-- Declustering for Normal Score -->
+  <div class="decluster-section">
+    <h4>⚖️ Declustering Weights</h4>
+    <div class="decluster-info">
+      Declustering corrects for preferential sampling by weighting samples in sparse regions higher.
+      Weights are used in the Normal Score transform and SK mean calculation.
+    </div>
+    
+    <div style="margin: 8px 0;">
+      <label><input type="radio" name="declusterMethod" value="none" checked> Equal Weights (Naive)</label><br>
+      <label><input type="radio" name="declusterMethod" value="cell"> Cell Declustering</label><br>
+      <label><input type="radio" name="declusterMethod" value="voronoi"> Voronoi (Polygonal) Declustering</label>
+    </div>
+    
+    <div id="cellParams" style="display:none; margin-top: 8px; padding: 8px; background: white; border-radius: 6px;">
+      <strong>Cell Parameters:</strong>
+      <div class="param-row">
+        <label>Cell Size X:</label>
+        <input type="number" id="cellSizeX" value="50" min="1" step="5" style="width:70px;">
+        <label>Cell Size Y:</label>
+        <input type="number" id="cellSizeY" value="50" min="1" step="5" style="width:70px;">
+      </div>
+      <div class="param-row">
+        <label>Origin X:</label>
+        <input type="number" id="cellOriginX" value="0" step="5" style="width:70px;">
+        <label>Origin Y:</label>
+        <input type="number" id="cellOriginY" value="0" step="5" style="width:70px;">
+      </div>
+    </div>
+    
+    <div id="voronoiParams" style="display:none; margin-top: 8px; padding: 8px; background: white; border-radius: 6px;">
+      <strong>Voronoi Parameters:</strong>
+      <div class="param-row">
+        <label>Boundary Margin:</label>
+        <input type="number" id="voronoiMargin" value="10" min="0" step="5" style="width:70px;">
+        <span style="font-size:0.8rem; color:var(--text-muted);">% of extent</span>
+      </div>
+    </div>
+    
+    <button id="btnApplyDecluster" style="margin-top: 8px;">Apply Declustering</button>
+    
+    <div id="declusterStats" class="decluster-stats" style="display:none;">
+      <!-- Filled by JS -->
+    </div>
+  </div>
+
+  <!-- Data and Points -->
+  <h3>Data and Points</h3>
+  <select id="dataSource">
+    <option value="manual">Interactive</option>
+    <option value="csv">CSV</option>
+  </select>
+  <div id="csvGroup" style="display:none; margin-top:5px;">
+    <input type="file" id="csvFile" accept=".csv">
+    <div id="csvStatus"></div>
+    <div id="csvColumnSelector">
+      <h4>Select Columns</h4>
+      <label>X: <select id="csvColX"></select></label>
+      <label>Y: <select id="csvColY"></select></label>
+      <label>Z: <select id="csvColZ"></select></label>
+      <button id="btnLoadCSV">Load</button>
+    </div>
+  </div>
+
+  <label><input type="checkbox" id="showPoints" checked> Show points</label>
+  <label><input type="checkbox" id="showPointLabels" checked> Labels</label>
+
+  <div id="pointsTableContainer"></div>
+  <button id="btnAddPoint">Add Point</button>
+  <button id="btnResetPoints">Reset</button>
+
+  <!-- Variogram Model -->
+  <div class="variogram-section">
+    <h4>📊 Variogram Model (up to 2 structures)</h4>
+    
+    <div class="structure-box">
+      <h5>Nugget Effect (C₀)</h5>
+      <label>Nugget: <input type="number" id="nugget" value="0.1" step="0.01" min="0"></label>
+    </div>
+    
+    <div class="structure-box" id="struct1Box">
+      <h5>Structure 1 (C₁)</h5>
+      <label><input type="checkbox" id="useStruct1" checked> Enable</label><br>
+      <label>Type: <select id="varioType1">
+        <option value="spherical">Spherical</option>
+        <option value="exponential">Exponential</option>
+        <option value="gaussian">Gaussian</option>
+      </select></label>
+      <label>Sill: <input type="number" id="sill1" value="0.9" step="0.1" min="0"></label>
+      <label>Range (main): <input type="number" id="range1" value="50" step="1" min="0"></label>
+      <label>Range (ortho): <input type="number" id="rangeOrtho1" value="50" step="1" min="0"></label>
+    </div>
+    
+    <div class="structure-box" id="struct2Box">
+      <h5>Structure 2 (C₂)</h5>
+      <label><input type="checkbox" id="useStruct2"> Enable</label><br>
+      <div id="struct2Opts" style="display:none;">
+        <label>Type: <select id="varioType2">
+          <option value="spherical">Spherical</option>
+          <option value="exponential">Exponential</option>
+          <option value="gaussian">Gaussian</option>
+        </select></label>
+        <label>Sill: <input type="number" id="sill2" value="0.5" step="0.1" min="0"></label>
+        <label>Range (main): <input type="number" id="range2" value="100" step="1" min="0"></label>
+        <label>Range (ortho): <input type="number" id="rangeOrtho2" value="100" step="1" min="0"></label>
+      </div>
+    </div>
+    
+    <div class="structure-box">
+      <h5>Anisotropy Direction (applies to all structures)</h5>
+      <label>Angle (degrees): <input type="number" id="anisoAngle" value="0" step="1"></label>
+      <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">
+        0° = North-South | 90° = East-West (clockwise)
+      </div>
+    </div>
+
+    <div class="model-summary" id="modelSummary">γ(h) = C₀ + C₁·g₁(h)</div>
+  </div>
+
+  <!-- Search Strategy -->
+  <h3>Search Strategy</h3>
+  <label>Max original samples: <input type="number" id="maxOrigNeighbors" value="12" min="0"></label><br>
+  <label>Max simulated samples: <input type="number" id="maxSimNeighbors" value="4" min="0"></label><br>
+  <label><input type="checkbox" id="useSearchRadius" checked> Limit search ellipse</label>
+  <div id="radiusGroup">
+    <label>Major Radius: <input type="number" id="searchRadiusMajor" value="100" step="1"></label><br>
+    <label>Minor Radius: <input type="number" id="searchRadiusMinor" value="100" step="1"></label>
+    <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">
+      Ellipse follows anisotropy angle from variogram model
+    </div>
+  </div>
+
+  <!-- Grid Definition -->
+  <h3>Grid</h3>
+  <label><input type="checkbox" id="showGridFrame" checked> Show grid frame</label><br>
+  
+  <h4>Grid Origin (lower-left corner):</h4>
+  <label>x₀: <input type="number" id="gridOriginX" value="0" step="1"></label>
+  <label>y₀: <input type="number" id="gridOriginY" value="0" step="1"></label>
+  
+  <h4>Cell Spacing:</h4>
+  <label>dx: <input type="number" id="gridSpacingX" value="10" step="0.5" min="0.1"></label>
+  <label>dy: <input type="number" id="gridSpacingY" value="10" step="0.5" min="0.1"></label>
+  
+  <h4>Grid Size:</h4>
+  <label>nx: <input type="number" id="gridNx" value="30" min="1" max="100"></label>
+  <label>ny: <input type="number" id="gridNy" value="30" min="1" max="100"></label>
+  
+  <div id="gridInfo" style="margin-top: 8px; padding: 8px; background: var(--bg-card); border-radius: 6px; font-size: 0.85rem; color: var(--text-muted);"></div>
+
+  <h3>Target</h3>
+  <div id="targetInfo">Click on canvas or type coordinates</div>
+  <label>x: <input type="number" id="targetX" step="0.1"></label>
+  <label>y: <input type="number" id="targetY" step="0.1"></label>
+  <button id="btnUpdateTarget">Update</button><br>
+  <label><input type="checkbox" id="lockTarget"> Lock target position</label>
+
+  <!-- Simulation Parameters -->
+  <div class="simulation-section">
+    <h4>🎲 Simulation Parameters</h4>
+    <label>Number of realizations: <input type="number" id="nRealizations" value="10" min="1" max="100"></label><br>
+    <label>Random seed: <input type="number" id="randomSeed" value="12345"></label>
+    <label><input type="checkbox" id="useSeed" checked> Use seed</label>
+    <div id="simProgress" style="display:none;">
+      <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      <div id="progressText">0 / 0</div>
+    </div>
+  </div>
+
+</div>
+
+<div id="right-panel">
+  <h3>Simulation Results</h3>
+  
+  <div class="matrix-block">
+    <h4>Histograms</h4>
+    <div class="histogram-container">
+      <div class="histogram-box">
+        <canvas id="histInputCanvas" width="400" height="280"></canvas>
+        <div id="inputStats"></div>
+      </div>
+      <div class="histogram-box">
+        <canvas id="histOutputCanvas" width="400" height="280"></canvas>
+        <div id="outputStats"></div>
+      </div>
+      <div class="histogram-box">
+        <canvas id="histKDECanvas" width="820" height="280"></canvas>
+        <div style="margin-top: 4px; font-size: 0.8rem;">
+          <label>
+            <input type="checkbox" id="kdeShowDataHist" checked>
+            Mostrar histograma dos dados
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Target Histogram Section -->
+  <div class="target-histogram-section">
+    <h4>📍 Target Node Histogram</h4>
+    <p style="font-size: 0.85rem; color: var(--text-muted);">
+      Clique em qualquer nó do grid (quando houver simulações) para ver a distribuição dos valores simulados nesse ponto.
+    </p>
+    <div id="targetNodeInfo">No node selected</div>
+    <div class="histogram-container" style="margin-top: 10px;">
+      <div class="histogram-box">
+        <canvas id="histTargetCanvas" width="500" height="300"></canvas>
+        <div id="targetStats"></div>
+      </div>
+      <div class="histogram-box">
+        <h5 style="margin: 0 0 4px 0;">Realization values at selected node</h5>
+        <div id="targetValuesList" style="max-height: 260px; overflow-y: auto; font-size: 0.8rem;"></div>
+        <div id="targetEtype" style="margin-top: 6px; font-size: 0.85rem; font-weight: 500;"></div>
+      </div>
+    </div>
+  </div>
+
+
+<!-- Normal Score Table -->
+  <div class="matrix-block" id="nscoreTableSection" style="display:none;">
+    <h4>Normal Score Transform Table</h4>
+    <div id="nscoreTable"></div>
+  </div>
+
+  <!-- Step-by-Step Details -->
+  <div class="matrix-block" id="stepByStepSection" style="display:none;">
+    <h4>Step-by-Step Simulation Details</h4>
+    <div id="currentNodeInfo"></div>
+    
+    <div class="calc-block">
+      <div class="calc-title"><span class="step-indicator">1</span>Random Path & Current Node</div>
+      <div id="stepPath" class="calc-steps"></div>
+    </div>
+
+    <div class="calc-block">
+      <div class="calc-title"><span class="step-indicator">2</span>Conditioning Data Selection</div>
+      <div id="stepConditioning" class="calc-steps"></div>
+    </div>
+
+    <div class="calc-block">
+      <div class="calc-title"><span class="step-indicator">3</span>Simple Kriging Solution</div>
+      <div id="stepKriging" class="calc-steps"></div>
+    </div>
+
+    <div class="calc-block">
+      <div class="calc-title"><span class="step-indicator">4</span>Random Number & Simulated Value</div>
+      <div id="stepRandom" class="calc-steps"></div>
+    </div>
+
+    <div class="calc-block">
+      <div class="calc-title"><span class="step-indicator">5</span>Back-Transform</div>
+      <div id="stepBacktransform" class="calc-steps"></div>
+    </div>
+  </div>
+
+  <!-- Summary Statistics -->
+  <div class="matrix-block">
+    <h4>Simulation Summary</h4>
+    <div id="simSummary"><em>Run simulation to see results</em></div>
+  </div>
+
+  <!-- Realizations Statistics -->
+  <div class="matrix-block" id="realizationsStats" style="display:none;">
+    <h4>Realizations Statistics</h4>
+    <div id="realizationsTable"></div>
+  </div>
+
+</div>
+
+<script>
+// ============ GLOBAL VARIABLES ============
+let canvas, ctx, points = [], nextId = 1;
+let viewScale = 1, viewOffsetX = 0, viewOffsetY = 0;
+let isDragging = false, draggingIdx = null, isPanning = false, lastPanX = 0, lastPanY = 0;
+let dataMinX = 0, dataMaxX = 600, dataMinY = 0, dataMaxY = 440;
+let aspectScale = 1, aspectOffsetX = 0, aspectOffsetY = 0;
+
+function updateAspectTransform() {
+  if (!canvas) return;
+  const w = canvas.width || 1;
+  const h = canvas.height || 1;
+  const dx = Math.max(dataMaxX - dataMinX, 1e-9);
+  const dy = Math.max(dataMaxY - dataMinY, 1e-9);
+  const scale = Math.min(w / dx, h / dy);
+  aspectScale = scale;
+  aspectOffsetX = (w - dx * scale) * 0.5;
+  aspectOffsetY = (h - dy * scale) * 0.5;
+}
+let legendCanvas, legendCtx, csvRawData = null, csvHeaders = [];
+
+// Simulation data
+let realizations = []; // Array of 2D arrays
+let currentRealization = null;
+let meanMap = null, stdMap = null;
+let simulatedNodes = []; // For step-by-step
+let randomPath = [];
+let stepIndex = 0;
+let isStepMode = false;
+let selectedTargetNode = null;
+
+// Normal score transform
+let nscoreTable = []; // {original, nscore, rank, weight}
+let nscoreMean = 0;
+
+// Declustering weights
+let declusterWeights = []; // Weights for each active point
+let declusterMethod = 'none'; // 'none', 'cell', 'voronoi'
+let declusteredMean = 0; // Weighted mean of original values
+
+// Conditioning data in working space (original or nscore)
+let baseCondPoints = [];
+
+// Neighbors used at the current step (for visualization)
+let currentNeighbors = [];
+
+// Seeded random number generator
+let rngSeed = 12345;
+function seededRandom() {
+  rngSeed = (rngSeed * 1103515245 + 12345) & 0x7fffffff;
+  return rngSeed / 0x7fffffff;
+}
+
+function resetRng(seed) {
+  rngSeed = seed || 12345;
+}
+
+// Box-Muller transform for normal distribution
+function randomNormal() {
+  let u1 = seededRandom();
+  let u2 = seededRandom();
+  while (u1 === 0) u1 = seededRandom();
+  return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+}
+
+// ============ VARIOGRAM FUNCTIONS ============
+function getVarioParams() {
+  const nugget = parseFloat(document.getElementById('nugget').value) || 0;
+  const structures = [];
+  
+  if (document.getElementById('useStruct1').checked) {
+    structures.push({
+      type: document.getElementById('varioType1').value,
+      sill: parseFloat(document.getElementById('sill1').value) || 0,
+      range: parseFloat(document.getElementById('range1').value) || 1,
+      rangeOrtho: parseFloat(document.getElementById('rangeOrtho1').value) || 1
+    });
+  }
+  if (document.getElementById('useStruct2').checked) {
+    structures.push({
+      type: document.getElementById('varioType2').value,
+      sill: parseFloat(document.getElementById('sill2').value) || 0,
+      range: parseFloat(document.getElementById('range2').value) || 1,
+      rangeOrtho: parseFloat(document.getElementById('rangeOrtho2').value) || 1
+    });
+  }
+  
+  const anisoAngle = parseFloat(document.getElementById('anisoAngle').value) || 0;
+  let totalSill = nugget;
+  structures.forEach(s => totalSill += s.sill);
+  
+  return { nugget, structures, anisoAngle, totalSill };
+}
+
+function gammaStruct(h, type, sill, range) {
+  if (h === 0) return 0;
+  if (range <= 0) return sill;
+  const hr = h / range;
+  if (type === 'spherical') return h >= range ? sill : sill * (1.5 * hr - 0.5 * hr * hr * hr);
+  if (type === 'gaussian') return sill * (1 - Math.exp(-3 * hr * hr));
+  return sill * (1 - Math.exp(-3 * hr)); // exponential
+}
+
+function anisoDistForStructure(p1, p2, angleDeg, rangeMain, rangeOrtho) {
+  const dx = p1.x - p2.x;
+  const dy = p1.y - p2.y;
+  const theta = (angleDeg - 90) * Math.PI / 180;
+  const xr = dx * Math.cos(theta) + dy * Math.sin(theta);
+  const yr = -dx * Math.sin(theta) + dy * Math.cos(theta);
+  const xScaled = xr / rangeMain;
+  const yScaled = yr / rangeOrtho;
+  return Math.sqrt(xScaled * xScaled + yScaled * yScaled) * rangeMain;
+}
+
+function gammaAniso(p1, p2, params) {
+  if (p1.x === p2.x && p1.y === p2.y) return 0;
+  let g = params.nugget;
+  params.structures.forEach(s => {
+    const h = anisoDistForStructure(p1, p2, params.anisoAngle, s.range, s.rangeOrtho);
+    g += gammaStruct(h, s.type, s.sill, s.range);
+  });
+  return g;
+}
+
+function covarianceAniso(p1, p2, params) {
+  return params.totalSill - gammaAniso(p1, p2, params);
+}
+
+function updateModelSummary() {
+  const p = getVarioParams();
+  let formula = `γ(h) = ${p.nugget.toFixed(2)}`;
+  const typeSymbols = { spherical: 'Sph', exponential: 'Exp', gaussian: 'Gau' };
+  
+  p.structures.forEach((s, i) => {
+    formula += ` + ${s.sill.toFixed(2)}·${typeSymbols[s.type]}(h/${s.range.toFixed(1)})`;
+    if (s.range !== s.rangeOrtho) {
+      formula += `<small>[ortho:${s.rangeOrtho.toFixed(1)}]</small>`;
+    }
+  });
+  
+  if (p.structures.length === 0) formula += ' (nugget only)';
+  
+  formula += `<br><small>Total Sill (C₀+ΣCᵢ) = ${p.totalSill.toFixed(2)}`;
+  if (p.anisoAngle !== 0) formula += ` | Angle: ${p.anisoAngle}°`;
+  formula += '</small>';
+  
+  document.getElementById('modelSummary').innerHTML = formula;
+}
+
+// ============ NORMAL SCORE TRANSFORM ============
+function computeNscoreTransform() {
+  const active = points.filter(p => p.active);
+  if (active.length === 0) {
+    nscoreTable = [];
+    return;
+  }
+  
+  const n = active.length;
+  
+  // Get weights - either from declustering or equal weights
+  let weights;
+  if (declusterWeights.length === n) {
+    weights = declusterWeights.slice();
+  } else {
+    // Equal weights (naive)
+    weights = active.map(() => 1 / n);
+  }
+  
+  // Normalize weights to sum to 1
+  const sumW = weights.reduce((a, b) => a + b, 0);
+  weights = weights.map(w => w / sumW);
+  
+  // Sort by value, keeping track of weights
+  const sorted = active.map((p, i) => ({ 
+    idx: i, 
+    value: p.value, 
+    point: p,
+    weight: weights[i]
+  })).sort((a, b) => a.value - b.value);
+  
+  nscoreTable = [];
+  
+  // Calculate weighted cumulative probabilities
+  let cumWeight = 0;
+  for (let i = 0; i < n; i++) {
+    // Weighted CDF: F(z_i) = sum of weights for z <= z_i, minus half of current weight
+    // This is the mid-point plotting position for weighted data
+    const rank = cumWeight + sorted[i].weight / 2;
+    cumWeight += sorted[i].weight;
+    
+    const nscore = normalQuantile(rank);
+    
+    nscoreTable.push({
+      original: sorted[i].value,
+      nscore: nscore,
+      rank: rank,
+      weight: sorted[i].weight,
+      pointId: sorted[i].point.id
+    });
+  }
+  
+  // Calculate weighted mean of nscore values (should be ~0 for symmetric transform)
+  nscoreMean = nscoreTable.reduce((sum, t) => sum + t.nscore * t.weight, 0);
+  
+  // Calculate declustered mean of original values
+  declusteredMean = nscoreTable.reduce((sum, t) => sum + t.original * t.weight, 0);
+  
+  updateNscoreStats();
+}
+
+// Inverse of standard normal CDF (approximation)
+function normalQuantile(p) {
+  if (p <= 0) return -6;
+  if (p >= 1) return 6;
+  
+  // Rational approximation for central region
+  const a = [
+    -3.969683028665376e+01, 2.209460984245205e+02,
+    -2.759285104469687e+02, 1.383577518672690e+02,
+    -3.066479806614716e+01, 2.506628277459239e+00
+  ];
+  const b = [
+    -5.447609879822406e+01, 1.615858368580409e+02,
+    -1.556989798598866e+02, 6.680131188771972e+01, -1.328068155288572e+01
+  ];
+  const c = [
+    -7.784894002430293e-03, -3.223964580411365e-01,
+    -2.400758277161838e+00, -2.549732539343734e+00,
+    4.374664141464968e+00, 2.938163982698783e+00
+  ];
+  const d = [
+    7.784695709041462e-03, 3.224671290700398e-01,
+    2.445134137142996e+00, 3.754408661907416e+00
+  ];
+  
+  const pLow = 0.02425;
+  const pHigh = 1 - pLow;
+  let q, r;
+  
+  if (p < pLow) {
+    q = Math.sqrt(-2 * Math.log(p));
+    return (((((c[0]*q + c[1])*q + c[2])*q + c[3])*q + c[4])*q + c[5]) /
+           ((((d[0]*q + d[1])*q + d[2])*q + d[3])*q + 1);
+  } else if (p <= pHigh) {
+    q = p - 0.5;
+    r = q * q;
+    return (((((a[0]*r + a[1])*r + a[2])*r + a[3])*r + a[4])*r + a[5])*q /
+           (((((b[0]*r + b[1])*r + b[2])*r + b[3])*r + b[4])*r + 1);
+  } else {
+    q = Math.sqrt(-2 * Math.log(1 - p));
+    return -(((((c[0]*q + c[1])*q + c[2])*q + c[3])*q + c[4])*q + c[5]) /
+            ((((d[0]*q + d[1])*q + d[2])*q + d[3])*q + 1);
+  }
+}
+
+// Standard normal CDF
+function normalCDF(x) {
+  const a1 =  0.254829592;
+  const a2 = -0.284496736;
+  const a3 =  1.421413741;
+  const a4 = -1.453152027;
+  const a5 =  1.061405429;
+  const p  =  0.3275911;
+  
+  const sign = x < 0 ? -1 : 1;
+  x = Math.abs(x) / Math.sqrt(2);
+  const t = 1.0 / (1.0 + p * x);
+  const y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+  
+  return 0.5 * (1.0 + sign * y);
+}
+
+// Transform original value to nscore
+function toNscore(value) {
+  if (nscoreTable.length === 0) return 0;
+
+  // Find bracketing values in table
+  let lower = null, upper = null;
+  for (let i = 0; i < nscoreTable.length; i++) {
+    if (nscoreTable[i].original <= value) lower = nscoreTable[i];
+    if (nscoreTable[i].original >= value && upper === null) upper = nscoreTable[i];
+  }
+
+  if (!lower) return nscoreTable[0].nscore;
+  if (!upper) return nscoreTable[nscoreTable.length - 1].nscore;
+  if (lower === upper) return lower.nscore;
+
+  // Linear interpolation, robust to duplicates in original values
+  const denom = (upper.original - lower.original);
+  if (!isFinite(denom) || Math.abs(denom) < 1e-12) {
+    return lower.nscore;
+  }
+  const t = (value - lower.original) / denom;
+  return lower.nscore + t * (upper.nscore - lower.nscore);
+}
+
+// Back-transform nscore to original value
+function fromNscore(nscore) {
+  if (nscoreTable.length === 0) return nscore;
+
+  // Find bracketing nscore values
+  let lower = null, upper = null;
+  for (let i = 0; i < nscoreTable.length; i++) {
+    if (nscoreTable[i].nscore <= nscore) lower = nscoreTable[i];
+    if (nscoreTable[i].nscore >= nscore && upper === null) upper = nscoreTable[i];
+  }
+
+  if (!lower) return nscoreTable[0].original;
+  if (!upper) return nscoreTable[nscoreTable.length - 1].original;
+  if (lower === upper) return lower.original;
+
+  // Linear interpolation, robust to duplicates in nscore values
+  const denom = (upper.nscore - lower.nscore);
+  if (!isFinite(denom) || Math.abs(denom) < 1e-12) {
+    return lower.original;
+  }
+  const t = (nscore - lower.nscore) / denom;
+  return lower.original + t * (upper.original - lower.original);
+}
+
+function updateNscoreStats() {
+  const statsDiv = document.getElementById('nscoreStats');
+  if (!document.getElementById('useNscore').checked || nscoreTable.length === 0) {
+    statsDiv.innerHTML = '<em>Normal score disabled or no data</em>';
+    return;
+  }
+  
+  const origValues = nscoreTable.map(t => t.original);
+  const nsValues = nscoreTable.map(t => t.nscore);
+  const weights = nscoreTable.map(t => t.weight || 1/nscoreTable.length);
+  
+  // Naive (arithmetic) mean
+  const naiveMean = origValues.reduce((a, b) => a + b, 0) / origValues.length;
+  
+  // Weighted mean
+  const weightedMean = origValues.reduce((s, v, i) => s + v * weights[i], 0);
+  
+  // Weighted variance
+  const weightedVar = origValues.reduce((s, v, i) => s + weights[i] * (v - weightedMean) ** 2, 0);
+  const weightedStd = Math.sqrt(weightedVar);
+  
+  // N-score stats (should be ~N(0,1))
+  const nsMean = nsValues.reduce((s, v, i) => s + v * weights[i], 0);
+  const nsVar = nsValues.reduce((s, v, i) => s + weights[i] * (v - nsMean) ** 2, 0);
+  const nsStd = Math.sqrt(nsVar);
+  
+  let methodStr = 'Equal Weights';
+  if (declusterMethod === 'cell') methodStr = 'Cell Declustering';
+  else if (declusterMethod === 'voronoi') methodStr = 'Voronoi Declustering';
+  
+  statsDiv.innerHTML = `
+    <b>Method:</b> ${methodStr}<br>
+    <b>Original:</b> naive mean=${naiveMean.toFixed(3)}, <span style="color:#7c3aed; font-weight:600;">weighted mean=${weightedMean.toFixed(3)}</span>, std=${weightedStd.toFixed(3)}<br>
+    <b>N-Score:</b> mean=${nsMean.toFixed(4)}, std=${nsStd.toFixed(3)}
+  `;
+}
+
+function showNscoreTable() {
+  const section = document.getElementById('nscoreTableSection');
+  const tableDiv = document.getElementById('nscoreTable');
+  
+  if (section.style.display === 'none') {
+    section.style.display = 'block';
+    
+    if (nscoreTable.length === 0) {
+      tableDiv.innerHTML = '<em>No data</em>';
+      return;
+    }
+    
+    let html = '<table><tr><th>Rank</th><th>Original</th><th>Weight</th><th>Cum. Prob.</th><th>N-Score</th></tr>';
+    nscoreTable.forEach((t, i) => {
+      const weight = t.weight || (1/nscoreTable.length);
+      html += `<tr><td>${i + 1}</td><td>${t.original.toFixed(4)}</td><td>${weight.toFixed(4)}</td><td>${t.rank.toFixed(4)}</td><td>${t.nscore.toFixed(4)}</td></tr>`;
+    });
+    html += '</table>';
+    tableDiv.innerHTML = html;
+  } else {
+    section.style.display = 'none';
+  }
+}
+
+// ============ DECLUSTERING FUNCTIONS ============
+function applyDeclustering() {
+  const method = document.querySelector('input[name="declusterMethod"]:checked').value;
+  declusterMethod = method;
+  
+  const active = points.filter(p => p.active);
+  if (active.length === 0) {
+    alert('No data points');
+    return;
+  }
+  
+  if (method === 'none') {
+    // Equal weights
+    declusterWeights = active.map(() => 1 / active.length);
+  } else if (method === 'cell') {
+    applyCellDeclustering(active);
+  } else if (method === 'voronoi') {
+    applyVoronoiDeclustering(active);
+  }
+  
+  // Recompute normal score transform with new weights
+  computeNscoreTransform();
+  
+  // Update display
+  updateDeclusterStats();
+  draw();
+}
+
+function applyCellDeclustering(active) {
+  const sizeX = parseFloat(document.getElementById('cellSizeX').value) || 50;
+  const sizeY = parseFloat(document.getElementById('cellSizeY').value) || 50;
+  const originX = parseFloat(document.getElementById('cellOriginX').value) || dataMinX;
+  const originY = parseFloat(document.getElementById('cellOriginY').value) || dataMinY;
+  
+  // Calculate grid dimensions
+  const nx = Math.ceil((dataMaxX - originX) / sizeX) + 1;
+  const ny = Math.ceil((dataMaxY - originY) / sizeY) + 1;
+  
+  // Count points per cell
+  const counts = Array(nx).fill(null).map(() => Array(ny).fill(0));
+  const cellAssignment = [];
+  
+  active.forEach(p => {
+    const wx = p.worldX !== undefined ? p.worldX : worldX(p.x);
+    const wy = p.worldY !== undefined ? p.worldY : worldY(p.y);
+    const i = Math.floor((wx - originX) / sizeX);
+    const j = Math.floor((wy - originY) / sizeY);
+    const ci = Math.max(0, Math.min(nx - 1, i));
+    const cj = Math.max(0, Math.min(ny - 1, j));
+    counts[ci][cj]++;
+    cellAssignment.push({ i: ci, j: cj });
+  });
+  
+  // Count non-empty cells
+  let nonEmptyCells = 0;
+  for (let i = 0; i < nx; i++) {
+    for (let j = 0; j < ny; j++) {
+      if (counts[i][j] > 0) nonEmptyCells++;
+    }
+  }
+  
+  // Calculate weights
+  declusterWeights = [];
+  let sumWeights = 0;
+  
+  active.forEach((p, idx) => {
+    const { i, j } = cellAssignment[idx];
+    const nInCell = counts[i][j];
+    const weight = 1 / (nInCell * nonEmptyCells);
+    declusterWeights.push(weight);
+    sumWeights += weight;
+  });
+  
+  // Normalize to sum to 1
+  declusterWeights = declusterWeights.map(w => w / sumWeights);
+}
+
+function applyVoronoiDeclustering(active) {
+  if (active.length < 3) {
+    alert('Need at least 3 points for Voronoi declustering');
+    declusterWeights = active.map(() => 1 / active.length);
+    return;
+  }
+  
+  const marginPct = parseFloat(document.getElementById('voronoiMargin').value) || 10;
+  
+  // Calculate bounds with margin
+  const rangeX = dataMaxX - dataMinX;
+  const rangeY = dataMaxY - dataMinY;
+  const margin = Math.max(rangeX, rangeY) * marginPct / 100;
+  
+  const bounds = {
+    minX: dataMinX - margin,
+    maxX: dataMaxX + margin,
+    minY: dataMinY - margin,
+    maxY: dataMaxY + margin
+  };
+  
+  // Get world coordinates
+  const coords = active.map(p => {
+    const wx = p.worldX !== undefined ? p.worldX : worldX(p.x);
+    const wy = p.worldY !== undefined ? p.worldY : worldY(p.y);
+    return [wx, wy];
+  });
+  
+  // Compute Voronoi diagram
+  const voronoi = computeVoronoi(coords, bounds);
+  
+  // Calculate weights from areas
+  const areas = voronoi.cells.map(cell => cell.area);
+  const totalArea = areas.reduce((a, b) => a + b, 0);
+  
+  declusterWeights = areas.map(a => a / totalArea);
+}
+
+function computeVoronoi(points, bounds) {
+  const n = points.length;
+  const cells = [];
+  
+  // For each point, compute its Voronoi cell as intersection of half-planes
+  for (let i = 0; i < n; i++) {
+    const [px, py] = points[i];
+    
+    // Start with bounding box
+    let polygon = [
+      [bounds.minX, bounds.minY],
+      [bounds.maxX, bounds.minY],
+      [bounds.maxX, bounds.maxY],
+      [bounds.minX, bounds.maxY]
+    ];
+    
+    // Clip against each other point's perpendicular bisector
+    for (let j = 0; j < n; j++) {
+      if (i === j) continue;
+      
+      const [qx, qy] = points[j];
+      
+      // Midpoint
+      const mx = (px + qx) / 2;
+      const my = (py + qy) / 2;
+      
+      // Normal vector pointing towards p
+      const nx = px - qx;
+      const ny = py - qy;
+      
+      // Clip polygon to half-plane containing p
+      polygon = clipPolygonToHalfPlane(polygon, mx, my, nx, ny);
+      
+      if (polygon.length < 3) break;
+    }
+    
+    // Calculate area
+    const area = polygonArea(polygon);
+    
+    cells.push({
+      pointIndex: i,
+      vertices: polygon,
+      area: area
+    });
+  }
+  
+  return { cells };
+}
+
+function clipPolygonToHalfPlane(polygon, mx, my, nx, ny) {
+  if (polygon.length < 3) return [];
+  
+  const output = [];
+  
+  for (let i = 0; i < polygon.length; i++) {
+    const current = polygon[i];
+    const next = polygon[(i + 1) % polygon.length];
+    
+    const currentInside = (current[0] - mx) * nx + (current[1] - my) * ny >= 0;
+    const nextInside = (next[0] - mx) * nx + (next[1] - my) * ny >= 0;
+    
+    if (currentInside) {
+      output.push(current);
+    }
+    
+    if (currentInside !== nextInside) {
+      const intersection = lineHalfPlaneIntersection(current, next, mx, my, nx, ny);
+      if (intersection) {
+        output.push(intersection);
+      }
+    }
+  }
+  
+  return output;
+}
+
+function lineHalfPlaneIntersection(p1, p2, mx, my, nx, ny) {
+  const d1 = (p1[0] - mx) * nx + (p1[1] - my) * ny;
+  const d2 = (p2[0] - mx) * nx + (p2[1] - my) * ny;
+  
+  if (Math.abs(d1 - d2) < 1e-10) return null;
+  
+  const t = d1 / (d1 - d2);
+  
+  return [
+    p1[0] + t * (p2[0] - p1[0]),
+    p1[1] + t * (p2[1] - p1[1])
+  ];
+}
+
+function polygonArea(vertices) {
+  if (vertices.length < 3) return 0;
+  
+  let area = 0;
+  for (let i = 0; i < vertices.length; i++) {
+    const j = (i + 1) % vertices.length;
+    area += vertices[i][0] * vertices[j][1];
+    area -= vertices[j][0] * vertices[i][1];
+  }
+  
+  return Math.abs(area) / 2;
+}
+
+function updateDeclusterStats() {
+  const statsDiv = document.getElementById('declusterStats');
+  const active = points.filter(p => p.active);
+  
+  if (declusterWeights.length === 0 || active.length === 0) {
+    statsDiv.style.display = 'none';
+    return;
+  }
+  
+  statsDiv.style.display = 'block';
+  
+  const values = active.map(p => p.value);
+  const naiveMean = values.reduce((a, b) => a + b, 0) / values.length;
+  const weightedMean = values.reduce((s, v, i) => s + v * declusterWeights[i], 0);
+  
+  const minWeight = Math.min(...declusterWeights);
+  const maxWeight = Math.max(...declusterWeights);
+  const avgWeight = 1 / active.length;
+  
+  let methodName = 'Equal Weights';
+  if (declusterMethod === 'cell') methodName = 'Cell Declustering';
+  else if (declusterMethod === 'voronoi') methodName = 'Voronoi Declustering';
+  
+  statsDiv.innerHTML = `
+    <strong>${methodName} Applied</strong><br>
+    <span style="color:#6b7280;">Naive mean: ${naiveMean.toFixed(3)}</span><br>
+    <span style="color:#7c3aed; font-weight:600;">Declustered mean: ${weightedMean.toFixed(3)}</span><br>
+    <small>Weight range: [${minWeight.toFixed(4)}, ${maxWeight.toFixed(4)}]</small>
+  `;
+}
+
+function toggleDeclusterParams() {
+  const method = document.querySelector('input[name="declusterMethod"]:checked').value;
+  document.getElementById('cellParams').style.display = method === 'cell' ? 'block' : 'none';
+  document.getElementById('voronoiParams').style.display = method === 'voronoi' ? 'block' : 'none';
+}
+
+function prepareBaseConditioningData() {
+  // Always compute n-score transform for active original data
+  computeNscoreTransform();
+  baseCondPoints = points.filter(p => p.active).map(p => ({
+    x: p.x,
+    y: p.y,
+    // Value used in kriging / simulation is ALWAYS in n-score space
+    value: toNscore(p.value),
+    // Keep original value for reporting / visualization
+    originalValue: p.value,
+    id: p.id,
+    isOriginal: true
+  }));
+}
+
+// ============ COORDINATE TRANSFORMS ============
+function worldX(xInt) {
+  if (!canvas || !aspectScale) return dataMinX;
+  return dataMinX + ((xInt - aspectOffsetX) / aspectScale);
+}
+function worldY(yInt) {
+  if (!canvas || !aspectScale) return dataMinY;
+  const h = canvas.height;
+  return dataMinY + ((h - yInt - aspectOffsetY) / aspectScale);
+}
+function internalX(xW) {
+  return aspectOffsetX + (xW - dataMinX) * aspectScale;
+}
+function internalY(yW) {
+  const h = canvas ? canvas.height : 0;
+  return h - (aspectOffsetY + (yW - dataMinY) * aspectScale);
+}
+
+// ============ GRID FUNCTIONS ============
+function updateGridInfo() {
+  const originX = parseFloat(document.getElementById('gridOriginX').value) || 0;
+  const originY = parseFloat(document.getElementById('gridOriginY').value) || 0;
+  const dx = parseFloat(document.getElementById('gridSpacingX').value) || 10;
+  const dy = parseFloat(document.getElementById('gridSpacingY').value) || 10;
+  const nx = parseInt(document.getElementById('gridNx').value) || 30;
+  const ny = parseInt(document.getElementById('gridNy').value) || 30;
+  
+  const totalWidth = dx * nx;
+  const totalHeight = dy * ny;
+  const totalNodes = nx * ny;
+  
+  document.getElementById('gridInfo').innerHTML = `
+    <b>Grid extent:</b><br>
+    X: [${originX.toFixed(1)}, ${(originX + totalWidth).toFixed(1)}] → Width: ${totalWidth.toFixed(1)}<br>
+    Y: [${originY.toFixed(1)}, ${(originY + totalHeight).toFixed(1)}] → Height: ${totalHeight.toFixed(1)}<br>
+    <b>Total nodes:</b> ${totalNodes.toLocaleString()}
+  `;
+}
+
+function getGridParams() {
+  return {
+    originX: parseFloat(document.getElementById('gridOriginX').value) || 0,
+    originY: parseFloat(document.getElementById('gridOriginY').value) || 0,
+    dx: parseFloat(document.getElementById('gridSpacingX').value) || 10,
+    dy: parseFloat(document.getElementById('gridSpacingY').value) || 10,
+    nx: parseInt(document.getElementById('gridNx').value) || 30,
+    ny: parseInt(document.getElementById('gridNy').value) || 30
+  };
+}
+
+
+function updateTargetInfo() {
+  const infoEl = document.getElementById('targetInfo');
+  const xEl = document.getElementById('targetX');
+  const yEl = document.getElementById('targetY');
+
+  if (!selectedTargetNode) {
+    if (infoEl) infoEl.textContent = 'Click on canvas or type coordinates';
+    if (xEl) xEl.value = '';
+    if (yEl) yEl.value = '';
+    return;
+  }
+
+  const { i, j, xWorld, yWorld } = selectedTargetNode;
+  if (infoEl) {
+    infoEl.textContent = `Target node: Grid (${i}, ${j}) | World (${xWorld.toFixed(2)}, ${yWorld.toFixed(2)})`;
+  }
+  if (xEl) xEl.value = xWorld.toFixed(2);
+  if (yEl) yEl.value = yWorld.toFixed(2);
+}
+
+function setTargetFromWorldCoords(tx, ty) {
+  const grid = getGridParams();
+  const i = Math.floor((tx - grid.originX) / grid.dx);
+  const j = Math.floor((ty - grid.originY) / grid.dy);
+
+  if (i < 0 || i >= grid.nx || j < 0 || j >= grid.ny) {
+    alert('Target outside grid extent');
+    return;
+  }
+
+  selectedTargetNode = {
+    i, j,
+    xWorld: grid.originX + (i + 0.5) * grid.dx,
+    yWorld: grid.originY + (j + 0.5) * grid.dy
+  };
+
+  updateTargetInfo();
+  updateTargetNodeHistogram();
+  draw();
+}
+
+// ============ NEIGHBOR SEARCH ============
+
+function dist(p1, p2) { return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2); }
+
+function getNearestPoints(x0, y0, extraPoints = []) {
+  const maxOrig = parseInt(document.getElementById('maxOrigNeighbors').value);
+  const maxSim = parseInt(document.getElementById('maxSimNeighbors').value);
+
+  const useRadius = document.getElementById('useSearchRadius').checked;
+  const searchRadiusMajor = parseFloat(document.getElementById('searchRadiusMajor').value) || 100;
+  const searchRadiusMinor = parseFloat(document.getElementById('searchRadiusMinor').value) || 100;
+  
+  const params = getVarioParams();
+  const theta = (params.anisoAngle - 90) * Math.PI / 180;
+  
+  const rMajorInt = Math.abs(internalX(worldX(x0) + searchRadiusMajor) - x0);
+  const rMinorInt = Math.abs(internalY(worldY(y0) + searchRadiusMinor) - y0);
+  
+  // Base conditioning data: original points
+  const base = (baseCondPoints && baseCondPoints.length)
+    ? baseCondPoints
+    : points.filter(p => p.active);
+
+  const candidatesOrig = [];
+  const candidatesSim  = [];
+
+  function considerPoint(p, bucket) {
+    const d = dist(p, { x: x0, y: y0 });
+    
+    if (useRadius && isFinite(rMajorInt) && isFinite(rMinorInt)) {
+      const dx = p.x - x0;
+      const dy = p.y - y0;
+      const xr = dx * Math.cos(theta) + dy * Math.sin(theta);
+      const yr = -dx * Math.sin(theta) + dy * Math.cos(theta);
+      const normalized = (xr * xr) / (rMajorInt * rMajorInt) + (yr * yr) / (rMinorInt * rMinorInt);
+      if (normalized > 1) return;
+    }
+    bucket.push({ p, d });
+  }
+
+  // Original samples
+  for (const p of base) {
+    considerPoint(p, candidatesOrig);
+  }
+
+  // Previously simulated nodes (or other extra conditioning points)
+  for (const p of extraPoints) {
+    considerPoint(p, candidatesSim);
+  }
+
+  candidatesOrig.sort((a, b) => a.d - b.d);
+  candidatesSim.sort((a, b) => a.d - b.d);
+
+  const selected = [];
+
+  // How many to actually take from each group
+  const nOrig = (isFinite(maxOrig) && maxOrig > 0) ? maxOrig : candidatesOrig.length;
+  const nSim  = (isFinite(maxSim)  && maxSim  > 0) ? maxSim  : 0;
+
+  for (let i = 0; i < Math.min(nOrig, candidatesOrig.length); i++) {
+    selected.push(candidatesOrig[i].p);
+  }
+  for (let i = 0; i < Math.min(nSim, candidatesSim.length); i++) {
+    selected.push(candidatesSim[i].p);
+  }
+
+  // Fallback: if user set both limits to 0 (or there is no selected point),
+  // revert to a simple "closest neighbors overall" behavior for robustness.
+  if (selected.length === 0) {
+    const all = candidatesOrig.concat(candidatesSim);
+    all.sort((a, b) => a.d - b.d);
+    const maxN = 12;
+    for (let k = 0; k < Math.min(maxN, all.length); k++) {
+      selected.push(all[k].p);
+    }
+  }
+
+  return selected;
+}
+
+
+// ============ SIMPLE KRIGING ============
+function solveLinearSystem(A, b) {
+  const n = b.length;
+  const M = A.map((row, i) => [...row, b[i]]);
+  
+  for (let col = 0; col < n; col++) {
+    let maxRow = col;
+    for (let row = col + 1; row < n; row++) {
+      if (Math.abs(M[row][col]) > Math.abs(M[maxRow][col])) maxRow = row;
+    }
+    [M[col], M[maxRow]] = [M[maxRow], M[col]];
+    
+    if (Math.abs(M[col][col]) < 1e-12) continue;
+    
+    for (let row = col + 1; row < n; row++) {
+      const factor = M[row][col] / M[col][col];
+      for (let j = col; j <= n; j++) M[row][j] -= factor * M[col][j];
+    }
+  }
+  
+  const x = new Array(n).fill(0);
+  for (let i = n - 1; i >= 0; i--) {
+    let sum = M[i][n];
+    for (let j = i + 1; j < n; j++) sum -= M[i][j] * x[j];
+    x[i] = Math.abs(M[i][i]) > 1e-12 ? sum / M[i][i] : 0;
+  }
+  return x;
+}
+
+function simpleKriging(targetX, targetY, conditioningData, params, skMean = 0) {
+  const n = conditioningData.length;
+  if (n === 0) {
+    return { estimate: skMean, variance: params.totalSill, lambdas: [] };
+  }
+  
+  const target = { x: targetX, y: targetY };
+  
+  // Build covariance matrix
+  const Cov = [];
+  for (let i = 0; i < n; i++) {
+    Cov[i] = [];
+    for (let j = 0; j < n; j++) {
+      Cov[i][j] = covarianceAniso(conditioningData[i], conditioningData[j], params);
+    }
+  }
+  
+  // Build covariance vector to target
+  const cov0 = [];
+  for (let i = 0; i < n; i++) {
+    cov0[i] = covarianceAniso(conditioningData[i], target, params);
+  }
+  
+  // Solve system
+  const lambdas = solveLinearSystem(Cov, cov0);
+  
+  // Calculate estimate: SK* = m + Σλᵢ(zᵢ - m)
+  let estimate = skMean;
+  for (let i = 0; i < n; i++) {
+    estimate += lambdas[i] * (conditioningData[i].value - skMean);
+  }
+  
+  // Calculate variance: σ²_SK = C(0) - Σλᵢc₀ᵢ
+  let variance = params.totalSill;
+  for (let i = 0; i < n; i++) {
+    variance -= lambdas[i] * cov0[i];
+  }
+  variance = Math.max(0, variance); // Ensure non-negative
+  
+  return { estimate, variance, lambdas, Cov, cov0 };
+}
+
+// ============ SIMULATION FUNCTIONS ============
+function generateRandomPath(nx, ny) {
+  const path = [];
+  for (let i = 0; i < nx; i++) {
+    for (let j = 0; j < ny; j++) {
+      path.push({ i, j });
+    }
+  }
+  
+  // Fisher-Yates shuffle
+  for (let k = path.length - 1; k > 0; k--) {
+    const r = Math.floor(seededRandom() * (k + 1));
+    [path[k], path[r]] = [path[r], path[k]];
+  }
+  
+  return path;
+}
+
+function runSingleSimulation(showProgress = false) {
+  const grid = getGridParams();
+  const params = getVarioParams();
+
+  // Initialize grid (stores ORIGINAL-space simulated values)
+  const simGrid = [];
+  for (let i = 0; i < grid.nx; i++) {
+    simGrid[i] = [];
+    for (let j = 0; j < grid.ny; j++) {
+      simGrid[i][j] = NaN;
+    }
+  }
+
+  // Conditioning data in n-score space
+  prepareBaseConditioningData();
+  const conditioningData = [...baseCondPoints];
+
+  // Random path and list of simulated nodes (also in n-score space)
+  const path = generateRandomPath(grid.nx, grid.ny);
+  const simulatedNodes = [];
+
+  const totalNodes = path.length;
+
+  for (let k = 0; k < totalNodes; k++) {
+    const { i, j } = path[k];
+
+    // World and internal coordinates for this node
+    const xWorld = grid.originX + (i + 0.5) * grid.dx;
+    const yWorld = grid.originY + (j + 0.5) * grid.dy;
+    const x0 = internalX(xWorld);
+    const y0 = internalY(yWorld);
+
+    // Neighborhood: original data + previously simulated nodes, all in n-score space
+    // Original samples are in baseCondPoints (used internally by getNearestPoints).
+    // We pass only the previously simulated nodes as extra conditioning data to avoid duplicates.
+    const neighbors = getNearestPoints(x0, y0, simulatedNodes);
+
+    // Simple kriging in n-score space with mean 0
+    const skMean = nscoreMean; // Use weighted mean from normal score transform
+    const sk = simpleKriging(x0, y0, neighbors, params, skMean);
+
+    // Conditional simulation in n-score space
+    const u = randomNormal();
+    const simNs = sk.estimate + Math.sqrt(sk.variance) * u;
+
+    // Back-transform simulated value to original space
+    const simOrig = fromNscore(simNs);
+
+    // Store original-space value in grid
+    simGrid[i][j] = simOrig;
+
+    // Add simulated node (in n-score) to conditioning set
+    simulatedNodes.push({
+      x: x0,
+      y: y0,
+      value: simNs,
+      originalValue: simOrig,
+      gridI: i,
+      gridJ: j,
+      isOriginal: false
+    });
+
+    // Optional progress bar
+    if (showProgress && (k + 1) % 50 === 0) {
+      const progress = ((k + 1) / totalNodes * 100).toFixed(0);
+      const bar = document.getElementById('simProgressBar');
+      const label = document.getElementById('simProgressLabel');
+      if (bar) bar.style.width = progress + '%';
+      if (label) label.textContent = `Realization progress: ${progress}%`;
+    }
+  }
+
+  return simGrid;
+}
+
+function runMultipleSimulations() {
+  const nReal = parseInt(document.getElementById('nRealizations').value) || 10;
+  const useSeed = document.getElementById('useSeed').checked;
+  const seed = parseInt(document.getElementById('randomSeed').value) || 12345;
+
+  if (useSeed) resetRng(seed);
+
+  // Sempre preparar dados condicionantes em espaço normal-score para a simulação
+  prepareBaseConditioningData();
+
+  realizations = [];
+
+  // Mostrar barra de progresso e seleção de realizações
+  document.getElementById('simProgress').style.display = 'block';
+  document.getElementById('progressFill').style.width = '0%';
+  document.getElementById('progressText').textContent = '';
+  document.getElementById('realizationSelector').style.display = 'block';
+
+  const grid = getGridParams();
+
+  // Rodar as simulações
+  for (let r = 0; r < nReal; r++) {
+    const simGrid = runSingleSimulation();
+    realizations.push(simGrid);
+
+    const progress = ((r + 1) / nReal * 100).toFixed(0);
+    document.getElementById('progressFill').style.width = progress + '%';
+    document.getElementById('progressText').textContent = `${r + 1} / ${nReal} realizations`;
+  }
+
+  // Atualizar seletor de realizações
+  const select = document.getElementById('realizationSelect');
+  select.innerHTML = '';
+  for (let r = 0; r < nReal; r++) {
+    const opt = document.createElement('option');
+    opt.value = r;
+    opt.textContent = `Realization ${r + 1}`;
+    select.appendChild(opt);
+  }
+
+  currentRealization = realizations[0];
+
+  // Atualizar mapas de E-type e desvio padrão, se disponível
+  if (typeof computeSummaryMaps === 'function') {
+    computeSummaryMaps();
+  }
+
+  // Atualizar resumos e histogramas
+  updateSimSummary();
+  updateRealizationsStats();
+  drawHistograms();
+  draw();
+}
+
+// ============ COORDINATE TRANSFORMS ============
+function worldX(xInt) {
+  if (!canvas || !aspectScale) return dataMinX;
+  return dataMinX + ((xInt - aspectOffsetX) / aspectScale);
+}
+function worldY(yInt) {
+  if (!canvas || !aspectScale) return dataMinY;
+  const h = canvas.height;
+  return dataMinY + ((h - yInt - aspectOffsetY) / aspectScale);
+}
+function internalX(xW) {
+  return aspectOffsetX + (xW - dataMinX) * aspectScale;
+}
+function internalY(yW) {
+  const h = canvas ? canvas.height : 0;
+  return h - (aspectOffsetY + (yW - dataMinY) * aspectScale);
+}
+
+// ============ GRID FUNCTIONS ============
+function updateGridInfo() {
+  const originX = parseFloat(document.getElementById('gridOriginX').value) || 0;
+  const originY = parseFloat(document.getElementById('gridOriginY').value) || 0;
+  const dx = parseFloat(document.getElementById('gridSpacingX').value) || 10;
+  const dy = parseFloat(document.getElementById('gridSpacingY').value) || 10;
+  const nx = parseInt(document.getElementById('gridNx').value) || 30;
+  const ny = parseInt(document.getElementById('gridNy').value) || 30;
+  
+  const totalWidth = dx * nx;
+  const totalHeight = dy * ny;
+  const totalNodes = nx * ny;
+  
+  document.getElementById('gridInfo').innerHTML = `
+    <b>Grid extent:</b><br>
+    X: [${originX.toFixed(1)}, ${(originX + totalWidth).toFixed(1)}] → Width: ${totalWidth.toFixed(1)}<br>
+    Y: [${originY.toFixed(1)}, ${(originY + totalHeight).toFixed(1)}] → Height: ${totalHeight.toFixed(1)}<br>
+    <b>Total nodes:</b> ${totalNodes.toLocaleString()}
+  `;
+}
+
+function getGridParams() {
+  return {
+    originX: parseFloat(document.getElementById('gridOriginX').value) || 0,
+    originY: parseFloat(document.getElementById('gridOriginY').value) || 0,
+    dx: parseFloat(document.getElementById('gridSpacingX').value) || 10,
+    dy: parseFloat(document.getElementById('gridSpacingY').value) || 10,
+    nx: parseInt(document.getElementById('gridNx').value) || 30,
+    ny: parseInt(document.getElementById('gridNy').value) || 30
+  };
+}
+
+// ============ NEIGHBOR SEARCH ============
+function dist(p1, p2) { return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2); }
+
+function getNearestPoints(x0, y0, extraPoints = []) {
+  const maxOrig = parseInt(document.getElementById('maxOrigNeighbors').value);
+  const maxSim = parseInt(document.getElementById('maxSimNeighbors').value);
+
+  const useRadius = document.getElementById('useSearchRadius').checked;
+  const searchRadiusMajor = parseFloat(document.getElementById('searchRadiusMajor').value) || 100;
+  const searchRadiusMinor = parseFloat(document.getElementById('searchRadiusMinor').value) || 100;
+  
+  const params = getVarioParams();
+  const theta = (params.anisoAngle - 90) * Math.PI / 180;
+  
+  const rMajorInt = Math.abs(internalX(worldX(x0) + searchRadiusMajor) - x0);
+  const rMinorInt = Math.abs(internalY(worldY(y0) + searchRadiusMinor) - y0);
+  
+  // Base conditioning data: original points
+  const base = (baseCondPoints && baseCondPoints.length)
+    ? baseCondPoints
+    : points.filter(p => p.active);
+
+  const candidatesOrig = [];
+  const candidatesSim  = [];
+
+  function considerPoint(p, bucket) {
+    const d = dist(p, { x: x0, y: y0 });
+    
+    if (useRadius && isFinite(rMajorInt) && isFinite(rMinorInt)) {
+      const dx = p.x - x0;
+      const dy = p.y - y0;
+      const xr = dx * Math.cos(theta) + dy * Math.sin(theta);
+      const yr = -dx * Math.sin(theta) + dy * Math.cos(theta);
+      const normalized = (xr * xr) / (rMajorInt * rMajorInt) + (yr * yr) / (rMinorInt * rMinorInt);
+      if (normalized > 1) return;
+    }
+    bucket.push({ p, d });
+  }
+
+  // Original samples
+  for (const p of base) {
+    considerPoint(p, candidatesOrig);
+  }
+
+  // Previously simulated nodes (or other extra conditioning points)
+  for (const p of extraPoints) {
+    considerPoint(p, candidatesSim);
+  }
+
+  candidatesOrig.sort((a, b) => a.d - b.d);
+  candidatesSim.sort((a, b) => a.d - b.d);
+
+  const selected = [];
+
+  // How many to actually take from each group
+  const nOrig = (isFinite(maxOrig) && maxOrig > 0) ? maxOrig : candidatesOrig.length;
+  const nSim  = (isFinite(maxSim)  && maxSim  > 0) ? maxSim  : 0;
+
+  for (let i = 0; i < Math.min(nOrig, candidatesOrig.length); i++) {
+    selected.push(candidatesOrig[i].p);
+  }
+  for (let i = 0; i < Math.min(nSim, candidatesSim.length); i++) {
+    selected.push(candidatesSim[i].p);
+  }
+
+  // Fallback: if user set both limits to 0 (or there is no selected point),
+  // revert to a simple "closest neighbors overall" behavior for robustness.
+  if (selected.length === 0) {
+    const all = candidatesOrig.concat(candidatesSim);
+    all.sort((a, b) => a.d - b.d);
+    const maxN = 12;
+    for (let k = 0; k < Math.min(maxN, all.length); k++) {
+      selected.push(all[k].p);
+    }
+  }
+
+  return selected;
+}
+
+
+// ============ SIMPLE KRIGING ============
+function solveLinearSystem(A, b) {
+  const n = b.length;
+  const M = A.map((row, i) => [...row, b[i]]);
+  
+  for (let col = 0; col < n; col++) {
+    let maxRow = col;
+    for (let row = col + 1; row < n; row++) {
+      if (Math.abs(M[row][col]) > Math.abs(M[maxRow][col])) maxRow = row;
+    }
+    [M[col], M[maxRow]] = [M[maxRow], M[col]];
+    
+    if (Math.abs(M[col][col]) < 1e-12) continue;
+    
+    for (let row = col + 1; row < n; row++) {
+      const factor = M[row][col] / M[col][col];
+      for (let j = col; j <= n; j++) M[row][j] -= factor * M[col][j];
+    }
+  }
+  
+  const x = new Array(n).fill(0);
+  for (let i = n - 1; i >= 0; i--) {
+    let sum = M[i][n];
+    for (let j = i + 1; j < n; j++) sum -= M[i][j] * x[j];
+    x[i] = Math.abs(M[i][i]) > 1e-12 ? sum / M[i][i] : 0;
+  }
+  return x;
+}
+
+function simpleKriging(targetX, targetY, conditioningData, params, skMean = 0) {
+  const n = conditioningData.length;
+  if (n === 0) {
+    return { estimate: skMean, variance: params.totalSill, lambdas: [] };
+  }
+  
+  const target = { x: targetX, y: targetY };
+  
+  // Build covariance matrix
+  const Cov = [];
+  for (let i = 0; i < n; i++) {
+    Cov[i] = [];
+    for (let j = 0; j < n; j++) {
+      Cov[i][j] = covarianceAniso(conditioningData[i], conditioningData[j], params);
+    }
+  }
+  
+  // Build covariance vector to target
+  const cov0 = [];
+  for (let i = 0; i < n; i++) {
+    cov0[i] = covarianceAniso(conditioningData[i], target, params);
+  }
+  
+  // Solve system
+  const lambdas = solveLinearSystem(Cov, cov0);
+  
+  // Calculate estimate: SK* = m + Σλᵢ(zᵢ - m)
+  let estimate = skMean;
+  for (let i = 0; i < n; i++) {
+    estimate += lambdas[i] * (conditioningData[i].value - skMean);
+  }
+  
+  // Calculate variance: σ²_SK = C(0) - Σλᵢc₀ᵢ
+  let variance = params.totalSill;
+  for (let i = 0; i < n; i++) {
+    variance -= lambdas[i] * cov0[i];
+  }
+  variance = Math.max(0, variance); // Ensure non-negative
+  
+  return { estimate, variance, lambdas, Cov, cov0 };
+}
+
+// ============ SIMULATION FUNCTIONS ============
+function generateRandomPath(nx, ny) {
+  const path = [];
+  for (let i = 0; i < nx; i++) {
+    for (let j = 0; j < ny; j++) {
+      path.push({ i, j });
+    }
+  }
+  
+  // Fisher-Yates shuffle
+  for (let k = path.length - 1; k > 0; k--) {
+    const r = Math.floor(seededRandom() * (k + 1));
+    [path[k], path[r]] = [path[r], path[k]];
+  }
+  
+  return path;
+}
+
+function computeSummaryMaps() {
+  if (realizations.length === 0) return;
+  
+  const grid = getGridParams();
+  const nReal = realizations.length;
+  
+  // Initialize maps
+  const meanVals = [], stdVals = [];
+  for (let i = 0; i < grid.nx; i++) {
+    meanVals[i] = [];
+    stdVals[i] = [];
+    for (let j = 0; j < grid.ny; j++) {
+      // Collect values across realizations
+      const vals = realizations.map(r => r[i][j]).filter(v => isFinite(v));
+      if (vals.length > 0) {
+        const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+        const variance = vals.reduce((s, v) => s + (v - mean) ** 2, 0) / vals.length;
+        meanVals[i][j] = mean;
+        stdVals[i][j] = Math.sqrt(variance);
+      } else {
+        meanVals[i][j] = NaN;
+        stdVals[i][j] = NaN;
+      }
+    }
+  }
+  
+  // Calculate min/max for color scaling
+  let meanMin = Infinity, meanMax = -Infinity;
+  let stdMin = Infinity, stdMax = -Infinity;
+  
+  for (let i = 0; i < grid.nx; i++) {
+    for (let j = 0; j < grid.ny; j++) {
+      if (isFinite(meanVals[i][j])) {
+        meanMin = Math.min(meanMin, meanVals[i][j]);
+        meanMax = Math.max(meanMax, meanVals[i][j]);
+      }
+      if (isFinite(stdVals[i][j])) {
+        stdMin = Math.min(stdMin, stdVals[i][j]);
+        stdMax = Math.max(stdMax, stdVals[i][j]);
+      }
+    }
+  }
+  
+  meanMap = { values: meanVals, min: meanMin, max: meanMax, ...grid };
+  stdMap = { values: stdVals, min: stdMin, max: stdMax, ...grid };
+}
+
+// ============ STEP-BY-STEP SIMULATION ============
+function startStepByStep() {
+  const useSeed = document.getElementById('useSeed').checked;
+  const seed = parseInt(document.getElementById('randomSeed').value) || 12345;
+
+  if (useSeed) resetRng(seed);
+
+  // Always compute n-score transform and prepare conditioning data in n-score space
+  prepareBaseConditioningData();
+
+  const grid = getGridParams();
+
+  // Initialize
+  isStepMode = true;
+  stepIndex = 0;
+  simulatedNodes = [];
+
+  // Random path
+  randomPath = generateRandomPath(grid.nx, grid.ny);
+
+  // Current realization grid (stores ORIGINAL-space values)
+  currentRealization = [];
+  for (let i = 0; i < grid.nx; i++) {
+    currentRealization[i] = [];
+    for (let j = 0; j < grid.ny; j++) {
+      currentRealization[i][j] = NaN;
+    }
+  }
+
+  // Show step-by-step section
+  document.getElementById('stepByStepSection').style.display = 'block';
+  document.getElementById('btnNextStep').style.display = 'inline-flex';
+  document.getElementById('btnStepSimulation').style.display = 'none';
+
+  // Execute first step
+  executeStep();
+}
+
+function executeStep() {
+  if (stepIndex >= randomPath.length) {
+    // Simulation complete
+    document.getElementById('currentNodeInfo').innerHTML = '<b style="color: #059669;">✓ Simulation Complete!</b>';
+    document.getElementById('btnNextStep').style.display = 'none';
+    document.getElementById('btnStepSimulation').style.display = 'inline-flex';
+    isStepMode = false;
+
+    // Add to realizations
+    realizations = [currentRealization];
+    computeSummaryMaps();
+    drawHistograms();
+    return;
+  }
+
+  const grid = getGridParams();
+  const params = getVarioParams();
+  const useNscoreCheckbox = document.getElementById('useNscore').checked; // only for display, simulation is always in n-score
+
+  const { i, j } = randomPath[stepIndex];
+
+  const xWorld = grid.originX + (i + 0.5) * grid.dx;
+  const yWorld = grid.originY + (j + 0.5) * grid.dy;
+  const x0 = internalX(xWorld);
+  const y0 = internalY(yWorld);
+
+  // Conditioning data: original points + previously simulated nodes, all in n-score
+  const conditioningData = baseCondPoints.concat(simulatedNodes);
+
+  // Get neighbors
+  // getNearestPoints already includes all original samples from baseCondPoints,
+  // so we pass only the previously simulated nodes as extraPoints to avoid duplicates.
+  const neighbors = getNearestPoints(x0, y0, simulatedNodes);
+  currentNeighbors = neighbors;
+
+  // Simple Kriging in n-score space (mean from weighted transform)
+  const skMean = nscoreMean;
+  const sk = simpleKriging(x0, y0, neighbors, params, skMean);
+
+  // Conditional simulation (n-score)
+  const u = randomNormal();
+  const simValueNs = sk.estimate + Math.sqrt(sk.variance) * u;
+
+  // Back-transform to original space for storage/visualization
+  const simValue = fromNscore(simValueNs);
+
+  // Store results (original space)
+  currentRealization[i][j] = simValue;
+
+  simulatedNodes.push({
+    x: x0,
+    y: y0,
+    value: simValueNs,   // n-score for conditioning
+    originalValue: simValue,
+    gridI: i,
+    gridJ: j,
+    isOriginal: false
+  });
+
+  // Update step-by-step display
+  updateStepDisplay(i, j, xWorld, yWorld, neighbors, sk, u, simValueNs, simValue, useNscoreCheckbox, skMean);
+
+  stepIndex++;
+  draw();
+}
+
+function updateStepDisplay(i, j, xWorld, yWorld, neighbors, sk, u, simValueNs, simValue, useNscore, skMean) {
+  // Current node info
+  document.getElementById('currentNodeInfo').innerHTML = `
+    <b>Node ${stepIndex + 1} of ${randomPath.length}</b><br>
+    Grid position: (${i}, ${j})<br>
+    World coordinates: (${xWorld.toFixed(2)}, ${yWorld.toFixed(2)})
+  `;
+  
+  // Step 1: Random Path
+  document.getElementById('stepPath').innerHTML = `
+    <p>Random path position: <b>${stepIndex + 1}</b></p>
+    <p>Nodes simulated so far: <b>${stepIndex}</b></p>
+    <p>Remaining nodes: <b>${randomPath.length - stepIndex - 1}</b></p>
+  `;
+  
+  // Step 2: Conditioning Data
+  const origNeighbors = neighbors.filter(n => n.isOriginal);
+  const simNeighbors = neighbors.filter(n => !n.isOriginal);
+  
+  let condHTML = `<p>Total neighbors found: <b>${neighbors.length}</b></p>`;
+  condHTML += `<p>Original samples: <b>${origNeighbors.length}</b> | Previously simulated: <b>${simNeighbors.length}</b></p>`;
+  
+  if (neighbors.length > 0) {
+    condHTML += '<table><tr><th>#</th><th>Type</th><th>X</th><th>Y</th><th>Value</th><th>Distance</th></tr>';
+    neighbors.forEach((n, idx) => {
+      const d = Math.sqrt((n.x - internalX(xWorld)) ** 2 + (n.y - internalY(yWorld)) ** 2);
+      const type = n.isOriginal ? '📍 Original' : '🔵 Simulated';
+      condHTML += `<tr><td>${idx + 1}</td><td>${type}</td><td>${worldX(n.x).toFixed(2)}</td><td>${worldY(n.y).toFixed(2)}</td><td>${n.value.toFixed(4)}</td><td>${d.toFixed(2)}</td></tr>`;
+    });
+    condHTML += '</table>';
+  }
+  document.getElementById('stepConditioning').innerHTML = condHTML;
+  
+  // Step 3: Simple Kriging
+  let skHTML = `
+    <p><b>SK Mean (m):</b> ${skMean.toFixed(4)}</p>
+    <p><b>SK Estimate (SK*):</b> <span class="calc-highlight">${sk.estimate.toFixed(4)}</span></p>
+    <p><b>SK Variance (σ²_SK):</b> ${sk.variance.toFixed(4)}</p>
+    <p><b>SK Std Dev (σ_SK):</b> ${Math.sqrt(sk.variance).toFixed(4)}</p>
+  `;
+  
+  if (sk.lambdas.length > 0) {
+    skHTML += '<p><b>Weights (λ):</b></p><table><tr><th>#</th><th>λᵢ</th><th>zᵢ</th><th>λᵢ(zᵢ-m)</th></tr>';
+    let sumTerms = 0;
+    sk.lambdas.forEach((l, idx) => {
+      const term = l * (neighbors[idx].value - skMean);
+      sumTerms += term;
+      skHTML += `<tr><td>${idx + 1}</td><td>${l.toFixed(4)}</td><td>${neighbors[idx].value.toFixed(4)}</td><td>${term.toFixed(4)}</td></tr>`;
+    });
+    skHTML += `</table><p>Σλ = ${sk.lambdas.reduce((a, b) => a + b, 0).toFixed(4)}</p>`;
+    skHTML += `<p>SK* = m + Σλᵢ(zᵢ-m) = ${skMean.toFixed(4)} + ${sumTerms.toFixed(4)} = <span class="calc-highlight">${sk.estimate.toFixed(4)}</span></p>`;
+  }
+  document.getElementById('stepKriging').innerHTML = skHTML;
+  
+  // Step 4: Random Number
+  const pU = normalCDF(u);
+  document.getElementById('stepRandom').innerHTML = `
+    <p><b>Random number U ~ N(0,1):</b> <span class="calc-highlight-purple">${u.toFixed(4)}</span></p>
+    <p><b>P(U ≤ u):</b> ${pU.toFixed(4)} (${(pU * 100).toFixed(1)}%)</p>
+    <p><b>Simulated value (Gaussian space):</b></p>
+    <p class="calc-eq">Z_sim = SK* + σ_SK × U</p>
+    <p class="calc-eq">Z_sim = ${sk.estimate.toFixed(4)} + ${Math.sqrt(sk.variance).toFixed(4)} × ${u.toFixed(4)}</p>
+    <p class="calc-eq">Z_sim = <span class="calc-highlight-purple">${simValueNs.toFixed(4)}</span></p>
+  `;
+  
+  // Step 5: Back-Transform (simulation is ALWAYS performed in normal-score space)
+  document.getElementById('stepBacktransform').innerHTML = `
+      <p><b>Normal Score value:</b> ${simValueNs.toFixed(4)}</p>
+      <p><b>Back-transformed value:</b> <span class="calc-highlight-green">${simValue.toFixed(4)}</span></p>
+      <p><em>Simulation is always performed in normal-score space; this value is obtained by back-transforming using linear interpolation in the transform table.</em></p>
+    `;
+}
+
+// ============ DISPLAY FUNCTIONS ============
+function updateSimSummary() {
+  if (realizations.length === 0) {
+    document.getElementById('simSummary').innerHTML = '<em>Run simulation to see results</em>';
+    return;
+  }
+  
+  const grid = getGridParams();
+  const nReal = realizations.length;
+  
+  // Collect all values
+  let allValues = [];
+  realizations.forEach(r => {
+    for (let i = 0; i < grid.nx; i++) {
+      for (let j = 0; j < grid.ny; j++) {
+        if (isFinite(r[i][j])) allValues.push(r[i][j]);
+      }
+    }
+  });
+  
+  const mean = allValues.reduce((a, b) => a + b, 0) / allValues.length;
+  const variance = allValues.reduce((s, v) => s + (v - mean) ** 2, 0) / allValues.length;
+  const std = Math.sqrt(variance);
+  const sorted = [...allValues].sort((a, b) => a - b);
+  const min = sorted[0];
+  const max = sorted[sorted.length - 1];
+  const median = sorted[Math.floor(sorted.length / 2)];
+  
+  document.getElementById('simSummary').innerHTML = `
+    <p><b>Realizations:</b> ${nReal}</p>
+    <p><b>Grid nodes:</b> ${grid.nx} × ${grid.ny} = ${grid.nx * grid.ny}</p>
+    <p><b>Total simulated values:</b> ${allValues.length.toLocaleString()}</p>
+    <hr>
+    <p><b>Mean:</b> ${mean.toFixed(4)}</p>
+    <p><b>Std Dev:</b> ${std.toFixed(4)}</p>
+    <p><b>Median:</b> ${median.toFixed(4)}</p>
+    <p><b>Min:</b> ${min.toFixed(4)} | <b>Max:</b> ${max.toFixed(4)}</p>
+  `;
+}
+
+function updateRealizationsStats() {
+  if (realizations.length === 0) {
+    document.getElementById('realizationsStats').style.display = 'none';
+    return;
+  }
+  
+  document.getElementById('realizationsStats').style.display = 'block';
+  
+  const grid = getGridParams();
+  let html = '<table><tr><th>Real.</th><th>Mean</th><th>Std</th><th>Min</th><th>Max</th></tr>';
+  
+  realizations.forEach((r, idx) => {
+    let vals = [];
+    for (let i = 0; i < grid.nx; i++) {
+      for (let j = 0; j < grid.ny; j++) {
+        if (isFinite(r[i][j])) vals.push(r[i][j]);
+      }
+    }
+    const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+    const std = Math.sqrt(vals.reduce((s, v) => s + (v - mean) ** 2, 0) / vals.length);
+    const min = Math.min(...vals);
+    const max = Math.max(...vals);
+    
+    html += `<tr><td>${idx + 1}</td><td>${mean.toFixed(3)}</td><td>${std.toFixed(3)}</td><td>${min.toFixed(3)}</td><td>${max.toFixed(3)}</td></tr>`;
+  });
+  
+  html += '</table>';
+  document.getElementById('realizationsTable').innerHTML = html;
+}
+
+// ============ DRAWING FUNCTIONS ============
+function drawAxes() {
+  const axisMargin = 40;
+  const tickSize = 5;
+  
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, axisMargin);
+  ctx.fillRect(0, 0, axisMargin, canvas.height);
+  
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 2;
+  ctx.fillStyle = '#333';
+  ctx.font = '11px Arial';
+  
+  // Y axis
+  ctx.beginPath();
+  ctx.moveTo(axisMargin, 0);
+  ctx.lineTo(axisMargin, canvas.height);
+  ctx.stroke();
+  
+  // X axis
+  ctx.beginPath();
+  ctx.moveTo(0, axisMargin);
+  ctx.lineTo(canvas.width, axisMargin);
+  ctx.stroke();
+  
+  // Calculate visible coordinates
+  const topLeftX = (0 - viewOffsetX - axisMargin * viewScale) / viewScale;
+  const topLeftY = (0 - viewOffsetY - axisMargin * viewScale) / viewScale;
+  const bottomRightX = (canvas.width - viewOffsetX - axisMargin * viewScale) / viewScale;
+  const bottomRightY = (canvas.height - viewOffsetY - axisMargin * viewScale) / viewScale;
+  
+  const worldLeft = worldX(topLeftX);
+  const worldRight = worldX(bottomRightX);
+  const worldTop = worldY(topLeftY);
+  const worldBottom = worldY(bottomRightY);
+  
+  // Y axis ticks
+  const numTicksY = 8;
+  for (let i = 0; i <= numTicksY; i++) {
+    const yCanvas = axisMargin + (canvas.height - axisMargin) * i / numTicksY;
+    const yWorld = worldTop + (worldBottom - worldTop) * i / numTicksY;
+    
+    ctx.beginPath();
+    ctx.moveTo(axisMargin - tickSize, yCanvas);
+    ctx.lineTo(axisMargin, yCanvas);
+    ctx.stroke();
+    
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(yWorld.toFixed(1), axisMargin - tickSize - 2, yCanvas);
+  }
+  
+  // X axis ticks
+  const numTicksX = 10;
+  for (let i = 0; i <= numTicksX; i++) {
+    const xCanvas = axisMargin + (canvas.width - axisMargin) * i / numTicksX;
+    const xWorld = worldLeft + (worldRight - worldLeft) * i / numTicksX;
+    
+    ctx.beginPath();
+    ctx.moveTo(xCanvas, axisMargin - tickSize);
+    ctx.lineTo(xCanvas, axisMargin);
+    ctx.stroke();
+    
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(xWorld.toFixed(1), xCanvas, axisMargin - tickSize - 2);
+  }
+  
+  // Axis labels
+  ctx.save();
+  ctx.translate(12, canvas.height / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 12px Arial';
+  ctx.fillText('Y', 0, 0);
+  ctx.restore();
+  
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 12px Arial';
+  ctx.fillText('X', canvas.width / 2, 12);
+  
+  ctx.restore();
+}
+
+function rainbowColor(t, alpha) {
+  t = Math.max(0, Math.min(1, t));
+  let r = 0, g = 0, b = 0;
+  if (t < 0.25) { g = Math.round(255 * t / 0.25); b = 255; }
+  else if (t < 0.5) { g = 255; b = Math.round(255 * (1 - (t - 0.25) / 0.25)); }
+  else if (t < 0.75) { r = Math.round(255 * (t - 0.5) / 0.25); g = 255; }
+  else { r = 255; g = Math.round(255 * (1 - (t - 0.75) / 0.25)); }
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function nscoreColor(t, alpha) {
+  t = Math.max(0, Math.min(1, t));
+  let r = 0, g = 0, b = 0;
+  if (t < 0.5) {
+    // Azul -> branco
+    const k = t / 0.5;
+    r = Math.round(255 * k);
+    g = Math.round(255 * k);
+    b = 255;
+  } else {
+    // Branco -> vermelho
+    const k = (t - 0.5) / 0.5;
+    r = 255;
+    g = Math.round(255 * (1 - k));
+    b = Math.round(255 * (1 - k));
+  }
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function valueColor(t, alpha) {
+  const useNscoreView = document.getElementById('useNscore').checked;
+  return useNscoreView ? nscoreColor(t, alpha) : rainbowColor(t, alpha);
+}
+
+function drawMap(mapData, alpha = 0.7) {
+  if (!mapData || !mapData.values) return;
+  
+  const { nx, ny, originX, originY, dx, dy, values, min, max } = mapData;
+  const range = (max - min) || 1e-12;
+  
+  for (let i = 0; i < nx; i++) {
+    for (let j = 0; j < ny; j++) {
+      if (!isFinite(values[i][j])) continue;
+      
+      const xWorld = originX + i * dx;
+      const yWorld = originY + j * dy;
+      
+      const x0 = internalX(xWorld);
+      const y0 = internalY(yWorld);
+      const x1 = internalX(xWorld + dx);
+      const y1 = internalY(yWorld + dy);
+      
+      ctx.fillStyle = valueColor((values[i][j] - min) / range, alpha);
+      ctx.fillRect(x0, y1, x1 - x0, y0 - y1);
+    }
+  }
+}
+
+function draw() {
+  const axisMargin = 40;
+  
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  
+  drawAxes();
+  
+  ctx.setTransform(viewScale, 0, 0, viewScale, viewOffsetX + axisMargin * viewScale, viewOffsetY + axisMargin * viewScale);
+  
+  const grid = getGridParams();
+
+  
+  // Unified color scale for samples and current simulation (view space: original or n-score)
+  const useNscoreView = document.getElementById('useNscore').checked;
+  let colorMin = Infinity, colorMax = -Infinity;
+  const activePoints = points.filter(p => p.active);
+  activePoints.forEach(p => {
+    const val = useNscoreView ? toNscore(p.value) : p.value;
+    colorMin = Math.min(colorMin, val);
+    colorMax = Math.max(colorMax, val);
+  });
+
+  // Draw maps (mean / std permanecem em espaço original)
+  if (document.getElementById('showMeanMap').checked && meanMap) {
+    drawMap({ ...meanMap, dx: grid.dx, dy: grid.dy }, 0.7);
+  }
+  if (document.getElementById('showStdMap').checked && stdMap) {
+    drawMap({ ...stdMap, dx: grid.dx, dy: grid.dy }, 0.7);
+  }
+  if (document.getElementById('showSimMap').checked && currentRealization) {
+    // Calcular min/max e valores em espaço de visualização para a realização atual
+    let simMin = Infinity, simMax = -Infinity;
+    const viewValues = [];
+    for (let i = 0; i < grid.nx; i++) {
+      viewValues[i] = [];
+      for (let j = 0; j < grid.ny; j++) {
+        const v = currentRealization[i][j];
+        if (isFinite(v)) {
+          const vv = useNscoreView ? toNscore(v) : v;
+          viewValues[i][j] = vv;
+          simMin = Math.min(simMin, vv);
+          simMax = Math.max(simMax, vv);
+        } else {
+          viewValues[i][j] = NaN;
+        }
+      }
+    }
+    if (isFinite(simMin)) {
+      if (!isFinite(colorMin)) {
+        colorMin = simMin;
+        colorMax = simMax;
+      } else {
+        colorMin = Math.min(colorMin, simMin);
+        colorMax = Math.max(colorMax, simMax);
+      }
+      drawMap({ values: viewValues, min: colorMin, max: colorMax, ...grid }, 0.7);
+    }
+  }// Grid frame
+  if (document.getElementById('showGridFrame').checked) {
+    const x0 = internalX(grid.originX);
+    const y0 = internalY(grid.originY);
+    const x1 = internalX(grid.originX + grid.dx * grid.nx);
+    const y1 = internalY(grid.originY + grid.dy * grid.ny);
+    
+    ctx.strokeStyle = 'rgba(128, 128, 128, 0.6)';
+    ctx.lineWidth = 2 / viewScale;
+    ctx.setLineDash([8 / viewScale, 4 / viewScale]);
+    ctx.strokeRect(x0, y1, x1 - x0, y0 - y1);
+    ctx.setLineDash([]);
+    
+    // Grid lines
+    ctx.strokeStyle = 'rgba(128, 128, 128, 0.25)';
+    ctx.lineWidth = 0.5 / viewScale;
+    for (let i = 1; i < grid.nx; i++) {
+      const x = internalX(grid.originX + grid.dx * i);
+      ctx.beginPath();
+      ctx.moveTo(x, y1);
+      ctx.lineTo(x, y0);
+      ctx.stroke();
+    }
+    for (let j = 1; j < grid.ny; j++) {
+      const y = internalY(grid.originY + grid.dy * j);
+      ctx.beginPath();
+      ctx.moveTo(x0, y);
+      ctx.lineTo(x1, y);
+      ctx.stroke();
+    }
+  }
+  
+  // Variogram ellipses (centered on canvas center or step node)
+  const params = getVarioParams();
+  const rotationRadians = (params.anisoAngle - 90) * Math.PI / 180;
+  
+  // Get center point for ellipses
+  let ellipseCenter;
+  if (isStepMode && stepIndex > 0 && stepIndex <= randomPath.length) {
+    const { i, j } = randomPath[stepIndex - 1];
+    const xWorld = grid.originX + (i + 0.5) * grid.dx;
+    const yWorld = grid.originY + (j + 0.5) * grid.dy;
+    ellipseCenter = { x: internalX(xWorld), y: internalY(yWorld) };
+  } else if (selectedTargetNode) {
+    ellipseCenter = { x: internalX(selectedTargetNode.xWorld), y: internalY(selectedTargetNode.yWorld) };
+  } else {
+    const cx = grid.originX + grid.dx * grid.nx / 2;
+    const cy = grid.originY + grid.dy * grid.ny / 2;
+    ellipseCenter = { x: internalX(cx), y: internalY(cy) };
+  }
+  
+  // Structure 1 ellipse (blue)
+  if (params.structures.length >= 1) {
+    const s1 = params.structures[0];
+    const r1Major = Math.abs(internalX(worldX(ellipseCenter.x) + s1.range) - ellipseCenter.x);
+    const r1Minor = Math.abs(internalY(worldY(ellipseCenter.y) + s1.rangeOrtho) - ellipseCenter.y);
+    
+    ctx.save();
+    ctx.translate(ellipseCenter.x, ellipseCenter.y);
+    ctx.rotate(rotationRadians);
+    
+    ctx.strokeStyle = 'rgba(59, 130, 246, 0.6)';
+    ctx.lineWidth = 2 / viewScale;
+    ctx.setLineDash([8 / viewScale, 4 / viewScale]);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, r1Major, r1Minor, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+  
+  // Structure 2 ellipse (red)
+  if (params.structures.length >= 2) {
+    const s2 = params.structures[1];
+    const r2Major = Math.abs(internalX(worldX(ellipseCenter.x) + s2.range) - ellipseCenter.x);
+    const r2Minor = Math.abs(internalY(worldY(ellipseCenter.y) + s2.rangeOrtho) - ellipseCenter.y);
+    
+    ctx.save();
+    ctx.translate(ellipseCenter.x, ellipseCenter.y);
+    ctx.rotate(rotationRadians);
+    
+    ctx.strokeStyle = 'rgba(239, 68, 68, 0.6)';
+    ctx.lineWidth = 2 / viewScale;
+    ctx.setLineDash([8 / viewScale, 4 / viewScale]);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, r2Major, r2Minor, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+  
+  // Search ellipse (green)
+  if (document.getElementById('useSearchRadius').checked) {
+    const radiusMajor = parseFloat(document.getElementById('searchRadiusMajor').value) || 100;
+    const radiusMinor = parseFloat(document.getElementById('searchRadiusMinor').value) || 100;
+    
+    const rMajorInt = Math.abs(internalX(worldX(ellipseCenter.x) + radiusMajor) - ellipseCenter.x);
+    const rMinorInt = Math.abs(internalY(worldY(ellipseCenter.y) + radiusMinor) - ellipseCenter.y);
+    
+    ctx.save();
+    ctx.translate(ellipseCenter.x, ellipseCenter.y);
+    ctx.rotate(rotationRadians);
+    
+    ctx.strokeStyle = 'rgba(0, 200, 0, 0.8)';
+    ctx.lineWidth = 2 / viewScale;
+    ctx.setLineDash([5 / viewScale, 5 / viewScale]);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, rMajorInt, rMinorInt, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+  
+  // Highlight current step node
+  if (isStepMode && stepIndex > 0 && stepIndex <= randomPath.length) {
+    const { i, j } = randomPath[stepIndex - 1];
+    const xWorld = grid.originX + (i + 0.5) * grid.dx;
+    const yWorld = grid.originY + (j + 0.5) * grid.dy;
+    const x0 = internalX(xWorld);
+    const y0 = internalY(yWorld);
+    
+    // Highlight current node
+    ctx.strokeStyle = '#7c3aed';
+    ctx.lineWidth = 3 / viewScale;
+    const s = 15 / viewScale;
+    ctx.beginPath();
+    ctx.moveTo(x0 - s, y0);
+    ctx.lineTo(x0 + s, y0);
+    ctx.moveTo(x0, y0 - s);
+    ctx.lineTo(x0, y0 + s);
+    ctx.stroke();
+    
+    // Circle around current node
+    ctx.beginPath();
+    ctx.arc(x0, y0, 20 / viewScale, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(124, 58, 237, 0.5)';
+    ctx.lineWidth = 2 / viewScale;
+    ctx.stroke();
+  
+    // Highlight conditioning samples (neighbors) with red circles and lines
+    if (currentNeighbors && currentNeighbors.length > 0) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(220, 38, 38, 0.9)';
+      ctx.fillStyle = 'rgba(220, 38, 38, 0.2)';
+      ctx.lineWidth = 1.5 / viewScale;
+
+      currentNeighbors.forEach(nb => {
+        ctx.beginPath();
+        ctx.moveTo(x0, y0);
+        ctx.lineTo(nb.x, nb.y);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(nb.x, nb.y, 6 / viewScale, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+
+      ctx.restore();
+    }
+}
+  
+  // Highlight selected target node
+  if (selectedTargetNode) {
+    const x0 = internalX(selectedTargetNode.xWorld);
+    const y0 = internalY(selectedTargetNode.yWorld);
+    
+    ctx.strokeStyle = '#059669';
+    ctx.lineWidth = 3 / viewScale;
+    const s = 12 / viewScale;
+    ctx.beginPath();
+    ctx.moveTo(x0 - s, y0);
+    ctx.lineTo(x0 + s, y0);
+    ctx.moveTo(x0, y0 - s);
+    ctx.lineTo(x0, y0 + s);
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.arc(x0, y0, 16 / viewScale, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(5, 150, 105, 0.5)';
+    ctx.lineWidth = 2 / viewScale;
+    ctx.stroke();
+  }
+  
+  // Draw previously simulated nodes (in step mode)
+  if (isStepMode) {
+    simulatedNodes.forEach((node, idx) => {
+      ctx.fillStyle = 'rgba(124, 58, 237, 0.4)';
+      ctx.beginPath();
+      ctx.arc(node.x, node.y, 3 / viewScale, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+  
+  // Points
+  if (document.getElementById('showPoints').checked) {
+    const vRange = (colorMax - colorMin) || 1;
+    const useNscoreView = document.getElementById('useNscore').checked;
+
+    points.forEach(p => {
+      const r = 5 / viewScale;
+      const val = useNscoreView ? toNscore(p.value) : p.value;
+      const t = (isFinite(colorMin) && isFinite(colorMax)) ? (val - colorMin) / vRange : 0.5;
+      ctx.fillStyle = !p.active ? '#bbb' : valueColor(t, 1);
+      ctx.strokeStyle = p.active ? '#000' : '#777';
+      ctx.lineWidth = 1.5 / viewScale;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      if (document.getElementById('showPointLabels').checked) {
+        ctx.fillStyle = '#000';
+        ctx.font = `${12 / viewScale}px Arial`;
+        const labelVal = useNscoreView ? toNscore(p.value) : p.value;
+        ctx.fillText(`P${p.id}:${labelVal.toFixed(2)}`, p.x + 8 / viewScale, p.y - 8 / viewScale);
+      }
+    });
+  }
+  
+  // Compass
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  
+  const compassX = 60;
+  const compassY = canvas.height - 60;
+  const compassRadius = 25;
+  
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+  ctx.beginPath();
+  ctx.arc(compassX, compassY, compassRadius, 0, Math.PI * 2);
+  ctx.fill();
+  
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(compassX, compassY - compassRadius * 0.7);
+  ctx.lineTo(compassX, compassY + compassRadius * 0.7);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(compassX - compassRadius * 0.7, compassY);
+  ctx.lineTo(compassX + compassRadius * 0.7, compassY);
+  ctx.stroke();
+  
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+  ctx.font = 'bold 11px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('N', compassX, compassY - compassRadius * 0.85);
+  ctx.fillText('S', compassX, compassY + compassRadius * 0.85);
+  ctx.fillText('E', compassX + compassRadius * 0.85, compassY);
+  ctx.fillText('W', compassX - compassRadius * 0.85, compassY);
+  
+  ctx.fillStyle = 'rgba(239, 68, 68, 0.8)';
+  ctx.beginPath();
+  ctx.moveTo(compassX, compassY - compassRadius * 0.7);
+  ctx.lineTo(compassX - 4, compassY - compassRadius * 0.5);
+  ctx.lineTo(compassX + 4, compassY - compassRadius * 0.5);
+  ctx.closePath();
+  ctx.fill();
+  
+  ctx.restore();
+  
+  refreshMapLegend();
+}
+
+function refreshMapLegend() {
+  const labelsDiv = document.getElementById('legendLabels');
+  if (!legendCtx) return;
+  legendCtx.clearRect(0, 0, legendCanvas.width, legendCanvas.height);
+  
+  let data = null, label = '';
+  
+  if (document.getElementById('showSimMap').checked && currentRealization) {
+    const grid = getGridParams();
+    let min = Infinity, max = -Infinity;
+    for (let i = 0; i < grid.nx; i++) {
+      for (let j = 0; j < grid.ny; j++) {
+        if (isFinite(currentRealization[i][j])) {
+          min = Math.min(min, currentRealization[i][j]);
+          max = Math.max(max, currentRealization[i][j]);
+        }
+      }
+    }
+    if (isFinite(min)) {
+      data = { min, max };
+      label = 'Simulation';
+    }
+  } else if (document.getElementById('showMeanMap').checked && meanMap) {
+    data = meanMap;
+    label = 'E-type';
+  } else if (document.getElementById('showStdMap').checked && stdMap) {
+    data = stdMap;
+    label = 'Std Dev';
+  }
+  
+  if (!data) {
+    labelsDiv.innerHTML = '<em>No map</em>';
+    return;
+  }
+  
+  for (let x = 0; x < legendCanvas.width; x++) {
+    legendCtx.strokeStyle = rainbowColor(x / (legendCanvas.width - 1), 1);
+    legendCtx.beginPath();
+    legendCtx.moveTo(x, 0);
+    legendCtx.lineTo(x, legendCanvas.height);
+    legendCtx.stroke();
+  }
+  labelsDiv.innerHTML = `<b>${label}</b>: ${data.min.toFixed(3)} — ${data.max.toFixed(3)}`;
+}
+
+// ============ HISTOGRAMS ============
+function drawHistograms() {
+  const active = points.filter(p => p.active);
+  if (active.length === 0) return;
+
+  const useNscoreView = document.getElementById('useNscore').checked;
+
+  // Input data (original ou n-score, apenas para visualização)
+  const input = active.map(p => useNscoreView ? toNscore(p.value) : p.value);
+  drawHistogram('histInputCanvas', input, useNscoreView ? 'Input Data (n-score)' : 'Input Data', '#0077cc');
+  displayStats('inputStats', input, 'Input Stats');
+
+  if (realizations.length > 0) {
+    const grid = getGridParams();
+
+    // Histograma apenas do E-type
+    let etypeValues = [];
+    if (typeof meanMap !== 'undefined' && meanMap && meanMap.values) {
+      for (let i = 0; i < meanMap.values.length; i++) {
+        for (let j = 0; j < meanMap.values[i].length; j++) {
+          const v = meanMap.values[i][j];
+          if (isFinite(v)) {
+            etypeValues.push(useNscoreView ? toNscore(v) : v);
+          }
+        }
+      }
+    } else {
+      const nReal = realizations.length;
+      for (let i = 0; i < grid.nx; i++) {
+        for (let j = 0; j < grid.ny; j++) {
+          const vals = [];
+          for (let r = 0; r < nReal; r++) {
+            const v = realizations[r][i][j];
+            if (isFinite(v)) vals.push(v);
+          }
+          if (vals.length > 0) {
+            const m = vals.reduce((a, b) => a + b, 0) / vals.length;
+            etypeValues.push(useNscoreView ? toNscore(m) : m);
+          }
+        }
+      }
+    }
+
+    if (etypeValues.length > 0) {
+      drawHistogram(
+        'histOutputCanvas',
+        etypeValues,
+        useNscoreView ? 'E-type (n-score)' : 'E-type',
+        '#7c3aed'
+      );
+      displayStats('outputStats', etypeValues, 'E-type Stats');
+    } else {
+      const c2 = document.getElementById('histOutputCanvas');
+      if (c2) {
+        const ctx2 = c2.getContext('2d');
+        ctx2.clearRect(0, 0, c2.width, c2.height);
+      }
+      const statsDiv = document.getElementById('outputStats');
+      if (statsDiv) statsDiv.innerHTML = '';
+    }
+
+    // KDE das realizações
+    drawKDEPlotForRealizations(input, useNscoreView);
+  }
+}
+
+function drawHistogram(canvasId, data, title, color, binCount) {
+  const c = document.getElementById(canvasId);
+  if (!c || !data || !data.length) return;
+
+  const ctx2 = c.getContext('2d');
+  const w = c.width;
+  const h = c.height;
+  ctx2.clearRect(0, 0, w, h);
+
+  const margin = { t: 40, r: 20, b: 50, l: 60 };
+  const pw = w - margin.l - margin.r;
+  const ph = h - margin.t - margin.b;
+
+  const minV = Math.min(...data);
+  const maxV = Math.max(...data);
+  const range = (maxV - minV) || 1;
+
+  const nBins = binCount || Math.min(30, Math.ceil(Math.sqrt(data.length)));
+  const binW = range / nBins;
+  const bins = new Array(nBins).fill(0);
+
+  data.forEach(v => {
+    let idx = Math.floor((v - minV) / binW);
+    if (idx >= nBins) idx = nBins - 1;
+    if (idx < 0) idx = 0;
+    bins[idx]++;
+  });
+
+  const maxC = Math.max(...bins) || 1;
+
+  // Título
+  ctx2.save();
+  ctx2.fillStyle = '#000';
+  ctx2.font = '13px Arial';
+  ctx2.textAlign = 'center';
+  ctx2.fillText(title, w / 2, 20);
+  ctx2.restore();
+
+  // Eixos
+  ctx2.strokeStyle = '#000';
+  ctx2.beginPath();
+  ctx2.moveTo(margin.l, margin.t);
+  ctx2.lineTo(margin.l, h - margin.b);
+  ctx2.lineTo(w - margin.r, h - margin.b);
+  ctx2.stroke();
+
+  const bw = pw / nBins;
+  ctx2.fillStyle = color;
+  for (let i = 0; i < nBins; i++) {
+    const bh = (bins[i] / maxC) * ph;
+    ctx2.fillRect(margin.l + i * bw, h - margin.b - bh, bw - 1, bh);
+  }
+
+  // Rótulos do eixo X
+  ctx2.fillStyle = '#000';
+  ctx2.font = '11px Arial';
+  ctx2.textAlign = 'center';
+  for (let i = 0; i <= 5; i++) {
+    const xVal = minV + range * i / 5;
+    ctx2.fillText(xVal.toFixed(2), margin.l + pw * i / 5, h - margin.b + 18);
+  }
+}
+
+function drawOverlaidHistograms(canvasId, dataA, dataB, title, colorA, colorB, binCount) {
+  const c = document.getElementById(canvasId);
+  if (!c || !dataA || !dataA.length || !dataB || !dataB.length) return;
+
+  const ctx2 = c.getContext('2d');
+  const w = c.width;
+  const h = c.height;
+  ctx2.clearRect(0, 0, w, h);
+
+  const margin = { t: 40, r: 20, b: 50, l: 60 };
+  const pw = w - margin.l - margin.r;
+  const ph = h - margin.t - margin.b;
+
+  const minV = Math.min(Math.min(...dataA), Math.min(...dataB));
+  const maxV = Math.max(Math.max(...dataA), Math.max(...dataB));
+  const range = (maxV - minV) || 1;
+
+  const nBins = binCount || Math.min(30, Math.ceil(Math.sqrt(dataA.length + dataB.length)));
+  const binW = range / nBins;
+  const binsA = new Array(nBins).fill(0);
+  const binsB = new Array(nBins).fill(0);
+
+  dataA.forEach(v => {
+    let idx = Math.floor((v - minV) / binW);
+    if (idx >= nBins) idx = nBins - 1;
+    if (idx < 0) idx = 0;
+    binsA[idx]++;
+  });
+  dataB.forEach(v => {
+    let idx = Math.floor((v - minV) / binW);
+    if (idx >= nBins) idx = nBins - 1;
+    if (idx < 0) idx = 0;
+    binsB[idx]++;
+  });
+
+  const maxC = Math.max(Math.max(...binsA), Math.max(...binsB)) || 1;
+
+  // Título
+  ctx2.save();
+  ctx2.fillStyle = '#000';
+  ctx2.font = '13px Arial';
+  ctx2.textAlign = 'center';
+  ctx2.fillText(title, w / 2, 20);
+  ctx2.restore();
+
+  // Eixos
+  ctx2.strokeStyle = '#000';
+  ctx2.beginPath();
+  ctx2.moveTo(margin.l, margin.t);
+  ctx2.lineTo(margin.l, h - margin.b);
+  ctx2.lineTo(w - margin.r, h - margin.b);
+  ctx2.stroke();
+
+  const bw = pw / nBins;
+  for (let i = 0; i < nBins; i++) {
+    const bhA = (binsA[i] / maxC) * ph;
+    const bhB = (binsB[i] / maxC) * ph;
+
+    // Input (lado esquerdo do bin)
+    ctx2.fillStyle = colorA;
+    ctx2.fillRect(margin.l + i * bw, h - margin.b - bhA, bw * 0.45, bhA);
+
+    // Simulações (lado direito do bin)
+    ctx2.fillStyle = colorB;
+    ctx2.fillRect(margin.l + i * bw + bw * 0.55, h - margin.b - bhB, bw * 0.45, bhB);
+  }
+
+  // Rótulos do eixo X
+  ctx2.fillStyle = '#000';
+  ctx2.font = '11px Arial';
+  ctx2.textAlign = 'center';
+  for (let i = 0; i <= 5; i++) {
+    const xVal = minV + range * i / 5;
+    ctx2.fillText(xVal.toFixed(2), margin.l + pw * i / 5, h - margin.b + 18);
+  }
+}
+
+function displayStats(id, data, title) {
+  if (!data.length) {
+    document.getElementById(id).innerHTML = '';
+    return;
+  }
+  const n = data.length, mean = data.reduce((a, b) => a + b, 0) / n;
+  const sorted = [...data].sort((a, b) => a - b);
+  const med = n % 2 ? sorted[Math.floor(n / 2)] : (sorted[n / 2 - 1] + sorted[n / 2]) / 2;
+  const variance = data.reduce((s, v) => s + (v - mean) ** 2, 0) / n, std = Math.sqrt(variance);
+  document.getElementById(id).innerHTML = `<small><b>${title}</b>: n=${n}, x̄=${mean.toFixed(3)}, med=${med.toFixed(3)}, σ=${std.toFixed(3)}, min=${sorted[0].toFixed(3)}, max=${sorted[n - 1].toFixed(3)}</small>`;
+}
+
+// ============ KDE PLOTS FOR REALIZATIONS ============
+function gaussianKernel(u) {
+  return Math.exp(-0.5 * u * u) / Math.sqrt(2 * Math.PI);
+}
+
+function estimateKDE(samples, xs) {
+  const n = samples.length;
+  if (n === 0) return new Array(xs.length).fill(0);
+
+  const mean = samples.reduce((a, b) => a + b, 0) / n;
+  const variance = samples.reduce((s, v) => s + (v - mean) ** 2, 0) / n;
+  const std = Math.sqrt(variance) || 1e-9;
+  const h = 1.06 * std * Math.pow(n, -1 / 5) || 1;
+
+  const invNh = 1.0 / (n * h);
+  const dens = new Array(xs.length).fill(0);
+  for (let i = 0; i < xs.length; i++) {
+    const x = xs[i];
+    let sumK = 0;
+    for (let j = 0; j < n; j++) {
+      sumK += gaussianKernel((x - samples[j]) / h);
+    }
+    dens[i] = invNh * sumK;
+  }
+  return dens;
+}
+
+function drawKDEPlotForRealizations(inputData, useNscoreView) {
+  const c = document.getElementById('histKDECanvas');
+  if (!c || realizations.length === 0) return;
+
+  const ctx2 = c.getContext('2d');
+  const w = c.width;
+  const h = c.height;
+  ctx2.clearRect(0, 0, w, h);
+
+  const margin = { t: 40, r: 20, b: 50, l: 60 };
+  const pw = w - margin.l - margin.r;
+  const ph = h - margin.t - margin.b;
+
+  const allSamples = [];
+  const perRealSamples = [];
+  const grid = getGridParams();
+
+  for (let r = 0; r < realizations.length; r++) {
+    const vals = [];
+    const gridR = realizations[r];
+    for (let i = 0; i < grid.nx; i++) {
+      for (let j = 0; j < grid.ny; j++) {
+        const v = gridR[i][j];
+        if (isFinite(v)) {
+          const vv = useNscoreView ? toNscore(v) : v;
+          vals.push(vv);
+          allSamples.push(vv);
+        }
+      }
+    }
+    if (vals.length > 0) {
+      perRealSamples.push(vals);
+    }
+  }
+
+  if (allSamples.length === 0) return;
+
+  const showDataHistElem = document.getElementById('kdeShowDataHist');
+  const showDataHist = showDataHistElem ? showDataHistElem.checked : false;
+
+  let minV = Math.min(...allSamples);
+  let maxV = Math.max(...allSamples);
+  if (showDataHist && inputData && inputData.length) {
+    minV = Math.min(minV, Math.min(...inputData));
+    maxV = Math.max(maxV, Math.max(...inputData));
+  }
+  const range = (maxV - minV) || 1;
+
+  const nX = 80;
+  const xs = [];
+  for (let i = 0; i < nX; i++) {
+    xs.push(minV + (range * i) / (nX - 1));
+  }
+
+  const kdeList = perRealSamples.map(samples => estimateKDE(samples, xs));
+
+  let maxD = 0;
+  kdeList.forEach(dens => {
+    dens.forEach(d => { if (d > maxD) maxD = d; });
+  });
+  if (maxD <= 0) maxD = 1;
+
+  // Eixos
+  ctx2.save();
+  ctx2.strokeStyle = '#000';
+  ctx2.beginPath();
+  ctx2.moveTo(margin.l, margin.t);
+  ctx2.lineTo(margin.l, h - margin.b);
+  ctx2.lineTo(w - margin.r, h - margin.b);
+  ctx2.stroke();
+  ctx2.restore();
+
+  // Histograma dos dados ao fundo (opcional)
+  if (showDataHist && inputData && inputData.length) {
+    const nBins = Math.min(30, Math.ceil(Math.sqrt(inputData.length)));
+    const binW = range / nBins;
+    const bins = new Array(nBins).fill(0);
+    inputData.forEach(v => {
+      let idx = Math.floor((v - minV) / binW);
+      if (idx >= nBins) idx = nBins - 1;
+      if (idx < 0) idx = 0;
+      bins[idx]++;
+    });
+    const maxC = Math.max(...bins) || 1;
+    const bw = pw / nBins;
+
+    ctx2.save();
+    ctx2.fillStyle = 'rgba(31, 119, 180, 0.25)';
+    for (let i = 0; i < nBins; i++) {
+      const bh = (bins[i] / maxC) * ph;
+      ctx2.fillRect(margin.l + i * bw, h - margin.b - bh, bw - 1, bh);
+    }
+    ctx2.restore();
+  }
+
+  // Desenhar KDEs das realizações
+  kdeList.forEach(dens => {
+    ctx2.beginPath();
+    for (let i = 0; i < xs.length; i++) {
+      const x = margin.l + ((xs[i] - minV) / range) * pw;
+      const y = h - margin.b - (dens[i] / maxD) * ph;
+      if (i === 0) ctx2.moveTo(x, y);
+      else ctx2.lineTo(x, y);
+    }
+    ctx2.lineWidth = 1;
+    ctx2.strokeStyle = 'rgba(124, 58, 237, 0.7)';
+    ctx2.stroke();
+  });
+
+  // Título
+  ctx2.save();
+  ctx2.fillStyle = '#000';
+  ctx2.font = '13px Arial';
+  ctx2.textAlign = 'center';
+  ctx2.fillText(useNscoreView ? 'KDE das realizações (n-score)' : 'KDE das realizações', w / 2, 20);
+  ctx2.restore();
+
+  // Rótulos eixo X
+  ctx2.save();
+  ctx2.fillStyle = '#000';
+  ctx2.font = '11px Arial';
+  ctx2.textAlign = 'center';
+  for (let i = 0; i <= 5; i++) {
+    const xVal = minV + range * i / 5;
+    ctx2.fillText(xVal.toFixed(2), margin.l + pw * i / 5, h - margin.b + 18);
+  }
+  ctx2.restore();
+}
+
+
+// ============ TARGET NODE HISTOGRAM ============
+function handleCanvasClick(e) {
+  if (realizations.length === 0) return;
+
+  const lockEl = document.getElementById('lockTarget');
+  if (lockEl && lockEl.checked) return;
+  
+  const axisMargin = 40;
+  const rect = canvas.getBoundingClientRect();
+  const sx = e.clientX - rect.left;
+  const sy = e.clientY - rect.top;
+  const x = (sx - viewOffsetX - axisMargin * viewScale) / viewScale;
+  const y = (sy - viewOffsetY - axisMargin * viewScale) / viewScale;
+  
+  const xWorld = worldX(x);
+  const yWorld = worldY(y);
+  
+  const grid = getGridParams();
+  
+  // Find closest grid node
+  const i = Math.floor((xWorld - grid.originX) / grid.dx);
+  const j = Math.floor((yWorld - grid.originY) / grid.dy);
+  
+  if (i >= 0 && i < grid.nx && j >= 0 && j < grid.ny) {
+    selectedTargetNode = {
+      i, j,
+      xWorld: grid.originX + (i + 0.5) * grid.dx,
+      yWorld: grid.originY + (j + 0.5) * grid.dy
+    };
+    
+    updateTargetInfo();
+    updateTargetNodeHistogram();
+    draw();
+  }
+}
+
+function updateTargetNodeHistogram() {
+
+  const infoDiv = document.getElementById('targetNodeInfo');
+  const statsDiv = document.getElementById('targetStats');
+  const listDiv = document.getElementById('targetValuesList');
+  const etypeDiv = document.getElementById('targetEtype');
+
+  if (!selectedTargetNode || realizations.length === 0) {
+    if (infoDiv) infoDiv.innerHTML = 'No node selected';
+    if (statsDiv) statsDiv.innerHTML = '';
+    if (listDiv) listDiv.innerHTML = '';
+    if (etypeDiv) etypeDiv.innerHTML = '';
+    return;
+  }
+
+  const { i, j, xWorld, yWorld } = selectedTargetNode;
+
+  // Collect values from all realizations
+  const values = realizations
+    .map(r => (r && r[i] ? r[i][j] : NaN))
+    .filter(v => isFinite(v));
+
+  if (infoDiv) {
+    infoDiv.innerHTML = `
+      <b>Selected Node:</b> Grid (${i}, ${j}) | World (${xWorld.toFixed(2)}, ${yWorld.toFixed(2)})<br>
+      <b>Realizations with value:</b> ${values.length} / ${realizations.length}
+    `;
+  }
+
+  if (values.length === 0) {
+    if (statsDiv) statsDiv.innerHTML = '<em>No simulated values at this node.</em>';
+    if (listDiv) listDiv.innerHTML = '';
+    if (etypeDiv) etypeDiv.innerHTML = '';
+    const canvas = document.getElementById('histTargetCanvas');
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    return;
+  }
+
+  // Draw histogram of simulated values at node
+  drawHistogram('histTargetCanvas', values, `Node (${i}, ${j}) Distribution`, '#059669', 40);
+  displayStats('targetStats', values, 'Node Stats');
+
+  // E-type: mean of simulated values at this node
+  const mean = values.reduce((s, v) => s + v, 0) / values.length;
+  const variance = values.reduce((s, v) => s + (v - mean) * (v - mean), 0) / values.length;
+  if (etypeDiv) {
+    etypeDiv.innerHTML = `
+      <b>E-type (mean over realizations):</b> ${mean.toFixed(4)}<br>
+      <span style="font-size:0.8rem;">Variance at node: ${variance.toFixed(4)}</span>
+    `;
+  }
+
+  // List all realization values for this node
+  if (listDiv) {
+    let html = '<table class="stats-table"><tr><th>Real.</th><th>Value</th></tr>';
+    values.forEach((v, idx) => {
+      html += `<tr><td>${idx + 1}</td><td>${v.toFixed(4)}</td></tr>`;
+    });
+    html += '</table>';
+    listDiv.innerHTML = html;
+  }
+}
+
+// ============ POINTS TABLE ============
+function updatePointsTable() {
+  const container = document.getElementById('pointsTableContainer');
+  let html = '<table><tr><th>ID</th><th>X</th><th>Y</th><th>Z</th><th>Active</th><th></th></tr>';
+  points.forEach((p, i) => {
+    html += `<tr>
+      <td>P${p.id}</td>
+      <td>${worldX(p.x).toFixed(2)}</td>
+      <td>${worldY(p.y).toFixed(2)}</td>
+      <td><input type="number" value="${p.value.toFixed(2)}" step="0.1" style="width:60px" onchange="updatePointValue(${i}, this.value)"></td>
+      <td><input type="checkbox" ${p.active ? 'checked' : ''} onchange="togglePoint(${i})"></td>
+      <td><button onclick="removePoint(${i})" style="padding:2px 6px;margin:0;">×</button></td>
+    </tr>`;
+  });
+  container.innerHTML = html + '</table>';
+}
+
+function updatePointValue(idx, val) {
+  points[idx].value = parseFloat(val) || 0;
+  computeNscoreTransform();
+  draw();
+}
+
+function togglePoint(idx) {
+  points[idx].active = !points[idx].active;
+  computeNscoreTransform();
+  draw();
+}
+
+function removePoint(idx) {
+  points.splice(idx, 1);
+  updatePointsTable();
+  computeNscoreTransform();
+  draw();
+}
+
+// ============ INITIALIZATION ============
+function init() {
+  canvas = document.getElementById('simCanvas');
+  ctx = canvas.getContext('2d');
+  canvas.width = canvas.getBoundingClientRect().width;
+  canvas.height = canvas.getBoundingClientRect().height;
+  legendCanvas = document.getElementById('legendCanvas');
+  if (legendCanvas) legendCtx = legendCanvas.getContext('2d');
+  
+  const w = canvas.width, h = canvas.height;
+  
+  // Sample points
+  points = [
+    { id: 1, x: w * 0.15, y: h * 0.85, value: 1.2, active: true },
+    { id: 2, x: w * 0.85, y: h * 0.80, value: 4.5, active: true },
+    { id: 3, x: w * 0.20, y: h * 0.20, value: 2.8, active: true },
+    { id: 4, x: w * 0.80, y: h * 0.25, value: 3.2, active: true },
+    { id: 5, x: w * 0.50, y: h * 0.50, value: 2.0, active: true },
+    { id: 6, x: w * 0.30, y: h * 0.60, value: 1.8, active: true },
+    { id: 7, x: w * 0.70, y: h * 0.40, value: 3.5, active: true },
+    { id: 8, x: w * 0.45, y: h * 0.75, value: 2.5, active: true }
+  ];
+  nextId = 9;
+  
+  dataMinX = 0;
+  dataMaxX = 300;
+  dataMinY = 0;
+  dataMaxY = 300;
+  updateAspectTransform();
+  
+  setupEvents();
+  updatePointsTable();
+  updateModelSummary();
+  updateGridInfo();
+  computeNscoreTransform();
+  draw();
+}
+
+function setupEvents() {
+  document.getElementById('btnRunSimulation').onclick = runMultipleSimulations;
+  document.getElementById('btnStepSimulation').onclick = startStepByStep;
+  document.getElementById('btnNextStep').onclick = executeStep;
+  document.getElementById('btnClear').onclick = clearResults;
+  document.getElementById('btnResetView').onclick = () => { viewScale = 1; viewOffsetX = 0; viewOffsetY = 0; draw(); };
+  document.getElementById('btnResetPoints').onclick = init;
+  document.getElementById('btnShowNscoreTable').onclick = showNscoreTable;
+  
+  const kdeHistChk = document.getElementById('kdeShowDataHist');
+  if (kdeHistChk) kdeHistChk.onchange = () => drawHistograms();
+
+  const btnApplyNscoreView = document.getElementById('btnApplyNscoreView');
+  if (btnApplyNscoreView) btnApplyNscoreView.onclick = () => { drawHistograms(); draw(); };
+  
+  document.getElementById('btnAddPoint').onclick = () => {
+    const w = canvas.width, h = canvas.height;
+    points.push({ id: nextId++, x: w * (0.2 + Math.random() * 0.6), y: h * (0.2 + Math.random() * 0.6), value: 1 + Math.random() * 4, active: true });
+    updatePointsTable();
+    computeNscoreTransform();
+    draw();
+  };
+  
+  
+  // Target selection controls
+  const btnUpdateTarget = document.getElementById('btnUpdateTarget');
+  if (btnUpdateTarget) {
+    btnUpdateTarget.onclick = () => {
+      const tx = parseFloat(document.getElementById('targetX').value);
+      const ty = parseFloat(document.getElementById('targetY').value);
+      if (!isFinite(tx) || !isFinite(ty)) return;
+      setTargetFromWorldCoords(tx, ty);
+    };
+  }
+
+  const lockTargetEl = document.getElementById('lockTarget');
+  if (lockTargetEl) {
+    lockTargetEl.onchange = (e) => {
+      canvas.style.cursor = e.target.checked ? 'not-allowed' : 'crosshair';
+    };
+  }
+  
+// Variogram events
+  document.getElementById('useStruct1').onchange = (e) => {
+    document.getElementById('struct1Box').classList.toggle('disabled', !e.target.checked);
+    updateModelSummary();
+  };
+  document.getElementById('useStruct2').onchange = (e) => {
+    document.getElementById('struct2Opts').style.display = e.target.checked ? 'block' : 'none';
+    document.getElementById('struct2Box').classList.toggle('disabled', !e.target.checked);
+    updateModelSummary();
+  };
+  
+  ['nugget', 'varioType1', 'sill1', 'range1', 'rangeOrtho1', 'varioType2', 'sill2', 'range2', 'rangeOrtho2', 'anisoAngle'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.onchange = updateModelSummary;
+  });
+  
+  // Grid events
+  ['gridOriginX', 'gridOriginY', 'gridSpacingX', 'gridSpacingY', 'gridNx', 'gridNy'].forEach(id => {
+    document.getElementById(id).onchange = () => { updateGridInfo(); draw(); };
+  });
+  document.getElementById('showGridFrame').onchange = () => draw();
+  
+  // Map checkboxes
+  ['showSimMap', 'showMeanMap', 'showStdMap'].forEach(id => {
+    document.getElementById(id).onchange = () => { refreshMapLegend(); draw(); };
+  });
+  
+  // Realization selector
+  document.getElementById('realizationSelect').onchange = (e) => {
+    const idx = parseInt(e.target.value);
+    if (realizations[idx]) {
+      currentRealization = realizations[idx];
+      draw();
+    }
+  };
+  
+  // Search radius
+  document.getElementById('useSearchRadius').onchange = (e) => {
+    document.getElementById('radiusGroup').style.display = e.target.checked ? '' : 'none';
+    draw();
+  };
+  document.getElementById('searchRadiusMajor').onchange = () => draw();
+  document.getElementById('searchRadiusMinor').onchange = () => draw();
+  
+  // Nscore
+  document.getElementById('useNscore').onchange = () => {
+    computeNscoreTransform();
+    updateNscoreStats();
+    drawHistograms();
+    draw();
+  };
+  
+  // Declustering
+  document.querySelectorAll('input[name="declusterMethod"]').forEach(radio => {
+    radio.onchange = toggleDeclusterParams;
+  });
+  document.getElementById('btnApplyDecluster').onclick = applyDeclustering;
+  
+  // Cell decluster param changes
+  ['cellSizeX', 'cellSizeY', 'cellOriginX', 'cellOriginY'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.onchange = () => {
+      if (declusterMethod === 'cell') applyDeclustering();
+    };
+  });
+  
+  // Voronoi param changes
+  const voronoiMarginEl = document.getElementById('voronoiMargin');
+  if (voronoiMarginEl) voronoiMarginEl.onchange = () => {
+    if (declusterMethod === 'voronoi') applyDeclustering();
+  };
+  
+  // Data source
+  document.getElementById('dataSource').onchange = (e) => {
+    document.getElementById('csvGroup').style.display = e.target.value === 'csv' ? '' : 'none';
+  };
+  document.getElementById('csvFile').onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try { parseCSVHeaders(ev.target.result); }
+      catch (err) { alert('Error: ' + err.message); }
+    };
+    reader.readAsText(file);
+  };
+  document.getElementById('btnLoadCSV').onclick = loadCSVWithSelectedColumns;
+  
+  // Point display
+  document.getElementById('showPoints').onchange = () => draw();
+  document.getElementById('showPointLabels').onchange = () => draw();
+  
+  // Canvas events
+  canvas.oncontextmenu = (e) => e.preventDefault();
+  canvas.onmousedown = (e) => {
+    const axisMargin = 40;
+    const rect = canvas.getBoundingClientRect(), sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+    if (e.button === 2) { isPanning = true; lastPanX = sx; lastPanY = sy; return; }
+    const x = (sx - viewOffsetX - axisMargin * viewScale) / viewScale;
+    const y = (sy - viewOffsetY - axisMargin * viewScale) / viewScale;
+    for (let i = 0; i < points.length; i++) {
+      if (Math.sqrt((points[i].x - x) ** 2 + (points[i].y - y) ** 2) < 10) {
+        isDragging = true;
+        draggingIdx = i;
+        return;
+      }
+    }
+    // Click on grid node
+    handleCanvasClick(e);
+  };
+  canvas.onmousemove = (e) => {
+    const axisMargin = 40;
+    const rect = canvas.getBoundingClientRect(), sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+    if (isPanning) {
+      viewOffsetX += sx - lastPanX;
+      viewOffsetY += sy - lastPanY;
+      lastPanX = sx;
+      lastPanY = sy;
+      draw();
+      return;
+    }
+    if (isDragging) {
+      points[draggingIdx].x = Math.max(0, Math.min(canvas.width, (sx - viewOffsetX - axisMargin * viewScale) / viewScale));
+      points[draggingIdx].y = Math.max(0, Math.min(canvas.height, (sy - viewOffsetY - axisMargin * viewScale) / viewScale));
+      updatePointsTable();
+      draw();
+    }
+  };
+  canvas.onmouseup = (e) => {
+    if (e.button === 2) isPanning = false;
+    isDragging = false;
+    draggingIdx = null;
+  };
+  canvas.onmouseleave = () => { isPanning = false; isDragging = false; };
+  canvas.onwheel = (e) => {
+    const axisMargin = 40;
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect(), sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+    const beforeX = (sx - viewOffsetX - axisMargin * viewScale) / viewScale;
+    const beforeY = (sy - viewOffsetY - axisMargin * viewScale) / viewScale;
+    viewScale = Math.max(0.1, Math.min(20, viewScale * (e.deltaY < 0 ? 1.1 : 1 / 1.1)));
+    viewOffsetX = sx - beforeX * viewScale - axisMargin * viewScale;
+    viewOffsetY = sy - beforeY * viewScale - axisMargin * viewScale;
+    draw();
+  };
+}
+
+function clearResults() {
+  realizations = [];
+  currentRealization = null;
+  meanMap = null;
+  stdMap = null;
+  simulatedNodes = [];
+  stepIndex = 0;
+  isStepMode = false;
+  selectedTargetNode = null;
+  if (typeof updateTargetInfo === 'function') updateTargetInfo();
+
+  
+  document.getElementById('simProgress').style.display = 'none';
+  document.getElementById('realizationSelector').style.display = 'none';
+  document.getElementById('stepByStepSection').style.display = 'none';
+  document.getElementById('btnNextStep').style.display = 'none';
+  document.getElementById('btnStepSimulation').style.display = 'inline-flex';
+  document.getElementById('realizationsStats').style.display = 'none';
+  document.getElementById('simSummary').innerHTML = '<em>Run simulation to see results</em>';
+  document.getElementById('targetNodeInfo').innerHTML = 'No node selected';
+  
+  const c1 = document.getElementById('histOutputCanvas').getContext('2d');
+  c1.clearRect(0, 0, 400, 280);
+  document.getElementById('outputStats').innerHTML = '';
+  
+  const c2 = document.getElementById('histTargetCanvas').getContext('2d');
+  c2.clearRect(0, 0, 500, 300);
+  document.getElementById('targetStats').innerHTML = '';
+  
+  draw();
+}
+
+// CSV functions
+function parseCSVHeaders(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) throw new Error('Empty CSV');
+  const delim = lines[0].includes(';') ? ';' : ',';
+  csvHeaders = lines[0].split(delim).map(h => h.trim());
+  csvRawData = { text, delim, lines };
+  ['csvColX', 'csvColY', 'csvColZ'].forEach(id => {
+    const sel = document.getElementById(id);
+    sel.innerHTML = '';
+    csvHeaders.forEach((h, i) => {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = h || `Col ${i + 1}`;
+      sel.appendChild(opt);
+    });
+  });
+  const lh = csvHeaders.map(h => h.toLowerCase());
+  const xIdx = lh.findIndex(h => ['x', 'easting', 'longitude', 'lon'].includes(h));
+  const yIdx = lh.findIndex(h => ['y', 'northing', 'latitude', 'lat'].includes(h));
+  const zIdx = lh.findIndex(h => ['z', 'value', 'grade', 'var'].includes(h));
+  if (xIdx >= 0) document.getElementById('csvColX').value = xIdx;
+  if (yIdx >= 0) document.getElementById('csvColY').value = yIdx;
+  if (zIdx >= 0) document.getElementById('csvColZ').value = zIdx;
+  document.getElementById('csvColumnSelector').style.display = 'block';
+  document.getElementById('csvStatus').textContent = `${csvHeaders.length} columns found`;
+}
+
+function loadCSVWithSelectedColumns() {
+  if (!csvRawData) { alert('Select CSV first'); return; }
+  const xCol = parseInt(document.getElementById('csvColX').value);
+  const yCol = parseInt(document.getElementById('csvColY').value);
+  const zCol = parseInt(document.getElementById('csvColZ').value);
+  const { text, delim, lines } = csvRawData;
+  
+  points = [];
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split(delim);
+    const x = parseFloat(cols[xCol]), y = parseFloat(cols[yCol]), z = parseFloat(cols[zCol]);
+    if (!isFinite(x) || !isFinite(y) || !isFinite(z)) continue;
+    minX = Math.min(minX, x); maxX = Math.max(maxX, x);
+    minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+    points.push({ id: nextId++, worldX: x, worldY: y, value: z, active: true });
+  }
+  
+  if (points.length === 0) { alert('No valid points'); return; }
+  
+  const margin = Math.max((maxX - minX), (maxY - minY)) * 0.1;
+  dataMinX = minX - margin;
+  dataMaxX = maxX + margin;
+  dataMinY = minY - margin;
+  dataMaxY = maxY + margin;
+  updateAspectTransform();
+  
+  points.forEach(p => {
+    p.x = internalX(p.worldX);
+    p.y = internalY(p.worldY);
+  });
+  
+  // Reset declustering and update cell origin defaults
+  declusterWeights = [];
+  declusterMethod = 'none';
+  document.querySelector('input[name="declusterMethod"][value="none"]').checked = true;
+  toggleDeclusterParams();
+  
+  // Set cell declustering origin to data minimum
+  document.getElementById('cellOriginX').value = Math.floor(minX);
+  document.getElementById('cellOriginY').value = Math.floor(minY);
+  
+  // Update decluster stats display
+  const declusterStatsDiv = document.getElementById('declusterStats');
+  if (declusterStatsDiv) declusterStatsDiv.style.display = 'none';
+  
+  updatePointsTable();
+  computeNscoreTransform();
+  draw();
+  document.getElementById('csvStatus').textContent = `Loaded ${points.length} points`;
+}
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+else init();
+</script>
+</body>
+</html>
