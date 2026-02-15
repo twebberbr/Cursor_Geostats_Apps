@@ -20,9 +20,9 @@ Este documento consolida a avaliacao dos 5 scripts (`Declustering.html`, `Estima
 
 ### Principais barreiras ao aprendizado
 
-1. **Inconsistencia de idioma e tom didatico**
-   - Quatro scripts em ingles (`lang="en"`), um em portugues (`Lagrange.html`).
-   - Dentro de alguns scripts ha mistura pontual de idiomas.
+1. **Inconsistencia de idioma e tom didatico (estado inicial)**
+   - Havia mistura de ingles e portugues entre os scripts.
+   - Havia tambem mistura pontual de idiomas dentro de alguns arquivos.
 
 2. **Inconsistencia visual forte**
    - `Lagrange.html` usa tema escuro/estetica editorial, enquanto os demais usam tema claro de laboratorio.
@@ -143,7 +143,7 @@ Este documento consolida a avaliacao dos 5 scripts (`Declustering.html`, `Estima
 
 ## A) Idioma e microcopy
 
-- Definir **um idioma unico** para toda a suite (recomendado: portugues brasileiro).
+- Definir **um idioma unico** para toda a suite (padrao adotado: ingles).
 - Tom: objetivo, instrucional, curto.
 - Padrao de comandos em botoes: verbo no infinitivo + objeto.
   - Ex.: "Calcular variograma", "Rodar simulacoes", "Comparar metodos".

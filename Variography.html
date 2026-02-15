@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>VarioLab - Variographic Analysis</title>
+  <title>GeoStats Lab: Variography</title>
   
 <style>
   :root {
@@ -492,13 +492,55 @@
   .toast-notification.success {
     border-left-color: var(--accent);
   }
+
+  .lab-intro {
+    margin: 0 0 12px 0;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(37, 99, 235, 0.35);
+    background: #eff6ff;
+    font-size: 0.85rem;
+    color: var(--text-main);
+  }
+
+  .lab-intro-title {
+    margin: 0 0 6px 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-strong);
+  }
+
+  .lab-intro ol {
+    margin: 0 0 6px 18px;
+    padding: 0;
+  }
+
+  .lab-intro li {
+    margin: 2px 0;
+  }
+
+  .lab-intro p {
+    margin: 0;
+    color: var(--text-muted);
+  }
+
 </style>
 </head>
 <body>
 
 <div id="left-panel">
-  <h1>🗺️ VarioLab</h1>
-  <p class="subtitle">Interactive Variographic Analysis</p>
+  <h1>GeoStats Lab: Variography</h1>
+  <p class="subtitle">Interactive variography and model fitting laboratory</p>
+
+  <div class="lab-intro">
+    <div class="lab-intro-title">How to use this lab (3 steps)</div>
+    <ol>
+      <li>Load point data (or sample points from an image).</li>
+      <li>Set lag and directional parameters, then compute the experimental variogram.</li>
+      <li>Fit model structures and compare continuity by direction.</li>
+    </ol>
+    <p><strong>Guiding question:</strong> Which model and ranges best represent your spatial continuity and anisotropy?</p>
+  </div>
 
   <!-- DATA INPUT SECTION -->
   <h2>Data</h2>

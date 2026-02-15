@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sequential Gaussian Simulation - Laboratory</title>
+  <title>GeoStats Lab: Sequential Gaussian Simulation</title>
   
 <style>
   :root {
@@ -540,12 +540,54 @@
     font-size: 0.95rem;
     font-weight: 600;
   }
+
+  .lab-intro {
+    margin: 0 0 12px 0;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(37, 99, 235, 0.35);
+    background: #eff6ff;
+    font-size: 0.85rem;
+    color: var(--text-main);
+  }
+
+  .lab-intro-title {
+    margin: 0 0 6px 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-strong);
+  }
+
+  .lab-intro ol {
+    margin: 0 0 6px 18px;
+    padding: 0;
+  }
+
+  .lab-intro li {
+    margin: 2px 0;
+  }
+
+  .lab-intro p {
+    margin: 0;
+    color: var(--text-muted);
+  }
+
 </style>
 </head>
 <body>
 
 <div id="left-panel">
-  <h2>SGS Simulation - Laboratory</h2>
+  <h2>GeoStats Lab: Sequential Gaussian Simulation</h2>
+
+  <div class="lab-intro">
+    <div class="lab-intro-title">How to use this lab (3 steps)</div>
+    <ol>
+      <li>Load conditioning data and review the variogram model.</li>
+      <li>Set simulation grid and search strategy.</li>
+      <li>Run multiple realizations and analyze uncertainty maps.</li>
+    </ol>
+    <p><strong>Guiding question:</strong> Where does simulation uncertainty increase, and why?</p>
+  </div>
 
   <div>
     <button id="btnRunSimulation" class="btn-simulate">🎲 Run N Simulations</button>
@@ -772,7 +814,7 @@
         <div style="margin-top: 4px; font-size: 0.8rem;">
           <label>
             <input type="checkbox" id="kdeShowDataHist" checked>
-            Mostrar histograma dos dados
+            Show data histogram
           </label>
         </div>
       </div>
@@ -783,7 +825,7 @@
   <div class="target-histogram-section">
     <h4>📍 Target Node Histogram</h4>
     <p style="font-size: 0.85rem; color: var(--text-muted);">
-      Clique em qualquer nó do grid (quando houver simulações) para ver a distribuição dos valores simulados nesse ponto.
+      Click any grid node (after simulations are available) to inspect the distribution of simulated values at that location.
     </p>
     <div id="targetNodeInfo">No node selected</div>
     <div class="histogram-container" style="margin-top: 10px;">
@@ -1846,12 +1888,12 @@ function runMultipleSimulations() {
 
   if (useSeed) resetRng(seed);
 
-  // Sempre preparar dados condicionantes em espaço normal-score para a simulação
+  // Always prepare conditioning data in normal-score space for simulation
   prepareBaseConditioningData();
 
   realizations = [];
 
-  // Mostrar barra de progresso e seleção de realizações
+  // Show progress bar and realization selector
   document.getElementById('simProgress').style.display = 'block';
   document.getElementById('progressFill').style.width = '0%';
   document.getElementById('progressText').textContent = '';
@@ -1859,7 +1901,7 @@ function runMultipleSimulations() {
 
   const grid = getGridParams();
 
-  // Rodar as simulações
+  // Run simulations
   for (let r = 0; r < nReal; r++) {
     const simGrid = runSingleSimulation();
     realizations.push(simGrid);
@@ -1869,7 +1911,7 @@ function runMultipleSimulations() {
     document.getElementById('progressText').textContent = `${r + 1} / ${nReal} realizations`;
   }
 
-  // Atualizar seletor de realizações
+  // Update realization selector
   const select = document.getElementById('realizationSelect');
   select.innerHTML = '';
   for (let r = 0; r < nReal; r++) {
@@ -1881,12 +1923,12 @@ function runMultipleSimulations() {
 
   currentRealization = realizations[0];
 
-  // Atualizar mapas de E-type e desvio padrão, se disponível
+  // Update E-type and standard deviation maps, when available
   if (typeof computeSummaryMaps === 'function') {
     computeSummaryMaps();
   }
 
-  // Atualizar resumos e histogramas
+  // Update summaries and histograms
   updateSimSummary();
   updateRealizationsStats();
   drawHistograms();
@@ -2574,7 +2616,7 @@ function draw() {
     colorMax = Math.max(colorMax, val);
   });
 
-  // Draw maps (mean / std permanecem em espaço original)
+  // Draw maps (mean and std remain in original space)
   if (document.getElementById('showMeanMap').checked && meanMap) {
     drawMap({ ...meanMap, dx: grid.dx, dy: grid.dy }, 0.7);
   }
@@ -2582,7 +2624,7 @@ function draw() {
     drawMap({ ...stdMap, dx: grid.dx, dy: grid.dy }, 0.7);
   }
   if (document.getElementById('showSimMap').checked && currentRealization) {
-    // Calcular min/max e valores em espaço de visualização para a realização atual
+    // Compute min/max and values in display space for the current realization
     let simMin = Infinity, simMax = -Infinity;
     const viewValues = [];
     for (let i = 0; i < grid.nx; i++) {
@@ -2930,7 +2972,7 @@ function drawHistograms() {
 
   const useNscoreView = document.getElementById('useNscore').checked;
 
-  // Input data (original ou n-score, apenas para visualização)
+  // Input data (original or n-score, for display only)
   const input = active.map(p => useNscoreView ? toNscore(p.value) : p.value);
   drawHistogram('histInputCanvas', input, useNscoreView ? 'Input Data (n-score)' : 'Input Data', '#0077cc');
   displayStats('inputStats', input, 'Input Stats');
@@ -2984,7 +3026,7 @@ function drawHistograms() {
       if (statsDiv) statsDiv.innerHTML = '';
     }
 
-    // KDE das realizações
+    // KDE of realizations
     drawKDEPlotForRealizations(input, useNscoreView);
   }
 }
@@ -3019,7 +3061,7 @@ function drawHistogram(canvasId, data, title, color, binCount) {
 
   const maxC = Math.max(...bins) || 1;
 
-  // Título
+  // Title
   ctx2.save();
   ctx2.fillStyle = '#000';
   ctx2.font = '13px Arial';
@@ -3042,7 +3084,7 @@ function drawHistogram(canvasId, data, title, color, binCount) {
     ctx2.fillRect(margin.l + i * bw, h - margin.b - bh, bw - 1, bh);
   }
 
-  // Rótulos do eixo X
+  // X-axis labels
   ctx2.fillStyle = '#000';
   ctx2.font = '11px Arial';
   ctx2.textAlign = 'center';
@@ -3089,7 +3131,7 @@ function drawOverlaidHistograms(canvasId, dataA, dataB, title, colorA, colorB, b
 
   const maxC = Math.max(Math.max(...binsA), Math.max(...binsB)) || 1;
 
-  // Título
+  // Title
   ctx2.save();
   ctx2.fillStyle = '#000';
   ctx2.font = '13px Arial';
@@ -3110,16 +3152,16 @@ function drawOverlaidHistograms(canvasId, dataA, dataB, title, colorA, colorB, b
     const bhA = (binsA[i] / maxC) * ph;
     const bhB = (binsB[i] / maxC) * ph;
 
-    // Input (lado esquerdo do bin)
+    // Input (left side of the bin)
     ctx2.fillStyle = colorA;
     ctx2.fillRect(margin.l + i * bw, h - margin.b - bhA, bw * 0.45, bhA);
 
-    // Simulações (lado direito do bin)
+    // Simulations (right side of the bin)
     ctx2.fillStyle = colorB;
     ctx2.fillRect(margin.l + i * bw + bw * 0.55, h - margin.b - bhB, bw * 0.45, bhB);
   }
 
-  // Rótulos do eixo X
+  // X-axis labels
   ctx2.fillStyle = '#000';
   ctx2.font = '11px Arial';
   ctx2.textAlign = 'center';
@@ -3263,7 +3305,7 @@ function drawKDEPlotForRealizations(inputData, useNscoreView) {
     ctx2.restore();
   }
 
-  // Desenhar KDEs das realizações
+  // Draw realization KDEs
   kdeList.forEach(dens => {
     ctx2.beginPath();
     for (let i = 0; i < xs.length; i++) {
@@ -3277,15 +3319,15 @@ function drawKDEPlotForRealizations(inputData, useNscoreView) {
     ctx2.stroke();
   });
 
-  // Título
+  // Title
   ctx2.save();
   ctx2.fillStyle = '#000';
   ctx2.font = '13px Arial';
   ctx2.textAlign = 'center';
-  ctx2.fillText(useNscoreView ? 'KDE das realizações (n-score)' : 'KDE das realizações', w / 2, 20);
+  ctx2.fillText(useNscoreView ? 'Realization KDE (n-score)' : 'Realization KDE', w / 2, 20);
   ctx2.restore();
 
-  // Rótulos eixo X
+  // X-axis labels
   ctx2.save();
   ctx2.fillStyle = '#000';
   ctx2.font = '11px Arial';
