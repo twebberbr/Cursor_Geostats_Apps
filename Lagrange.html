@@ -266,6 +266,67 @@
             color: #334155;
         }
 
+        .two-sample-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 0.75rem;
+            width: 100%;
+        }
+
+        .two-sample-grid label {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+            color: #1e3a8a;
+        }
+
+        .two-sample-grid input[type="number"] {
+            border: 1px solid rgba(148, 163, 184, 0.7);
+            border-radius: 8px;
+            padding: 0.45rem 0.55rem;
+            font-size: 0.86rem;
+            color: #0f172a;
+            background: #ffffff;
+        }
+
+        .example-note {
+            margin-top: 0.6rem;
+            font-size: 0.84rem;
+            color: #475569;
+        }
+
+        .step-card {
+            background: #f8fafc;
+            border: 1px solid rgba(148, 163, 184, 0.45);
+            border-radius: 8px;
+            padding: 0.75rem 0.9rem;
+            margin: 0.65rem 0;
+        }
+
+        .step-card-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #0f172a;
+            margin-bottom: 0.35rem;
+        }
+
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            line-height: 1.55;
+            color: #0f172a;
+            word-break: break-word;
+        }
+
+        .warning-text {
+            margin-top: 0.4rem;
+            color: #b91c1c;
+            font-weight: 600;
+            font-size: 0.8rem;
+        }
+
     </style>
 </head>
 <body>
@@ -785,6 +846,64 @@
             </div>
         </div>
 
+        <div class="section">
+            <h2 class="section-title">5. Final Worked Example: Ordinary Kriging with Two Samples</h2>
+
+            <div class="explanation">
+                <p>This is the step-by-step worked example from the original lesson, now kept here at the end for quick review. It solves an <strong>Ordinary Kriging</strong> system with two conditioning samples and one target location.</p>
+            </div>
+
+            <div class="controls">
+                <div class="two-sample-grid">
+                    <label>
+                        Sample value Z₁
+                        <input type="number" id="exZ1" value="10" step="0.1">
+                    </label>
+                    <label>
+                        Sample value Z₂
+                        <input type="number" id="exZ2" value="14" step="0.1">
+                    </label>
+                    <label>
+                        Covariance C₁₂
+                        <input type="number" id="exC12" value="0.35" step="0.01" min="-0.95" max="0.95">
+                    </label>
+                    <label>
+                        Covariance C₁0
+                        <input type="number" id="exC10" value="0.70" step="0.01">
+                    </label>
+                    <label>
+                        Covariance C₂0
+                        <input type="number" id="exC20" value="0.55" step="0.01">
+                    </label>
+                </div>
+            </div>
+
+            <div class="example-note">
+                Assumption used in this compact example: <span class="math">C₁₁ = C₂₂ = 1</span> (normalized covariance at zero distance).
+            </div>
+
+            <div class="step-card">
+                <div class="step-card-title">Step 1 — Build the Ordinary Kriging system</div>
+                <div class="mono" id="exStep1Matrix"></div>
+            </div>
+
+            <div class="step-card">
+                <div class="step-card-title">Step 2 — Solve for λ₁, λ₂ and μ</div>
+                <div class="mono" id="exStep2Solution"></div>
+                <div class="warning-text" id="exWarning" style="display:none;"></div>
+            </div>
+
+            <div class="step-card">
+                <div class="step-card-title">Step 3 — Compute the estimate Z*</div>
+                <div class="mono" id="exStep3Estimate"></div>
+            </div>
+
+            <div class="key-insight">
+                <div class="key-insight-title">💡 Interpretation</div>
+                <p class="mono" id="exStep4Interpretation"></p>
+            </div>
+        </div>
+
         <!-- FINAL SUMMARY -->
         <div class="section">
             <h2 class="section-title">Summary: What We Learned</h2>
@@ -1122,7 +1241,7 @@
             point4left.setAttribute('cy', yLeft);
             
             // Update current constraint line
-            // λ₁ + λ₂ = c → passa por (0, c) e (c, 0)
+            // λ₁ + λ₂ = c -> passes through (0, c) and (c, 0)
             const x1Constraint = lamToXLeft(0);
             const y1Constraint = lamToYLeft(c);
             const x2Constraint = lamToXLeft(c);
@@ -1220,6 +1339,84 @@
 
         slider4.addEventListener('input', updateSection4);
         updateSection4();
+
+        // ============================================
+        // SECTION 5 - FINAL TWO-SAMPLE KRIGING EXAMPLE
+        // ============================================
+        const exIds = ['exZ1', 'exZ2', 'exC12', 'exC10', 'exC20'];
+
+        function updateTwoSampleExample() {
+            const z1 = parseFloat(document.getElementById('exZ1').value);
+            const z2 = parseFloat(document.getElementById('exZ2').value);
+            const c12 = parseFloat(document.getElementById('exC12').value);
+            const c10 = parseFloat(document.getElementById('exC10').value);
+            const c20 = parseFloat(document.getElementById('exC20').value);
+
+            const step1 = document.getElementById('exStep1Matrix');
+            const step2 = document.getElementById('exStep2Solution');
+            const step3 = document.getElementById('exStep3Estimate');
+            const step4 = document.getElementById('exStep4Interpretation');
+            const warning = document.getElementById('exWarning');
+
+            if (![z1, z2, c12, c10, c20].every(Number.isFinite)) {
+                step1.textContent = 'Please enter valid numeric values.';
+                step2.textContent = '';
+                step3.textContent = '';
+                step4.textContent = '';
+                warning.style.display = 'none';
+                return;
+            }
+
+            const denom = 1 - c12;
+            const c11 = 1;
+            const c22 = 1;
+
+            step1.innerHTML =
+                `[ C11  C12   1 ] [ λ1 ]   [ C10 ]<br>` +
+                `[ C12  C22   1 ] [ λ2 ] = [ C20 ]<br>` +
+                `[  1    1    0 ] [ μ  ]   [  1  ]<br><br>` +
+                `Using C11 = C22 = 1, C12 = ${c12.toFixed(3)}, C10 = ${c10.toFixed(3)}, C20 = ${c20.toFixed(3)}.`;
+
+            if (Math.abs(denom) < 1e-6) {
+                step2.textContent = 'System is ill-conditioned because 1 - C12 ≈ 0.';
+                step3.textContent = 'Adjust C12 away from 1 to continue.';
+                step4.textContent = 'When samples are almost perfectly redundant, two-sample OK weights become unstable.';
+                warning.textContent = 'Warning: C12 is too close to 1.0 (near-singular system).';
+                warning.style.display = 'block';
+                return;
+            }
+
+            warning.style.display = 'none';
+
+            // Closed-form for the 2-sample ordinary kriging system with C11 = C22 = 1.
+            const diff = (c10 - c20) / denom;
+            const lambda1 = 0.5 * (1 + diff);
+            const lambda2 = 1 - lambda1;
+            const mu = c10 - c11 * lambda1 - c12 * lambda2;
+            const zStar = lambda1 * z1 + lambda2 * z2;
+            const weightSum = lambda1 + lambda2;
+
+            step2.innerHTML =
+                `λ1 = ${lambda1.toFixed(4)}<br>` +
+                `λ2 = ${lambda2.toFixed(4)}<br>` +
+                `μ = ${mu.toFixed(4)}<br>` +
+                `Check: λ1 + λ2 = ${weightSum.toFixed(4)} (must be 1.0000).`;
+
+            step3.innerHTML =
+                `Z* = λ1·Z1 + λ2·Z2<br>` +
+                `Z* = ${lambda1.toFixed(4)}·${z1.toFixed(2)} + ${lambda2.toFixed(4)}·${z2.toFixed(2)} = <strong>${zStar.toFixed(4)}</strong>`;
+
+            const nonNegative = lambda1 >= 0 && lambda2 >= 0;
+            step4.textContent = nonNegative
+                ? 'Both weights are non-negative. The estimate is a convex combination of the two sample values.'
+                : 'At least one weight is negative. This can happen in kriging and usually indicates screening/redundancy effects in this simplified setup.';
+        }
+
+        exIds.forEach((id) => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('input', updateTwoSampleExample);
+        });
+        updateTwoSampleExample();
     </script>
 </body>
 </html>
