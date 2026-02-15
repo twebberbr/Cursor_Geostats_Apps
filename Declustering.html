@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Declustering Laboratory v2</title>
+  <title>GeoStats Lab: Declustering</title>
   
 <style>
   :root {
@@ -532,12 +532,54 @@
   .toast.success { background: #059669; }
   .toast.error { background: #dc2626; }
   .toast.warning { background: #d97706; }
+
+  .lab-intro {
+    margin: 0 0 12px 0;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(37, 99, 235, 0.35);
+    background: #eff6ff;
+    font-size: 0.85rem;
+    color: var(--text-main);
+  }
+
+  .lab-intro-title {
+    margin: 0 0 6px 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-strong);
+  }
+
+  .lab-intro ol {
+    margin: 0 0 6px 18px;
+    padding: 0;
+  }
+
+  .lab-intro li {
+    margin: 2px 0;
+  }
+
+  .lab-intro p {
+    margin: 0;
+    color: var(--text-muted);
+  }
+
 </style>
 </head>
 <body>
 
 <div id="left-panel">
-  <h2>Declustering Laboratory v2</h2>
+  <h2>GeoStats Lab: Declustering</h2>
+
+  <div class="lab-intro">
+    <div class="lab-intro-title">How to use this lab (3 steps)</div>
+    <ol>
+      <li>Load data from CSV or add points manually.</li>
+      <li>Apply one declustering method at a time.</li>
+      <li>Compare weights, summary statistics, and CDF curves.</li>
+    </ol>
+    <p><strong>Guiding question:</strong> Which method best reduces preferential sampling bias for your dataset?</p>
+  </div>
 
   <div>
     <button id="btnCellDecluster" class="btn-cell">Cell Decluster</button>

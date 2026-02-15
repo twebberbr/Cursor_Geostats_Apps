@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Super Krige - Laboratory</title>
+  <title>GeoStats Lab: Estimation</title>
   
 <style>
   
@@ -509,13 +509,55 @@
     z-index: 1000;
     white-space: nowrap;
   }
+
+  .lab-intro {
+    margin: 0 0 12px 0;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(37, 99, 235, 0.35);
+    background: #eff6ff;
+    font-size: 0.85rem;
+    color: var(--text-main);
+  }
+
+  .lab-intro-title {
+    margin: 0 0 6px 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-strong);
+  }
+
+  .lab-intro ol {
+    margin: 0 0 6px 18px;
+    padding: 0;
+  }
+
+  .lab-intro li {
+    margin: 2px 0;
+  }
+
+  .lab-intro p {
+    margin: 0;
+    color: var(--text-muted);
+  }
+
 </style>
 
 </head>
 <body>
 
 <div id="left-panel">
-  <h2>Super Krige - Laboratory</h2>
+  <h2>GeoStats Lab: Estimation</h2>
+
+  <div class="lab-intro">
+    <div class="lab-intro-title">How to use this lab (3 steps)</div>
+    <ol>
+      <li>Load sample data and define the variogram model.</li>
+      <li>Select estimation method and neighborhood settings.</li>
+      <li>Calculate and compare Z*, variance, and maps.</li>
+    </ol>
+    <p><strong>Guiding question:</strong> How do method and neighborhood choices change local estimate and uncertainty?</p>
+  </div>
 
   <div>
     <button id="btnCompute" class="btn-primary">Calculate</button>
@@ -905,11 +947,11 @@ function handleVariogramMouseMove(evt) {
 
   const rect = cv.getBoundingClientRect();
   
-  // Fator de escala entre canvas interno e renderizado
+  // Scale factor between internal and rendered canvas
   const scaleX = rect.width / cv.width;
   const scaleY = rect.height / cv.height;
   
-  // Coordenadas do mouse relativas ao canvas renderizado
+  // Mouse coordinates relative to rendered canvas
   const xMouse = evt.clientX - rect.left;
   const yMouse = evt.clientY - rect.top;
 
@@ -917,11 +959,11 @@ function handleVariogramMouseMove(evt) {
   let bestDist2 = 64;
 
   for (const p of variogramPoints) {
-    // Calcula posição do ponto no canvas INTERNO (em pixels)
+    // Compute point position in INTERNAL canvas coordinates (pixels)
     const xCanvasInternal = variogramAxis.mL + (Math.max(0, Math.min(p.h, variogramAxis.xMax)) / variogramAxis.xMax) * variogramAxis.pW;
     const yCanvasInternal = variogramAxis.mT + (1 - Math.max(0, Math.min(p.gamma, variogramAxis.yMax)) / variogramAxis.yMax) * variogramAxis.pH;
     
-    // Converte para coordenadas do canvas RENDERIZADO
+    // Convert to RENDERED canvas coordinates
     const xRendered = xCanvasInternal * scaleX;
     const yRendered = yCanvasInternal * scaleY;
 
@@ -940,14 +982,14 @@ function handleVariogramMouseMove(evt) {
     tooltip.textContent = `${p.label} | h=${p.h.toFixed(2)} | γ=${p.gamma.toFixed(4)}`;
     tooltip.style.display = 'block';
     
-    // Força o navegador a calcular as dimensões do tooltip
+    // Force the browser to calculate tooltip dimensions
     void tooltip.offsetWidth;
     
     const tw = tooltip.offsetWidth;
     const th = tooltip.offsetHeight;
 
-    // Position absolute é relativo ao parent (matrix-block)
-    // Precisamos somar a posição do canvas dentro do parent
+    // Absolute position is relative to parent (matrix-block)
+    // Add canvas offset inside the parent container
     const canvasTop = cv.offsetTop;
     
     tooltip.style.left = Math.round(best.xRendered - tw / 2) + 'px';
@@ -1063,7 +1105,7 @@ function setupEvents() {
   };
   
   document.getElementById('lockTarget').onchange = (e) => {
-    // Muda o cursor do canvas quando o target está bloqueado
+    // Change canvas cursor when target is locked
     canvas.style.cursor = e.target.checked ? 'not-allowed' : 'crosshair';
   };
   
@@ -1082,7 +1124,7 @@ function setupEvents() {
     for (let i=0; i<points.length; i++) {
       if (Math.sqrt((points[i].x-x)**2+(points[i].y-y)**2)<10) { isDragging=true; draggingIdx=i; return; }
     }
-    // Só atualiza o target se não estiver bloqueado
+    // Update target only when it is not locked
     if (!document.getElementById('lockTarget').checked) {
       target = {x, y}; updateTargetInfo(); draw();
     }
@@ -1240,53 +1282,53 @@ function updateTargetInfo() {
 }
 
 function drawAxes() {
-  const axisMargin = 40; // Margem para os eixos
+  const axisMargin = 40; // Margin for axes
   const tickSize = 5;
   
-  // Salvar contexto
+  // Save context
   ctx.save();
-  ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform para desenhar eixos sem zoom
+  ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform to draw axes without zoom
   ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, canvas.width, axisMargin); // Margem superior
-  ctx.fillRect(0, 0, axisMargin, canvas.height); // Margem esquerda
+  ctx.fillRect(0, 0, canvas.width, axisMargin); // Top margin
+  ctx.fillRect(0, 0, axisMargin, canvas.height); // Left margin
   
   ctx.strokeStyle = '#333';
   ctx.lineWidth = 2;
   ctx.fillStyle = '#333';
   ctx.font = '11px Arial';
   
-  // Eixo Y (esquerda)
+  // Y axis (left)
   ctx.beginPath();
   ctx.moveTo(axisMargin, 0);
   ctx.lineTo(axisMargin, canvas.height);
   ctx.stroke();
   
-  // Eixo X (topo)
+  // X axis (top)
   ctx.beginPath();
   ctx.moveTo(0, axisMargin);
   ctx.lineTo(canvas.width, axisMargin);
   ctx.stroke();
   
-  // Calcular coordenadas visíveis considerando zoom e pan
-  // Ponto superior esquerdo visível (em coordenadas internas do canvas)
+  // Compute visible coordinates considering zoom and pan
+  // Visible top-left point (in internal canvas coordinates)
   const topLeftX = (0 - viewOffsetX - axisMargin * viewScale) / viewScale;
   const topLeftY = (0 - viewOffsetY - axisMargin * viewScale) / viewScale;
   
-  // Ponto inferior direito visível
+  // Visible bottom-right point
   const bottomRightX = (canvas.width - viewOffsetX - axisMargin * viewScale) / viewScale;
   const bottomRightY = (canvas.height - viewOffsetY - axisMargin * viewScale) / viewScale;
   
-  // Converter para coordenadas do mundo
+  // Convert to world coordinates
   const worldLeft = worldX(topLeftX);
   const worldRight = worldX(bottomRightX);
   const worldTop = worldY(topLeftY);
   const worldBottom = worldY(bottomRightY);
   
-  // Marcas e labels no eixo Y
+  // Tick marks and labels on Y axis
   const numTicksY = 8;
   for (let i = 0; i <= numTicksY; i++) {
     const yCanvas = axisMargin + (canvas.height - axisMargin) * i / numTicksY;
-    // Interpolar entre as coordenadas do mundo visíveis
+    // Interpolate between visible world coordinates
     const yWorld = worldTop + (worldBottom - worldTop) * i / numTicksY;
     
     // Tick mark
@@ -1301,11 +1343,11 @@ function drawAxes() {
     ctx.fillText(yWorld.toFixed(1), axisMargin - tickSize - 2, yCanvas);
   }
   
-  // Marcas e labels no eixo X
+  // Tick marks and labels on X axis
   const numTicksX = 10;
   for (let i = 0; i <= numTicksX; i++) {
     const xCanvas = axisMargin + (canvas.width - axisMargin) * i / numTicksX;
-    // Interpolar entre as coordenadas do mundo visíveis
+    // Interpolate between visible world coordinates
     const xWorld = worldLeft + (worldRight - worldLeft) * i / numTicksX;
     
     // Tick mark
@@ -1342,10 +1384,10 @@ function draw() {
   ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0,0,canvas.width,canvas.height);
   
-  // Desenhar eixos com coordenadas (antes do transform)
+  // Draw axes with coordinates (before transform)
   drawAxes();
   
-  // Aplicar transform com offset para a margem dos eixos
+  // Apply transform with offset for axis margins
   ctx.setTransform(viewScale,0,0,viewScale,viewOffsetX+axisMargin*viewScale,viewOffsetY+axisMargin*viewScale);
 
   // Maps
@@ -1365,20 +1407,20 @@ function draw() {
     const nx = parseInt(document.getElementById('gridNx').value) || 30;
     const ny = parseInt(document.getElementById('gridNy').value) || 30;
     
-    // Converter coordenadas do mundo para coordenadas internas do canvas
+    // Convert world coordinates to internal canvas coordinates
     const x0 = internalX(originX);
     const y0 = internalY(originY);
     const x1 = internalX(originX + dx * nx);
     const y1 = internalY(originY + dy * ny);
     
-    // Desenhar retângulo do grid
+    // Draw grid rectangle
     ctx.strokeStyle = 'rgba(128, 128, 128, 0.6)';
     ctx.lineWidth = 2/viewScale;
     ctx.setLineDash([8/viewScale, 4/viewScale]);
     ctx.strokeRect(x0, y1, x1 - x0, y0 - y1);
     ctx.setLineDash([]);
     
-    // Desenhar linhas internas do grid (mais finas)
+    // Draw internal grid lines (thinner)
     ctx.strokeStyle = 'rgba(128, 128, 128, 0.25)';
     ctx.lineWidth = 0.5/viewScale;
     for (let i = 1; i < nx; i++) {
@@ -1581,13 +1623,13 @@ function draw() {
   // Target
   if (target) {
     const isLocked = document.getElementById('lockTarget').checked;
-    ctx.strokeStyle = isLocked ? '#9333ea' : '#c00'; // Roxo quando bloqueado, vermelho quando livre
-    ctx.lineWidth = isLocked ? 3/viewScale : 2/viewScale; // Mais grosso quando bloqueado
+    ctx.strokeStyle = isLocked ? '#9333ea' : '#c00'; // Purple when locked, red when unlocked
+    ctx.lineWidth = isLocked ? 3/viewScale : 2/viewScale; // Thicker when locked
     const s = 10/viewScale;
     ctx.beginPath(); ctx.moveTo(target.x-s, target.y); ctx.lineTo(target.x+s, target.y);
     ctx.moveTo(target.x, target.y-s); ctx.lineTo(target.x, target.y+s); ctx.stroke();
     
-    // Adiciona um círculo ao redor quando bloqueado
+    // Add a circle around target when locked
     if (isLocked) {
       ctx.beginPath();
       ctx.arc(target.x, target.y, 15/viewScale, 0, Math.PI*2);
@@ -2249,7 +2291,7 @@ function matrixToHTML(mat, dec=3, pts=null) {
   const n = mat.length;
   let html = '<table><thead><tr><th></th>';
   
-  // Cabeçalho das colunas
+  // Column headers
   if (pts && pts.length === n) {
     for (let j=0; j<n; j++) html += `<th>P${pts[j].id}</th>`;
   } else {
@@ -2257,7 +2299,7 @@ function matrixToHTML(mat, dec=3, pts=null) {
   }
   html += '</tr></thead><tbody>';
   
-  // Linhas com identificador
+  // Rows with identifiers
   for (let i=0; i<n; i++) {
     if (pts && pts.length === n) {
       html += `<tr><th>P${pts[i].id}</th>`;
@@ -2587,7 +2629,7 @@ function displayKrigingResults(pts, lambdas, zstar, sigma2, sr, mu, krigeType, m
     }
   }
   varHTML += `</table>
-        <p>Var(Z*) ≈ ${accVar.toFixed(6)} (cálculo direto)</p>
+        <p>Var(Z*) ≈ ${accVar.toFixed(6)} (direct calculation)</p>
         <p>Var(Z*) (do sistema) = <span class="calc-highlight">${varDen.toFixed(6)}</span></p>
       </div>
     </div>`;
