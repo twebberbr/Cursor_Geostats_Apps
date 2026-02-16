@@ -3484,6 +3484,68 @@ function draw() {
       ctx.setLineDash([]);
       ctx.restore();
     }
+
+    // Ellipse legend (top-right, below axis labels)
+    const hasStructures = params.structures.length > 0;
+    const hasSearch = document.getElementById('useSearchRadius').checked;
+    if (hasStructures || hasSearch) {
+      const legendX = canvas.width - 10;
+      const legendY = axisMargin + 24;
+      let yOffset = legendY;
+
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.textAlign = 'right';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+      ctx.fillText(`Ellipses (${params.anisoAngle.toFixed(0)}°):`, legendX, yOffset);
+      yOffset += 18;
+
+      ctx.font = '11px sans-serif';
+      if (params.structures.length >= 1) {
+        const s1 = params.structures[0];
+        ctx.strokeStyle = 'rgba(59, 130, 246, 0.8)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([8, 4]);
+        ctx.beginPath();
+        ctx.moveTo(legendX - 40, yOffset - 3);
+        ctx.lineTo(legendX - 10, yOffset - 3);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillText(`Struct 1: ${s1.range.toFixed(1)}/${s1.rangeOrtho.toFixed(1)}`, legendX - 45, yOffset);
+        yOffset += 16;
+      }
+      if (params.structures.length >= 2) {
+        const s2 = params.structures[1];
+        ctx.strokeStyle = 'rgba(239, 68, 68, 0.8)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([8, 4]);
+        ctx.beginPath();
+        ctx.moveTo(legendX - 40, yOffset - 3);
+        ctx.lineTo(legendX - 10, yOffset - 3);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillText(`Struct 2: ${s2.range.toFixed(1)}/${s2.rangeOrtho.toFixed(1)}`, legendX - 45, yOffset);
+        yOffset += 16;
+      }
+      if (hasSearch) {
+        const radiusMajor = parseFloat(document.getElementById('searchRadiusMajor').value) || 100;
+        const radiusMinor = parseFloat(document.getElementById('searchRadiusMinor').value) || 100;
+        ctx.strokeStyle = 'rgba(0, 200, 0, 0.8)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(legendX - 40, yOffset - 3);
+        ctx.lineTo(legendX - 10, yOffset - 3);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillText(`Search: ${radiusMajor.toFixed(1)}/${radiusMinor.toFixed(1)}`, legendX - 45, yOffset);
+      }
+      ctx.restore();
+    }
   }
   
   // Highlight current step node
@@ -3591,53 +3653,6 @@ function draw() {
       }
     });
   }
-  
-  // Compass
-  ctx.save();
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  
-  const compassX = 60;
-  const compassY = canvas.height - 60;
-  const compassRadius = 25;
-  
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-  ctx.beginPath();
-  ctx.arc(compassX, compassY, compassRadius, 0, Math.PI * 2);
-  ctx.fill();
-  
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
-  ctx.lineWidth = 1;
-  ctx.stroke();
-  
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(compassX, compassY - compassRadius * 0.7);
-  ctx.lineTo(compassX, compassY + compassRadius * 0.7);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(compassX - compassRadius * 0.7, compassY);
-  ctx.lineTo(compassX + compassRadius * 0.7, compassY);
-  ctx.stroke();
-  
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-  ctx.font = 'bold 11px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('N', compassX, compassY - compassRadius * 0.85);
-  ctx.fillText('S', compassX, compassY + compassRadius * 0.85);
-  ctx.fillText('E', compassX + compassRadius * 0.85, compassY);
-  ctx.fillText('W', compassX - compassRadius * 0.85, compassY);
-  
-  ctx.fillStyle = 'rgba(239, 68, 68, 0.8)';
-  ctx.beginPath();
-  ctx.moveTo(compassX, compassY - compassRadius * 0.7);
-  ctx.lineTo(compassX - 4, compassY - compassRadius * 0.5);
-  ctx.lineTo(compassX + 4, compassY - compassRadius * 0.5);
-  ctx.closePath();
-  ctx.fill();
-  
-  ctx.restore();
   
   refreshMapLegend();
 }

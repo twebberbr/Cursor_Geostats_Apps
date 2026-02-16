@@ -1927,7 +1927,7 @@ function draw() {
     
     if (showTarget && (hasStructures || hasSearch)) {
       const legendX = canvas.width / window.devicePixelRatio - 10;
-      const legendY = 10;
+      const legendY = axisMargin + 24;
       let yOffset = legendY;
       
       ctx.save();
@@ -1999,60 +1999,6 @@ function draw() {
       ctx.restore();
     }
   }
-  
-  // Compass indicator (bottom left corner)
-  ctx.save();
-  ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
-  
-  const compassX = 40;
-  const compassY = canvas.height / window.devicePixelRatio - 40;
-  const compassRadius = 25;
-  
-  // Circle background
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-  ctx.beginPath();
-  ctx.arc(compassX, compassY, compassRadius, 0, Math.PI * 2);
-  ctx.fill();
-  
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
-  ctx.lineWidth = 1;
-  ctx.stroke();
-  
-  // N-S line (vertical)
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(compassX, compassY - compassRadius * 0.7);
-  ctx.lineTo(compassX, compassY + compassRadius * 0.7);
-  ctx.stroke();
-  
-  // E-W line (horizontal)
-  ctx.beginPath();
-  ctx.moveTo(compassX - compassRadius * 0.7, compassY);
-  ctx.lineTo(compassX + compassRadius * 0.7, compassY);
-  ctx.stroke();
-  
-  // Labels
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-  ctx.font = 'bold 11px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  
-  ctx.fillText('N', compassX, compassY - compassRadius * 0.85);
-  ctx.fillText('S', compassX, compassY + compassRadius * 0.85);
-  ctx.fillText('E', compassX + compassRadius * 0.85, compassY);
-  ctx.fillText('W', compassX - compassRadius * 0.85, compassY);
-  
-  // North arrow
-  ctx.fillStyle = 'rgba(239, 68, 68, 0.8)';
-  ctx.beginPath();
-  ctx.moveTo(compassX, compassY - compassRadius * 0.7);
-  ctx.lineTo(compassX - 4, compassY - compassRadius * 0.5);
-  ctx.lineTo(compassX + 4, compassY - compassRadius * 0.5);
-  ctx.closePath();
-  ctx.fill();
-  
-  ctx.restore();
 }
 
 function drawMap(mapData) {
