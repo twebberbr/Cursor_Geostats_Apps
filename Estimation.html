@@ -1499,7 +1499,16 @@ function loadCSVWithSelectedColumns() {
     value: p.value,
     active: true
   }));
-  nextId = points.length + 1; target = {x: w/2, y: h/2};
+  nextId = points.length + 1;
+
+  // Set target to data center and reset view so points appear immediately after load.
+  const centerX = (minX + maxX) * 0.5;
+  const centerY = (minY + maxY) * 0.5;
+  target = { x: internalX(centerX), y: internalY(centerY) };
+  viewScale = 1;
+  viewOffsetX = 0;
+  viewOffsetY = 0;
+
   document.getElementById('csvStatus').textContent = `${points.length} points loaded`;
   document.getElementById('csvColumnSelector').style.display = 'none';
   updatePointsTable(); updateTargetInfo(); updateIndicatorStats(); updateGridInfo(); draw();
