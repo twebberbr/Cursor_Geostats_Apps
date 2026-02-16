@@ -594,6 +594,104 @@
     border-radius: 8px;
   }
 
+  .mode-tabs {
+    display: flex;
+    gap: 8px;
+    margin: 0 0 10px 0;
+    flex-wrap: wrap;
+  }
+
+  .mode-tab-btn {
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.5);
+    background: #f8fafc;
+    color: #334155;
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  .mode-tab-btn.active {
+    background: #1d4ed8;
+    color: #ffffff;
+    border-color: #1d4ed8;
+  }
+
+  .mode-note {
+    margin: 0 0 10px 0;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(59, 130, 246, 0.28);
+    background: #eff6ff;
+    font-size: 0.82rem;
+    color: #1e3a8a;
+  }
+
+  .ik-section {
+    margin: 10px 0;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(14, 116, 144, 0.55);
+    background: #ecfeff;
+  }
+
+  .ik-section h4 {
+    margin: 0 0 8px 0;
+    color: #0f766e;
+    font-size: 0.95rem;
+  }
+
+  .ik-cutoff-toolbar {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin: 6px 0 8px 0;
+  }
+
+  .ik-cutoff-list {
+    max-height: 170px;
+    overflow-y: auto;
+    border: 1px solid rgba(148, 163, 184, 0.45);
+    border-radius: 8px;
+    background: #ffffff;
+    padding: 6px;
+  }
+
+  .ik-cutoff-list table {
+    font-size: 0.79rem;
+  }
+
+  .ik-meta {
+    font-size: 0.8rem;
+    color: #0f172a;
+    margin: 6px 0 0 0;
+  }
+
+  #ikCdfCanvas {
+    width: 100%;
+    max-width: 520px;
+    height: auto;
+    background: #ffffff;
+    border-radius: 8px;
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    margin-top: 6px;
+  }
+
+  #ikCutoffTable {
+    max-height: 280px;
+    overflow-y: auto;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    border-radius: 8px;
+    margin-top: 8px;
+    background: #ffffff;
+  }
+
+  .ik-muted {
+    color: #475569;
+    font-size: 0.8rem;
+  }
+
 </style>
 <link rel="stylesheet" href="geostats-hub.css">
 
@@ -613,6 +711,14 @@
     <p><strong>Guiding question:</strong> How do method and neighborhood choices change local estimate and uncertainty?</p>
   </div>
 
+  <div class="mode-tabs">
+    <button id="tabConventional" class="mode-tab-btn active">Conventional estimation</button>
+    <button id="tabIK" class="mode-tab-btn">Multiple Indicator Kriging (IK)</button>
+  </div>
+  <div id="estimationModeNote" class="mode-note">
+    Conventional mode: estimate Z* directly (or a single indicator transform) with Kriging, IDW, or NN.
+  </div>
+
   <div>
     <button id="btnCompute" class="btn-primary">Calculate</button>
     <button id="btnCompareAll" class="btn-compare">Compare Methods</button>
@@ -625,17 +731,24 @@
   
   <!-- ORDER: Maps, Indicator, Data, Variogram, Method, Grid, Target -->
 <h3>Maps</h3>
-  <div class="map-section">
+  <div class="map-section" id="krigingMapSection">
     <h4>Kriging</h4>
     <label><input type="checkbox" id="showEstMap"> Z*</label>
     <label><input type="checkbox" id="showVarMap"> σ²</label>
     <label><input type="checkbox" id="showSlopeMap"> SR</label>
     <label><input type="checkbox" id="showLagrangeMap"> μ</label>
   </div>
-  <div class="map-section">
+  <div class="map-section" id="otherMethodMapSection">
     <h4>Other Methods</h4>
     <label><input type="checkbox" id="showIDWMap"> IDW</label>
     <label><input type="checkbox" id="showNNMap"> NN</label>
+  </div>
+  <div class="map-section" id="ikMapSection" style="display:none;">
+    <h4>Multiple IK</h4>
+    <label><input type="checkbox" id="showIKMeanMap"> E[Z] from local CDF</label>
+    <label><input type="checkbox" id="showIKProbMap"> P(Z ≤ z<sub>q</sub>)</label><br>
+    <label>z<sub>q</sub>: <input type="number" id="ikProbCutoff" step="0.1"></label>
+    <div class="ik-muted">Uses the same search/anisotropy settings as the conventional estimator.</div>
   </div>
   <div id="mapLegendContainer">
     <canvas id="legendCanvas" width="220" height="20"></canvas>
@@ -645,13 +758,35 @@
   
 <!-- INDICATOR KRIGING SECTION -->
   <div class="indicator-section" id="indicatorSection">
-    <h4>🎯 Indicator Kriging</h4>
+    <h4>🎯 Single-cutoff Indicator Transform (Conventional tab)</h4>
     <label><input type="checkbox" id="useIndicator"> Enable Indicator Transform</label>
     <div id="indicatorOpts" style="display:none; margin-top:8px;">
       <label>Cutoff: <input type="number" id="indicatorCutoff" value="2" step="0.1"></label>
       <p style="font-size:0.85em; color:#666; margin:5px 0;">≥ cutoff → 1 | < cutoff → 0</p>
       <div id="indicatorStats"></div>
     </div>
+  </div>
+
+  <div class="ik-section" id="ikSection" style="display:none;">
+    <h4>📈 Multiple Indicator Kriging (IK)</h4>
+    <div class="ik-muted">Default cutoffs are D1-D9 (10 classes). You can edit, remove, or add custom thresholds.</div>
+    <div class="ik-cutoff-toolbar">
+      <button id="btnIKUseDeciles">Reset to deciles</button>
+      <label><input type="checkbox" id="ikUseDeclusterWeights" checked> Use sample weights (declustering)</label>
+      <label><input type="checkbox" id="ikScaleSillByProb" checked> Scale indicator sill by p(1-p)</label>
+    </div>
+    <div class="ik-cutoff-toolbar">
+      <label>Manual cutoffs:
+        <input type="text" id="ikCutoffInput" placeholder="e.g. 1.2, 2.0, 2.8, 3.5" style="width: 310px; border-radius: 8px;">
+      </label>
+      <button id="btnIKApplyCutoffs">Apply list</button>
+      <label>Add cutoff:
+        <input type="number" id="ikAddCutoff" step="0.1">
+      </label>
+      <button id="btnIKAddCutoff">Add</button>
+    </div>
+    <div id="ikCutoffList" class="ik-cutoff-list"><em>No IK cutoffs defined.</em></div>
+    <div id="ikDataSummary" class="ik-meta"></div>
   </div>
 
   
@@ -668,6 +803,7 @@
       <label>X: <select id="csvColX"></select></label>
       <label>Y: <select id="csvColY"></select></label>
       <label>Z: <select id="csvColZ"></select></label>
+      <label>Weight (optional): <select id="csvColW"></select></label>
       <button id="btnLoadCSV">Load</button>
     </div>
   </div>
@@ -747,6 +883,9 @@
     <option value="nn">Nearest Neighbor</option>
     <option value="idw">IDW</option>
   </select>
+  <div id="ikMethodHint" class="ik-muted" style="display:none; margin-bottom:6px;">
+    IK mode uses kriging weights per neighborhood and computes local CDF from multiple indicator cutoffs.
+  </div>
   <div id="krigingOpts">
     <select id="krigeType"><option value="OK">Ordinary</option><option value="SK">Simple</option></select>
     <label>SK Mean: <input type="number" id="meanSK" value="2" step="0.1"></label>
@@ -829,6 +968,12 @@
 <div id="right-panel">
   <h3>Results</h3>
   <div class="matrix-block"><h4>Method Comparison</h4><div id="methodComparison"><em>Click "Compare Methods"</em></div></div>
+  <div class="matrix-block" id="ikResultsBlock" style="display:none;">
+    <h4>Multiple IK - Local CDF</h4>
+    <div id="ikSummary"><em>Switch to IK tab and click "Calculate".</em></div>
+    <canvas id="ikCdfCanvas" width="540" height="280"></canvas>
+    <div id="ikCutoffTable"></div>
+  </div>
   <div class="matrix-block">
     <h4>Cross-validation</h4>
     <div id="cvSummary"><em>Run LOOCV or k-fold to quantify model performance.</em></div>
@@ -885,6 +1030,9 @@ let viewScale = 1, viewOffsetX = 0, viewOffsetY = 0;
 let isDragging = false, draggingIdx = null, isPanning = false, lastPanX = 0, lastPanY = 0;
 let dataMinX = 0, dataMaxX = 600, dataMinY = 0, dataMaxY = 440;
 let aspectScale = 1, aspectOffsetX = 0, aspectOffsetY = 0;
+let estimationMode = 'conventional';
+let ikCutoffs = [];
+let ikLastResult = null;
 
 function updateAspectTransform() {
   if (!canvas) return;
@@ -901,6 +1049,7 @@ function updateAspectTransform() {
 let lambdaById = {}, maxLambdaAbs = 0, lastUsedIds = {};
 let legendCanvas, legendCtx, csvRawData = null, csvHeaders = [];
 let estMapData = null, varMapData = null, slopeMapData = null, lagrangeMapData = null, idwMapData = null, nnMapData = null;
+let ikMeanMapData = null, ikProbMapData = null;
 const VARIOGRAM_MODEL_SCHEMA = 'geostats-variogram-model-v1';
 
 // Get variogram parameters as object
@@ -1094,6 +1243,209 @@ function updateIndicatorStats() {
   statsDiv.innerHTML = `<b>Cutoff: ${cutoff}</b> | Above: ${above} (${(prop*100).toFixed(1)}%) | Below: ${active.length-above}`;
 }
 
+function isIKMode() {
+  return estimationMode === 'ik';
+}
+
+function getPointWeight(p) {
+  const w = Number(p && p.weight);
+  return isFinite(w) && w > 0 ? w : 1;
+}
+
+function getIKPointWeight(p) {
+  const useDecluster = !!document.getElementById('ikUseDeclusterWeights')?.checked;
+  return useDecluster ? getPointWeight(p) : 1;
+}
+
+function normalizeIKCutoffs(values) {
+  const cleaned = values
+    .map((v) => Number(v))
+    .filter((v) => isFinite(v))
+    .sort((a, b) => a - b);
+  const out = [];
+  cleaned.forEach((v) => {
+    if (!out.length || Math.abs(v - out[out.length - 1]) > 1e-9) out.push(v);
+  });
+  return out;
+}
+
+function parseIKCutoffsText(text) {
+  return normalizeIKCutoffs(String(text || '').split(/[,\s;]+/).map((t) => Number(t)));
+}
+
+function getIKActiveDataset() {
+  const active = points.filter((p) => p.active);
+  const weights = active.map((p) => getIKPointWeight(p));
+  return { active, weights };
+}
+
+function weightedQuantile(values, weights, q) {
+  if (!values.length) return NaN;
+  const qq = Math.max(0, Math.min(1, Number(q)));
+  const arr = values.map((v, i) => ({ v, w: Math.max(0, Number(weights[i]) || 0) }))
+    .filter((r) => isFinite(r.v) && r.w > 0)
+    .sort((a, b) => a.v - b.v);
+  if (!arr.length) return NaN;
+  const total = arr.reduce((s, r) => s + r.w, 0);
+  if (!(total > 0)) return NaN;
+  const target = qq * total;
+  let cum = 0;
+  for (let i = 0; i < arr.length; i++) {
+    cum += arr[i].w;
+    if (cum >= target) return arr[i].v;
+  }
+  return arr[arr.length - 1].v;
+}
+
+function buildIKDecileCutoffs() {
+  const { active, weights } = getIKActiveDataset();
+  if (!active.length) return [];
+  const values = active.map((p) => p.value);
+  const out = [];
+  for (let i = 1; i <= 9; i++) {
+    const qv = weightedQuantile(values, weights, i / 10);
+    if (isFinite(qv)) out.push(qv);
+  }
+  return normalizeIKCutoffs(out);
+}
+
+function setIKCutoffs(values, { updateInput = true, forceProbCutoff = false } = {}) {
+  ikCutoffs = normalizeIKCutoffs(values);
+  if (updateInput) {
+    const input = document.getElementById('ikCutoffInput');
+    if (input) input.value = ikCutoffs.map((v) => v.toFixed(4)).join(', ');
+  }
+  if (ikCutoffs.length) {
+    const zq = document.getElementById('ikProbCutoff');
+    const current = zq ? Number(zq.value) : NaN;
+    if (zq && (forceProbCutoff || !isFinite(current))) {
+      const mid = ikCutoffs[Math.floor((ikCutoffs.length - 1) * 0.5)];
+      zq.value = Number(mid.toFixed(4));
+    }
+  }
+  renderIKCutoffList();
+  updateIKDataSummary();
+}
+
+function renderIKCutoffList() {
+  const wrap = document.getElementById('ikCutoffList');
+  if (!wrap) return;
+  if (!ikCutoffs.length) {
+    wrap.innerHTML = '<em>No IK cutoffs defined. Click "Reset to deciles".</em>';
+    return;
+  }
+  let html = '<table><thead><tr><th>#</th><th>Cutoff</th><th></th></tr></thead><tbody>';
+  ikCutoffs.forEach((c, idx) => {
+    html += `<tr><td>D${idx + 1}</td><td>${c.toFixed(4)}</td><td><button type="button" class="ik-remove-cutoff" data-idx="${idx}">Remove</button></td></tr>`;
+  });
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+  wrap.querySelectorAll('.ik-remove-cutoff').forEach((btn) => {
+    btn.onclick = () => {
+      const idx = Number(btn.dataset.idx);
+      if (!Number.isFinite(idx)) return;
+      ikCutoffs.splice(idx, 1);
+      setIKCutoffs(ikCutoffs, { updateInput: true });
+    };
+  });
+}
+
+function updateIKDataSummary() {
+  const box = document.getElementById('ikDataSummary');
+  if (!box) return;
+  const { active, weights } = getIKActiveDataset();
+  const usesWeights = !!document.getElementById('ikUseDeclusterWeights')?.checked;
+  if (!active.length) {
+    box.innerHTML = '<em>No active data.</em>';
+    return;
+  }
+  const values = active.map((p) => p.value);
+  const zMin = Math.min(...values);
+  const zMax = Math.max(...values);
+  const sumW = weights.reduce((a, b) => a + b, 0);
+  const sumW2 = weights.reduce((a, b) => a + b * b, 0);
+  const nEff = sumW2 > 0 ? (sumW * sumW) / sumW2 : active.length;
+  const mean = sumW > 0
+    ? active.reduce((acc, p, i) => acc + p.value * weights[i], 0) / sumW
+    : active.reduce((acc, p) => acc + p.value, 0) / active.length;
+  box.innerHTML = `<b>Active samples:</b> ${active.length} | <b>z range:</b> ${zMin.toFixed(3)} to ${zMax.toFixed(3)} | ` +
+    `<b>weights:</b> ${usesWeights ? 'decluster ON' : 'uniform'} | ` +
+    `<b>weighted mean:</b> ${mean.toFixed(3)} | <b>n<sub>eff</sub>:</b> ${nEff.toFixed(2)} | ` +
+    `<b>cutoffs:</b> ${ikCutoffs.length} (${ikCutoffs.length ? `${ikCutoffs.length + 1} classes` : 'none'})`;
+}
+
+function setEstimationMode(mode) {
+  estimationMode = mode === 'ik' ? 'ik' : 'conventional';
+  const conv = estimationMode === 'conventional';
+
+  const tabConventional = document.getElementById('tabConventional');
+  const tabIK = document.getElementById('tabIK');
+  if (tabConventional) tabConventional.classList.toggle('active', conv);
+  if (tabIK) tabIK.classList.toggle('active', !conv);
+
+  const modeNote = document.getElementById('estimationModeNote');
+  if (modeNote) {
+    modeNote.textContent = conv
+      ? 'Conventional mode: estimate Z* directly (or a single indicator transform) with Kriging, IDW, or NN.'
+      : 'Multiple IK mode: build local CDF from several indicator cutoffs using a shared variogram shape.';
+  }
+
+  const indicatorSection = document.getElementById('indicatorSection');
+  if (indicatorSection) indicatorSection.style.display = conv ? '' : 'none';
+  const ikSection = document.getElementById('ikSection');
+  if (ikSection) ikSection.style.display = conv ? 'none' : '';
+  const ikResultsBlock = document.getElementById('ikResultsBlock');
+  if (ikResultsBlock) ikResultsBlock.style.display = conv ? 'none' : '';
+  const ikMethodHint = document.getElementById('ikMethodHint');
+  if (ikMethodHint) ikMethodHint.style.display = conv ? 'none' : '';
+
+  const btnCompareAll = document.getElementById('btnCompareAll');
+  if (btnCompareAll) btnCompareAll.style.display = conv ? '' : 'none';
+  const btnCompute = document.getElementById('btnCompute');
+  if (btnCompute) btnCompute.textContent = conv ? 'Calculate' : 'Calculate IK';
+
+  const krigingMaps = document.getElementById('krigingMapSection');
+  const otherMethodMaps = document.getElementById('otherMethodMapSection');
+  const ikMapSection = document.getElementById('ikMapSection');
+  if (krigingMaps) krigingMaps.style.display = conv ? '' : 'none';
+  if (otherMethodMaps) otherMethodMaps.style.display = conv ? '' : 'none';
+  if (ikMapSection) ikMapSection.style.display = conv ? 'none' : '';
+
+  const estMethod = document.getElementById('estMethod');
+  if (estMethod) {
+    if (!conv) estMethod.value = 'kriging';
+    estMethod.disabled = !conv;
+  }
+  const idwOpts = document.getElementById('idwOpts');
+  if (idwOpts) idwOpts.style.display = conv && document.getElementById('estMethod').value === 'idw' ? '' : 'none';
+
+  if (!conv) {
+    const useIndicatorEl = document.getElementById('useIndicator');
+    if (useIndicatorEl) useIndicatorEl.checked = false;
+    const indicatorOpts = document.getElementById('indicatorOpts');
+    if (indicatorOpts) indicatorOpts.style.display = 'none';
+    updateIndicatorStats();
+    ['showEstMap', 'showVarMap', 'showSlopeMap', 'showLagrangeMap', 'showIDWMap', 'showNNMap'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.checked = false;
+    });
+  } else {
+    ['showIKMeanMap', 'showIKProbMap'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.checked = false;
+    });
+  }
+
+  clearResults();
+  refreshMapLegend();
+  draw();
+}
+
+function resetIKCutoffsToDeciles() {
+  const deciles = buildIKDecileCutoffs();
+  setIKCutoffs(deciles, { updateInput: true, forceProbCutoff: true });
+}
+
 
 
 
@@ -1173,10 +1525,10 @@ function init() {
 
   const w = canvas.width, h = canvas.height;
   points = [
-    {id:1, x:w*0.25, y:h*0.75, value:1.2, active:true},
-    {id:2, x:w*0.75, y:h*0.70, value:2.5, active:true},
-    {id:3, x:w*0.30, y:h*0.20, value:3.0, active:true},
-    {id:4, x:w*0.80, y:h*0.20, value:2.0, active:true}
+    {id:1, x:w*0.25, y:h*0.75, value:1.2, weight:1, active:true},
+    {id:2, x:w*0.75, y:h*0.70, value:2.5, weight:1, active:true},
+    {id:3, x:w*0.30, y:h*0.20, value:3.0, weight:1, active:true},
+    {id:4, x:w*0.80, y:h*0.20, value:2.0, weight:1, active:true}
   ];
   nextId = 5;
   target = {x: w/2, y: h/2};
@@ -1184,9 +1536,12 @@ function init() {
   updateAspectTransform();
 
   setupEvents();
+  resetIKCutoffsToDeciles();
+  setEstimationMode('conventional');
   updatePointsTable();
   updateTargetInfo();
   updateIndicatorStats();
+  updateIKDataSummary();
   updateModelSummary();
   refreshMapLegend();
   draw();
@@ -1207,6 +1562,7 @@ function init() {
           x: worldX(p.x),
           y: worldY(p.y),
           value: p.value,
+          weight: getPointWeight(p),
           active: p.active
         })),
         bounds: { dataMinX, dataMaxX, dataMinY, dataMaxY },
@@ -1234,7 +1590,12 @@ function init() {
           gridSpacingX: document.getElementById('gridSpacingX').value,
           gridSpacingY: document.getElementById('gridSpacingY').value,
           gridNx: document.getElementById('gridNx').value,
-          gridNy: document.getElementById('gridNy').value
+          gridNy: document.getElementById('gridNy').value,
+          estimationMode,
+          ikCutoffs: ikCutoffs.slice(),
+          ikUseDeclusterWeights: document.getElementById('ikUseDeclusterWeights')?.checked,
+          ikScaleSillByProb: document.getElementById('ikScaleSillByProb')?.checked,
+          ikProbCutoff: document.getElementById('ikProbCutoff')?.value
         }
       }),
       applyState: (data) => {
@@ -1272,6 +1633,7 @@ function init() {
           x: internalX(Number(p.x)),
           y: internalY(Number(p.y)),
           value: Number.isFinite(Number(p.value)) ? Number(p.value) : 0,
+          weight: Number.isFinite(Number(p.weight)) && Number(p.weight) > 0 ? Number(p.weight) : 1,
           active: p.active !== false
         }));
         nextId = Math.max(0, ...points.map((p) => p.id)) + 1;
@@ -1286,7 +1648,10 @@ function init() {
         updateGridInfo();
         updateTargetInfo();
         updateIndicatorStats();
-        clearResults();
+        if (Array.isArray(data.controls?.ikCutoffs)) setIKCutoffs(data.controls.ikCutoffs, { updateInput: true, forceProbCutoff: false });
+        else resetIKCutoffsToDeciles();
+        setEstimationMode(data.controls?.estimationMode === 'ik' ? 'ik' : 'conventional');
+        updateIKDataSummary();
         updatePointsTable();
         applyLearningModeEstimation();
         draw();
@@ -1302,8 +1667,8 @@ function init() {
 function setupEvents() {
   document.getElementById('btnAddPoint').onclick = () => {
     const w = canvas.width, h = canvas.height;
-    points.push({id: nextId++, x: w*(0.2+Math.random()*0.6), y: h*(0.2+Math.random()*0.6), value: 1+Math.random()*3, active: true});
-    updatePointsTable(); updateIndicatorStats(); draw();
+    points.push({id: nextId++, x: w*(0.2+Math.random()*0.6), y: h*(0.2+Math.random()*0.6), value: 1+Math.random()*3, weight: 1, active: true});
+    updatePointsTable(); updateIndicatorStats(); updateIKDataSummary(); draw();
   };
   document.getElementById('btnCompute').onclick = () => compute();
   document.getElementById('btnCompareAll').onclick = () => compareAllMethods();
@@ -1312,6 +1677,36 @@ function setupEvents() {
   document.getElementById('btnResetView').onclick = () => { viewScale=1; viewOffsetX=0; viewOffsetY=0; draw(); };
   document.getElementById('btnResetPoints').onclick = () => init();
   document.getElementById('learningMode').onchange = () => applyLearningModeEstimation();
+  document.getElementById('tabConventional').onclick = () => setEstimationMode('conventional');
+  document.getElementById('tabIK').onclick = () => setEstimationMode('ik');
+  document.getElementById('btnIKUseDeciles').onclick = () => resetIKCutoffsToDeciles();
+  document.getElementById('btnIKApplyCutoffs').onclick = () => {
+    const parsed = parseIKCutoffsText(document.getElementById('ikCutoffInput').value);
+    if (!parsed.length) { alert('Enter at least one valid cutoff.'); return; }
+    setIKCutoffs(parsed, { updateInput: true });
+  };
+  document.getElementById('btnIKAddCutoff').onclick = () => {
+    const val = Number(document.getElementById('ikAddCutoff').value);
+    if (!isFinite(val)) return;
+    ikCutoffs.push(val);
+    setIKCutoffs(ikCutoffs, { updateInput: true });
+    document.getElementById('ikAddCutoff').value = '';
+  };
+  document.getElementById('ikUseDeclusterWeights').onchange = () => {
+    updateIKDataSummary();
+  };
+  document.getElementById('ikScaleSillByProb').onchange = () => {
+    if (isIKMode() && target && points.some((p) => p.active) && ikCutoffs.length) {
+      computeMultipleIK();
+    }
+  };
+  document.getElementById('ikProbCutoff').onchange = () => {
+    if (document.getElementById('showIKProbMap').checked && isIKMode()) {
+      computeIKMaps();
+      refreshMapLegend();
+      draw();
+    }
+  };
   document.getElementById('btnLoadVariogramModel').onclick = () => {
     const input = document.getElementById('variogramModelFileInput');
     if (input) input.click();
@@ -1389,15 +1784,32 @@ function setupEvents() {
   document.getElementById('showPointLabels').onchange = () => draw();
   
   ['showEstMap','showVarMap','showSlopeMap','showLagrangeMap'].forEach(id => {
-    document.getElementById(id).onchange = () => { if (document.getElementById(id).checked) computeKrigingMaps(); refreshMapLegend(); draw(); };
+    document.getElementById(id).onchange = () => {
+      if (document.getElementById(id).checked && !isIKMode()) computeKrigingMaps();
+      refreshMapLegend();
+      draw();
+    };
   });
-  document.getElementById('showIDWMap').onchange = () => { if (document.getElementById('showIDWMap').checked) computeIDWMap(); refreshMapLegend(); draw(); };
-  document.getElementById('showNNMap').onchange = () => { if (document.getElementById('showNNMap').checked) computeNNMap(); refreshMapLegend(); draw(); };
+  document.getElementById('showIDWMap').onchange = () => { if (document.getElementById('showIDWMap').checked && !isIKMode()) computeIDWMap(); refreshMapLegend(); draw(); };
+  document.getElementById('showNNMap').onchange = () => { if (document.getElementById('showNNMap').checked && !isIKMode()) computeNNMap(); refreshMapLegend(); draw(); };
+  document.getElementById('showIKMeanMap').onchange = () => {
+    if (document.getElementById('showIKMeanMap').checked && isIKMode()) computeIKMaps();
+    refreshMapLegend();
+    draw();
+  };
+  document.getElementById('showIKProbMap').onchange = () => {
+    if (document.getElementById('showIKProbMap').checked && isIKMode()) computeIKMaps();
+    refreshMapLegend();
+    draw();
+  };
   
   document.getElementById('btnUpdateTarget').onclick = () => {
     const tx = parseFloat(document.getElementById('targetX').value), ty = parseFloat(document.getElementById('targetY').value);
     if (!isFinite(tx) || !isFinite(ty)) return;
-    target = {x: internalX(tx), y: internalY(ty)}; updateTargetInfo(); draw();
+    target = {x: internalX(tx), y: internalY(ty)};
+    updateTargetInfo();
+    if (isIKMode()) compute();
+    else draw();
   };
   
   document.getElementById('lockTarget').onchange = (e) => {
@@ -1422,7 +1834,10 @@ function setupEvents() {
     }
     // Update target only when it is not locked
     if (!document.getElementById('lockTarget').checked) {
-      target = {x, y}; updateTargetInfo(); draw();
+      target = {x, y};
+      updateTargetInfo();
+      if (isIKMode() && ikCutoffs.length) compute();
+      else draw();
     }
   };
   canvas.onmousemove = (e) => {
@@ -1463,13 +1878,29 @@ function parseCSVHeaders(text) {
     const sel = document.getElementById(id); sel.innerHTML = '';
     csvHeaders.forEach((h, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = h || `Col ${i+1}`; sel.appendChild(opt); });
   });
+  const selW = document.getElementById('csvColW');
+  if (selW) {
+    selW.innerHTML = '';
+    const noneOpt = document.createElement('option');
+    noneOpt.value = '-1';
+    noneOpt.textContent = 'None';
+    selW.appendChild(noneOpt);
+    csvHeaders.forEach((h, i) => {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = h || `Col ${i + 1}`;
+      selW.appendChild(opt);
+    });
+  }
   const lh = csvHeaders.map(h => h.toLowerCase());
   const xIdx = lh.findIndex(h => ['x','easting','longitude','lon'].includes(h));
   const yIdx = lh.findIndex(h => ['y','northing','latitude','lat'].includes(h));
   const zIdx = lh.findIndex(h => ['z','value','grade','var'].includes(h));
+  const wIdx = lh.findIndex(h => ['weight','weights','w','decluster_weight','declustering_weight','wt'].includes(h));
   if (xIdx >= 0) document.getElementById('csvColX').value = xIdx;
   if (yIdx >= 0) document.getElementById('csvColY').value = yIdx;
   if (zIdx >= 0) document.getElementById('csvColZ').value = zIdx;
+  if (wIdx >= 0 && selW) selW.value = wIdx;
   document.getElementById('csvColumnSelector').style.display = 'block';
   document.getElementById('csvStatus').textContent = `${csvHeaders.length} columns found`;
 }
@@ -1479,6 +1910,7 @@ function loadCSVWithSelectedColumns() {
   const idxX = parseInt(document.getElementById('csvColX').value);
   const idxY = parseInt(document.getElementById('csvColY').value);
   const idxZ = parseInt(document.getElementById('csvColZ').value);
+  const idxW = parseInt(document.getElementById('csvColW')?.value ?? '-1', 10);
   const { lines, delim } = csvRawData;
   const newPts = [];
   let minX=Infinity, maxX=-Infinity, minY=Infinity, maxY=-Infinity;
@@ -1486,7 +1918,8 @@ function loadCSVWithSelectedColumns() {
     const parts = lines[i].split(delim);
     const x = parseFloat(parts[idxX]?.replace(',','.')), y = parseFloat(parts[idxY]?.replace(',','.')), z = parseFloat(parts[idxZ]?.replace(',','.'));
     if (!isFinite(x)||!isFinite(y)||!isFinite(z)) continue;
-    newPts.push({x, y, value: z});
+    const w = idxW >= 0 ? parseFloat(parts[idxW]?.replace(',','.')) : 1;
+    newPts.push({x, y, value: z, weight: isFinite(w) && w > 0 ? w : 1});
     minX=Math.min(minX,x); maxX=Math.max(maxX,x); minY=Math.min(minY,y); maxY=Math.max(maxY,y);
   }
   if (newPts.length === 0) { alert('No valid points'); return; }
@@ -1497,6 +1930,7 @@ function loadCSVWithSelectedColumns() {
     x: internalX(p.x),
     y: internalY(p.y),
     value: p.value,
+    weight: p.weight,
     active: true
   }));
   nextId = points.length + 1;
@@ -1509,16 +1943,18 @@ function loadCSVWithSelectedColumns() {
   viewOffsetX = 0;
   viewOffsetY = 0;
 
-  document.getElementById('csvStatus').textContent = `${points.length} points loaded`;
+  const hasWeights = idxW >= 0;
+  document.getElementById('csvStatus').textContent = `${points.length} points loaded${hasWeights ? ' (weights imported)' : ''}`;
   document.getElementById('csvColumnSelector').style.display = 'none';
-  updatePointsTable(); updateTargetInfo(); updateIndicatorStats(); updateGridInfo(); draw();
+  resetIKCutoffsToDeciles();
+  updatePointsTable(); updateTargetInfo(); updateIndicatorStats(); updateIKDataSummary(); updateGridInfo(); draw();
 }
 
 function updatePointsTable() {
   const container = document.getElementById('pointsTableContainer');
   if (points.length === 0) { container.innerHTML = '<p>No points</p>'; return; }
   const useInd = document.getElementById('useIndicator').checked;
-  let html = `<table><tr><th></th><th>ID</th><th>x</th><th>y</th><th>val</th>${useInd?'<th>I</th>':''}<th>λ</th><th></th></tr>`;
+  let html = `<table><tr><th></th><th>ID</th><th>x</th><th>y</th><th>val</th><th>w</th>${useInd?'<th>I</th>':''}<th>λ</th><th></th></tr>`;
   points.forEach((p, i) => {
     const isUsed = !!lastUsedIds[p.id], indVal = useInd ? getPointValue(p) : null;
     html += `<tr class="${isUsed?'used-point':''}">
@@ -1527,6 +1963,7 @@ function updatePointsTable() {
       <td><input type="number" value="${worldX(p.x).toFixed(1)}" style="width:55px" onchange="updatePointX(${i}, this.value)"></td>
       <td><input type="number" value="${worldY(p.y).toFixed(1)}" style="width:55px" onchange="updatePointY(${i}, this.value)"></td>
       <td><input type="number" value="${p.value.toFixed(2)}" style="width:55px" onchange="updatePointValue(${i}, this.value)"></td>
+      <td><input type="number" value="${getPointWeight(p).toFixed(3)}" min="0" step="0.01" style="width:60px" onchange="updatePointWeight(${i}, this.value)"></td>
       ${useInd?`<td style="color:${indVal===1?'green':'red'};font-weight:bold">${indVal}</td>`:''}
       <td>${(lambdaById[p.id]||0).toFixed(3)}</td>
       <td><button onclick="removePoint(${i})">X</button></td></tr>`;
@@ -1534,11 +1971,18 @@ function updatePointsTable() {
   container.innerHTML = html + '</table>';
 }
 
-function togglePoint(i) { points[i].active = !points[i].active; updateIndicatorStats(); draw(); }
+function togglePoint(i) { points[i].active = !points[i].active; updateIndicatorStats(); updateIKDataSummary(); draw(); }
 function updatePointX(i, val) { const v=parseFloat(val); if(isFinite(v)) { points[i].x=internalX(v); draw(); } }
 function updatePointY(i, val) { const v=parseFloat(val); if(isFinite(v)) { points[i].y=internalY(v); draw(); } }
-function updatePointValue(i, val) { const v=parseFloat(val); if(isFinite(v)) { points[i].value=v; updateIndicatorStats(); updatePointsTable(); } }
-function removePoint(i) { points.splice(i,1); updatePointsTable(); updateIndicatorStats(); draw(); }
+function updatePointValue(i, val) { const v=parseFloat(val); if(isFinite(v)) { points[i].value=v; updateIndicatorStats(); updateIKDataSummary(); updatePointsTable(); } }
+function updatePointWeight(i, val) {
+  const v = parseFloat(val);
+  if (isFinite(v) && v > 0) points[i].weight = v;
+  else points[i].weight = 1;
+  updateIKDataSummary();
+  updatePointsTable();
+}
+function removePoint(i) { points.splice(i,1); updatePointsTable(); updateIndicatorStats(); updateIKDataSummary(); draw(); }
 
 function worldX(xInt) {
   if (!canvas || !aspectScale) return dataMinX;
@@ -1697,6 +2141,8 @@ function draw() {
   ctx.setTransform(viewScale,0,0,viewScale,viewOffsetX+axisMargin*viewScale,viewOffsetY+axisMargin*viewScale);
 
   // Maps
+  if (ikProbMapData && document.getElementById('showIKProbMap').checked) drawMap(ikProbMapData);
+  if (ikMeanMapData && document.getElementById('showIKMeanMap').checked) drawMap(ikMeanMapData);
   if (nnMapData && document.getElementById('showNNMap').checked) drawMap(nnMapData);
   if (idwMapData && document.getElementById('showIDWMap').checked) drawMap(idwMapData);
   if (lagrangeMapData && document.getElementById('showLagrangeMap').checked) drawMap(lagrangeMapData);
@@ -2039,7 +2485,13 @@ function refreshMapLegend() {
   if (!legendCtx) return;
   legendCtx.clearRect(0, 0, legendCanvas.width, legendCanvas.height);
   let data=null, label='';
-  if (document.getElementById('showEstMap').checked && estMapData) { data=estMapData; label='Z*'; }
+  if (document.getElementById('showIKMeanMap').checked && ikMeanMapData) { data=ikMeanMapData; label='IK E[Z]'; }
+  else if (document.getElementById('showIKProbMap').checked && ikProbMapData) {
+    const zq = Number(document.getElementById('ikProbCutoff')?.value);
+    label = isFinite(zq) ? `IK P(Z≤${zq.toFixed(2)})` : 'IK P(Z≤zq)';
+    data = ikProbMapData;
+  }
+  else if (document.getElementById('showEstMap').checked && estMapData) { data=estMapData; label='Z*'; }
   else if (document.getElementById('showVarMap').checked && varMapData) { data=varMapData; label='σ²'; }
   else if (document.getElementById('showSlopeMap').checked && slopeMapData) { data=slopeMapData; label='SR'; }
   else if (document.getElementById('showLagrangeMap').checked && lagrangeMapData) { data=lagrangeMapData; label='μ'; }
@@ -2067,6 +2519,10 @@ function compute() {
   if (!target) { alert('Define target'); return; }
   if (!points.filter(p=>p.active).length) { alert('No points'); return; }
   clearResults(false);
+  if (isIKMode()) {
+    computeMultipleIK();
+    return;
+  }
   const method = document.getElementById('estMethod').value;
   if (method === 'kriging') computeKriging();
   else if (method === 'nn') computeNN();
@@ -2172,6 +2628,10 @@ function getNearestPoints(x0, y0) {
 }
 
 function compareAllMethods() {
+  if (isIKMode()) {
+    alert('Method comparison is available in Conventional mode.');
+    return;
+  }
   if (!target || !points.filter(p=>p.active).length) { alert('Need target and points'); return; }
   const pts = getNearestPoints(target.x, target.y);
   if (!pts.length) { alert('No neighbors'); return; }
@@ -2258,6 +2718,421 @@ function computeNNAtTarget(pts, targetNode) {
 
 function computeNNResult(pts) {
   return computeNNAtTarget(pts, target);
+}
+
+function buildIKContext() {
+  const cutoffs = normalizeIKCutoffs(ikCutoffs);
+  const active = points.filter((p) => p.active);
+  if (!cutoffs.length || !active.length) return null;
+  const values = active.map((p) => p.value).filter((v) => isFinite(v));
+  if (!values.length) return null;
+  const zMin = Math.min(...values);
+  const zMax = Math.max(...values);
+  const params = getVarioParams();
+  const krigeType = document.getElementById('krigeType').value;
+  const scaleSill = !!document.getElementById('ikScaleSillByProb')?.checked;
+  const zq = Number(document.getElementById('ikProbCutoff')?.value);
+  const { active: weightedActive, weights } = getIKActiveDataset();
+  const sumW = weights.reduce((a, b) => a + b, 0);
+  const globalCDF = cutoffs.map((c) => {
+    if (!weightedActive.length || !(sumW > 0)) return NaN;
+    let sumLE = 0;
+    for (let i = 0; i < weightedActive.length; i++) {
+      if (weightedActive[i].value <= c) sumLE += weights[i];
+    }
+    return sumLE / sumW;
+  });
+  return { cutoffs, params, krigeType, scaleSill, zMin, zMax, zq: isFinite(zq) ? zq : cutoffs[Math.floor((cutoffs.length - 1) * 0.5)], globalCDF };
+}
+
+function enforceMonotonicCDF(values) {
+  if (!values.length) return [];
+  const cdf = values.map((v) => Math.max(0, Math.min(1, Number(v) || 0)));
+  for (let i = 1; i < cdf.length; i++) cdf[i] = Math.max(cdf[i], cdf[i - 1]);
+  for (let i = cdf.length - 2; i >= 0; i--) cdf[i] = Math.min(cdf[i], cdf[i + 1]);
+  for (let i = 1; i < cdf.length; i++) cdf[i] = Math.max(cdf[i], cdf[i - 1]);
+  return cdf.map((v) => Math.max(0, Math.min(1, v)));
+}
+
+function interpolateCDF(cutoffs, cdf, z, zMin = null, zMax = null) {
+  if (!cutoffs.length || !cdf.length) return NaN;
+  if (!isFinite(z)) return NaN;
+  const lo = isFinite(zMin) ? zMin : cutoffs[0];
+  const hi = isFinite(zMax) ? zMax : cutoffs[cutoffs.length - 1];
+  if (z <= lo) return 0;
+  if (z >= hi) return 1;
+  if (z <= cutoffs[0]) {
+    const denom = Math.max(cutoffs[0] - lo, 1e-12);
+    return Math.max(0, Math.min(1, (cdf[0] / denom) * (z - lo)));
+  }
+  for (let i = 1; i < cutoffs.length; i++) {
+    if (z <= cutoffs[i]) {
+      const z0 = cutoffs[i - 1];
+      const z1 = cutoffs[i];
+      const p0 = cdf[i - 1];
+      const p1 = cdf[i];
+      const t = (z - z0) / Math.max(z1 - z0, 1e-12);
+      return Math.max(0, Math.min(1, p0 + t * (p1 - p0)));
+    }
+  }
+  const last = cdf[cdf.length - 1];
+  const zLast = cutoffs[cutoffs.length - 1];
+  const denom = Math.max(hi - zLast, 1e-12);
+  return Math.max(0, Math.min(1, last + ((1 - last) / denom) * (z - zLast)));
+}
+
+function quantileFromCDF(cutoffs, cdf, p, zMin, zMax) {
+  if (!cutoffs.length || !cdf.length) return NaN;
+  const pp = Math.max(0, Math.min(1, Number(p)));
+  if (pp <= 0) return zMin;
+  if (pp >= 1) return zMax;
+  if (pp <= cdf[0]) {
+    const t = pp / Math.max(cdf[0], 1e-12);
+    return zMin + t * (cutoffs[0] - zMin);
+  }
+  for (let i = 1; i < cdf.length; i++) {
+    if (pp <= cdf[i]) {
+      const p0 = cdf[i - 1];
+      const p1 = cdf[i];
+      const z0 = cutoffs[i - 1];
+      const z1 = cutoffs[i];
+      const t = (pp - p0) / Math.max(p1 - p0, 1e-12);
+      return z0 + t * (z1 - z0);
+    }
+  }
+  const p0 = cdf[cdf.length - 1];
+  const t = (pp - p0) / Math.max(1 - p0, 1e-12);
+  return cutoffs[cutoffs.length - 1] + t * (zMax - cutoffs[cutoffs.length - 1]);
+}
+
+function meanFromCDF(cutoffs, cdf, zMin, zMax) {
+  if (!cutoffs.length || !cdf.length) return NaN;
+  const bounds = [zMin, ...cutoffs, zMax];
+  const masses = [];
+  masses.push(Math.max(0, Math.min(1, cdf[0])));
+  for (let i = 1; i < cdf.length; i++) masses.push(Math.max(0, cdf[i] - cdf[i - 1]));
+  masses.push(Math.max(0, 1 - cdf[cdf.length - 1]));
+  let sum = 0;
+  for (let i = 0; i < masses.length; i++) {
+    const mid = (bounds[i] + bounds[i + 1]) * 0.5;
+    sum += masses[i] * mid;
+  }
+  return sum;
+}
+
+function solveKrigingWeights(pts, targetNode, krigeType, params) {
+  const n = pts.length;
+  const Gamma = [];
+  const Cov = [];
+  const gamma0 = [];
+  const cov0 = [];
+  for (let i = 0; i < n; i++) {
+    Gamma[i] = [];
+    Cov[i] = [];
+    for (let j = 0; j < n; j++) {
+      Gamma[i][j] = gammaAniso(pts[i], pts[j], params);
+      Cov[i][j] = covarianceAniso(pts[i], pts[j], params);
+    }
+    gamma0[i] = gammaAniso(pts[i], targetNode, params);
+    cov0[i] = covarianceAniso(pts[i], targetNode, params);
+  }
+
+  let lambdas = [];
+  let mu = NaN;
+  let sigma2Base = NaN;
+  if (krigeType === 'OK') {
+    const N = n + 1;
+    const K = [];
+    for (let i = 0; i < N; i++) {
+      K[i] = [];
+      for (let j = 0; j < N; j++) {
+        if (i < n && j < n) K[i][j] = Gamma[i][j];
+        else if ((i < n && j === n) || (i === n && j < n)) K[i][j] = 1;
+        else K[i][j] = 0;
+      }
+    }
+    const sol = solveLinearSystem(K, [...gamma0, 1]);
+    lambdas = sol.slice(0, n);
+    mu = sol[n];
+    sigma2Base = lambdas.reduce((s, l, i) => s + l * gamma0[i], 0) + mu;
+  } else {
+    lambdas = solveLinearSystem(Cov, cov0);
+    sigma2Base = params.totalSill - lambdas.reduce((s, l, i) => s + l * cov0[i], 0);
+  }
+  return { lambdas, mu, Gamma, Cov, gamma0, cov0, sigma2Base };
+}
+
+function computeMultipleIKAtNode(targetNode, context = null) {
+  const ctxIK = context || buildIKContext();
+  if (!ctxIK) return null;
+  const pts = getNearestPoints(targetNode.x, targetNode.y);
+  if (!pts.length) return null;
+  const wres = solveKrigingWeights(pts, targetNode, ctxIK.krigeType, ctxIK.params);
+  const sumLambda = wres.lambdas.reduce((a, b) => a + b, 0);
+  const rawCDF = [];
+  const localSills = [];
+  for (let k = 0; k < ctxIK.cutoffs.length; k++) {
+    const cutoff = ctxIK.cutoffs[k];
+    const pk = Math.max(0, Math.min(1, Number(ctxIK.globalCDF[k]) || 0));
+    let pred = 0;
+    if (ctxIK.krigeType === 'OK') {
+      pred = wres.lambdas.reduce((s, l, i) => s + l * (pts[i].value <= cutoff ? 1 : 0), 0);
+    } else {
+      pred = pk + wres.lambdas.reduce((s, l, i) => s + l * ((pts[i].value <= cutoff ? 1 : 0) - pk), 0);
+    }
+    rawCDF.push(pred);
+    localSills.push(ctxIK.scaleSill ? pk * (1 - pk) : ctxIK.params.totalSill);
+  }
+  const cdf = enforceMonotonicCDF(rawCDF);
+  const localMean = meanFromCDF(ctxIK.cutoffs, cdf, ctxIK.zMin, ctxIK.zMax);
+  const q10 = quantileFromCDF(ctxIK.cutoffs, cdf, 0.10, ctxIK.zMin, ctxIK.zMax);
+  const q50 = quantileFromCDF(ctxIK.cutoffs, cdf, 0.50, ctxIK.zMin, ctxIK.zMax);
+  const q90 = quantileFromCDF(ctxIK.cutoffs, cdf, 0.90, ctxIK.zMin, ctxIK.zMax);
+  const probLE = interpolateCDF(ctxIK.cutoffs, cdf, ctxIK.zq, ctxIK.zMin, ctxIK.zMax);
+  const baseSill = Math.max(ctxIK.params.totalSill, 1e-12);
+  const sigma2ByCutoff = localSills.map((s) => Math.max(0, (wres.sigma2Base * s) / baseSill));
+  return {
+    targetNode,
+    pts,
+    lambdas: wres.lambdas,
+    sumLambda,
+    mu: wres.mu,
+    Cov: wres.Cov,
+    cutoffs: ctxIK.cutoffs.slice(),
+    globalCDF: ctxIK.globalCDF.slice(),
+    rawCDF,
+    cdf,
+    localSills,
+    sigma2ByCutoff,
+    localMean,
+    q10,
+    q50,
+    q90,
+    zq: ctxIK.zq,
+    probLE,
+    probGT: isFinite(probLE) ? 1 - probLE : NaN
+  };
+}
+
+function drawIKCDF(result) {
+  const canvasIK = document.getElementById('ikCdfCanvas');
+  if (!canvasIK) return;
+  const c = canvasIK.getContext('2d');
+  const w = canvasIK.width;
+  const h = canvasIK.height;
+  c.clearRect(0, 0, w, h);
+  if (!result || !result.cutoffs.length) return;
+
+  const margin = { t: 24, r: 16, b: 36, l: 48 };
+  const pw = w - margin.l - margin.r;
+  const ph = h - margin.t - margin.b;
+  const xMin = result.cutoffs[0];
+  const xMax = result.cutoffs[result.cutoffs.length - 1];
+  const xr = Math.max(xMax - xMin, 1e-9);
+  const toX = (v) => margin.l + ((v - xMin) / xr) * pw;
+  const toY = (v) => margin.t + (1 - Math.max(0, Math.min(1, v))) * ph;
+
+  c.strokeStyle = '#334155';
+  c.lineWidth = 1;
+  c.beginPath();
+  c.moveTo(margin.l, margin.t);
+  c.lineTo(margin.l, h - margin.b);
+  c.lineTo(w - margin.r, h - margin.b);
+  c.stroke();
+
+  c.strokeStyle = '#cbd5e1';
+  c.setLineDash([4, 4]);
+  for (let i = 1; i < 10; i++) {
+    const y = toY(i / 10);
+    c.beginPath();
+    c.moveTo(margin.l, y);
+    c.lineTo(w - margin.r, y);
+    c.stroke();
+  }
+  c.setLineDash([]);
+
+  c.strokeStyle = '#64748b';
+  c.lineWidth = 1.5;
+  c.setLineDash([6, 4]);
+  c.beginPath();
+  result.cutoffs.forEach((z, i) => {
+    const x = toX(z);
+    const y = toY(result.globalCDF[i]);
+    if (i === 0) c.moveTo(x, y);
+    else c.lineTo(x, y);
+  });
+  c.stroke();
+  c.setLineDash([]);
+
+  c.strokeStyle = '#0f766e';
+  c.lineWidth = 2.2;
+  c.beginPath();
+  result.cutoffs.forEach((z, i) => {
+    const x = toX(z);
+    const y = toY(result.cdf[i]);
+    if (i === 0) c.moveTo(x, y);
+    else c.lineTo(x, y);
+  });
+  c.stroke();
+
+  c.fillStyle = '#0f766e';
+  result.cutoffs.forEach((z, i) => {
+    c.beginPath();
+    c.arc(toX(z), toY(result.cdf[i]), 3, 0, Math.PI * 2);
+    c.fill();
+  });
+
+  if (isFinite(result.zq)) {
+    c.strokeStyle = '#b45309';
+    c.setLineDash([3, 3]);
+    const xq = toX(Math.max(xMin, Math.min(xMax, result.zq)));
+    c.beginPath();
+    c.moveTo(xq, margin.t);
+    c.lineTo(xq, h - margin.b);
+    c.stroke();
+    c.setLineDash([]);
+  }
+
+  c.fillStyle = '#111827';
+  c.font = '12px Arial';
+  c.textAlign = 'center';
+  c.fillText('Local CDF from Multiple IK', w / 2, 14);
+  c.font = '11px Arial';
+  c.fillText('cutoff z', w / 2, h - 8);
+  c.save();
+  c.translate(12, h / 2);
+  c.rotate(-Math.PI / 2);
+  c.fillText('P(Z ≤ z)', 0, 0);
+  c.restore();
+}
+
+function renderIKResults(result) {
+  const summary = document.getElementById('ikSummary');
+  const tableWrap = document.getElementById('ikCutoffTable');
+  if (!summary || !tableWrap) return;
+  if (!result) {
+    summary.innerHTML = '<em>No IK results.</em>';
+    tableWrap.innerHTML = '';
+    drawIKCDF(null);
+    return;
+  }
+  summary.innerHTML = `<p><b>Target:</b> (${worldX(target.x).toFixed(2)}, ${worldY(target.y).toFixed(2)}) | ` +
+    `<b>neighbors:</b> ${result.pts.length} | <b>Σλ:</b> ${result.sumLambda.toFixed(4)}${isFinite(result.mu) ? ` | <b>μ:</b> ${result.mu.toFixed(4)}` : ''}</p>` +
+    `<p><b>E[Z]</b>≈${result.localMean.toFixed(4)} | <b>P10</b>=${result.q10.toFixed(4)} | <b>P50</b>=${result.q50.toFixed(4)} | <b>P90</b>=${result.q90.toFixed(4)}</p>` +
+    `<p><b>Query:</b> P(Z ≤ ${result.zq.toFixed(4)})=${isFinite(result.probLE) ? result.probLE.toFixed(4) : 'n/a'} | ` +
+    `P(Z > ${result.zq.toFixed(4)})=${isFinite(result.probGT) ? result.probGT.toFixed(4) : 'n/a'}</p>`;
+  const summaryText = document.getElementById('summaryText');
+  if (summaryText) {
+    summaryText.innerHTML = `<b>Multiple IK</b><br>E[Z]≈${result.localMean.toFixed(4)} | ` +
+      `P(Z≤${result.zq.toFixed(4)})=${isFinite(result.probLE) ? result.probLE.toFixed(4) : 'n/a'}`;
+  }
+  const resultSummary = document.getElementById('resultSummary');
+  if (resultSummary) {
+    resultSummary.innerHTML = `IK E[Z]≈${result.localMean.toFixed(4)} | P(Z≤${result.zq.toFixed(4)})=${isFinite(result.probLE) ? result.probLE.toFixed(4) : 'n/a'}`;
+  }
+
+  let html = '<table><thead><tr><th>Cutoff</th><th>Global F(z)</th><th>Local F(z)</th><th>P(Z>z)</th><th>Indicator sill</th><th>σ² (scaled)</th></tr></thead><tbody>';
+  for (let i = 0; i < result.cutoffs.length; i++) {
+    html += `<tr><td>${result.cutoffs[i].toFixed(4)}</td><td>${result.globalCDF[i].toFixed(4)}</td>` +
+      `<td>${result.cdf[i].toFixed(4)}</td><td>${(1 - result.cdf[i]).toFixed(4)}</td>` +
+      `<td>${result.localSills[i].toFixed(4)}</td><td>${result.sigma2ByCutoff[i].toFixed(4)}</td></tr>`;
+  }
+  html += '</tbody></table>';
+  tableWrap.innerHTML = html;
+  drawIKCDF(result);
+}
+
+function computeMultipleIK() {
+  if (!ikCutoffs.length) resetIKCutoffsToDeciles();
+  const context = buildIKContext();
+  if (!context) { alert('Multiple IK requires active samples and valid cutoffs.'); return; }
+  let result = null;
+  try {
+    result = computeMultipleIKAtNode(target, context);
+  } catch (err) {
+    alert(`IK computation failed: ${err.message}`);
+    return;
+  }
+  if (!result) { alert('No neighbors for IK.'); return; }
+  ikLastResult = result;
+  lambdaById = {};
+  maxLambdaAbs = 0;
+  lastUsedIds = {};
+  result.pts.forEach((p, i) => {
+    lambdaById[p.id] = result.lambdas[i];
+    maxLambdaAbs = Math.max(maxLambdaAbs, Math.abs(result.lambdas[i]));
+    lastUsedIds[p.id] = true;
+  });
+  renderIKResults(result);
+  updateNeighborhoodDiagnostics('Multiple IK', result.pts, { lambdas: result.lambdas, sigma2: NaN, mu: result.mu }, result.Cov);
+  if (document.getElementById('showIKMeanMap').checked || document.getElementById('showIKProbMap').checked) {
+    computeIKMaps(context);
+  }
+  refreshMapLegend();
+  updatePointsTable();
+  draw();
+  drawHistogramComparison();
+}
+
+function computeIKMaps(context = null) {
+  const showMean = document.getElementById('showIKMeanMap').checked;
+  const showProb = document.getElementById('showIKProbMap').checked;
+  if (!showMean && !showProb) {
+    ikMeanMapData = null;
+    ikProbMapData = null;
+    return;
+  }
+  const ctxIK = context || buildIKContext();
+  if (!ctxIK) return;
+
+  const originX = parseFloat(document.getElementById('gridOriginX').value) || 0;
+  const originY = parseFloat(document.getElementById('gridOriginY').value) || 0;
+  const spacingX = parseFloat(document.getElementById('gridSpacingX').value) || 20;
+  const spacingY = parseFloat(document.getElementById('gridSpacingY').value) || 20;
+  const nx = parseInt(document.getElementById('gridNx').value, 10) || 30;
+  const ny = parseInt(document.getElementById('gridNy').value, 10) || 30;
+
+  const meanVals = [];
+  const probVals = [];
+  for (let i = 0; i < nx; i++) {
+    meanVals[i] = [];
+    probVals[i] = [];
+    for (let j = 0; j < ny; j++) {
+      meanVals[i][j] = NaN;
+      probVals[i][j] = NaN;
+    }
+  }
+
+  let mMin = Infinity, mMax = -Infinity, pMin = Infinity, pMax = -Infinity;
+  for (let i = 0; i < nx; i++) for (let j = 0; j < ny; j++) {
+    const xWorld = originX + (i + 0.5) * spacingX;
+    const yWorld = originY + (j + 0.5) * spacingY;
+    const node = { x: internalX(xWorld), y: internalY(yWorld) };
+    try {
+      const res = computeMultipleIKAtNode(node, ctxIK);
+      if (!res) continue;
+      if (showMean && isFinite(res.localMean)) {
+        meanVals[i][j] = res.localMean;
+        mMin = Math.min(mMin, res.localMean);
+        mMax = Math.max(mMax, res.localMean);
+      }
+      if (showProb) {
+        const pLe = interpolateCDF(res.cutoffs, res.cdf, ctxIK.zq, ctxIK.zMin, ctxIK.zMax);
+        if (isFinite(pLe)) {
+          probVals[i][j] = pLe;
+          pMin = Math.min(pMin, pLe);
+          pMax = Math.max(pMax, pLe);
+        }
+      }
+    } catch (_) {}
+  }
+
+  ikMeanMapData = showMean && isFinite(mMin)
+    ? { nx, ny, originX, originY, spacingX, spacingY, values: meanVals, min: mMin, max: mMax }
+    : null;
+  ikProbMapData = showProb && isFinite(pMin)
+    ? { nx, ny, originX, originY, spacingX, spacingY, values: probVals, min: pMin, max: pMax }
+    : null;
 }
 
 function displayMethodComparison(results, idwPower) {
@@ -2546,6 +3421,10 @@ function drawCVQQ(rows) {
 }
 
 function runCrossValidation() {
+  if (isIKMode()) {
+    alert('Cross-validation in this lab is available for Conventional estimation mode.');
+    return;
+  }
   const active = points.filter((p) => p.active);
   if (active.length < 3) {
     alert('At least 3 active points are required for cross-validation.');
@@ -2649,6 +3528,7 @@ function runCrossValidation() {
 
 // ============ MAP COMPUTATION ============
 function computeKrigingMaps() {
+  if (isIKMode()) return;
   const params = getVarioParams();
   const krigeType = document.getElementById('krigeType').value;
   const meanSK = parseFloat(document.getElementById('meanSK').value);
@@ -2725,6 +3605,7 @@ function computeKrigingMaps() {
 }
 
 function computeIDWMap() {
+  if (isIKMode()) return;
   const power = parseFloat(document.getElementById('idwPower').value)||2;
   const originX = parseFloat(document.getElementById('gridOriginX').value) || 0;
   const originY = parseFloat(document.getElementById('gridOriginY').value) || 0;
@@ -2753,6 +3634,7 @@ function computeIDWMap() {
 }
 
 function computeNNMap() {
+  if (isIKMode()) return;
   const originX = parseFloat(document.getElementById('gridOriginX').value) || 0;
   const originY = parseFloat(document.getElementById('gridOriginY').value) || 0;
   const spacingX = parseFloat(document.getElementById('gridSpacingX').value) || 20;
@@ -2790,7 +3672,8 @@ function drawHistogramComparison() {
 
 function getGridEstimates() {
   let m=null;
-  if(document.getElementById('showEstMap').checked&&estMapData)m=estMapData;
+  if(document.getElementById('showIKMeanMap').checked&&ikMeanMapData)m=ikMeanMapData;
+  else if(document.getElementById('showEstMap').checked&&estMapData)m=estMapData;
   else if(document.getElementById('showIDWMap').checked&&idwMapData)m=idwMapData;
   else if(document.getElementById('showNNMap').checked&&nnMapData)m=nnMapData;
   if(!m)return[];
@@ -3373,8 +4256,16 @@ function displayKrigingResults(pts, lambdas, zstar, sigma2, sr, mu, krigeType, m
 }
 
 function clearResults(resetMaps=true) {
-  ['summaryText','resultSummary','weights','weightsProps','matrixH','matrixH0','matrixGamma','vectorGamma0','matrixCov','vectorCov0','systemGamma','systemCov','inverseGamma','inverseCov','estimateCalc','errorVariance','errorVarianceDecomp','estimatorVariance','slopeDefinition','slopeNumerator','slopeDenominator','slopeResult','variogramPairs'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML='';});
-  if (resetMaps) { lambdaById={}; maxLambdaAbs=0; lastUsedIds={}; estMapData=varMapData=slopeMapData=lagrangeMapData=idwMapData=nnMapData=null; updatePointsTable(); refreshMapLegend(); draw(); }
+  ['summaryText','resultSummary','weights','weightsProps','matrixH','matrixH0','matrixGamma','vectorGamma0','matrixCov','vectorCov0','systemGamma','systemCov','inverseGamma','inverseCov','estimateCalc','errorVariance','errorVarianceDecomp','estimatorVariance','slopeDefinition','slopeNumerator','slopeDenominator','slopeResult','variogramPairs','ikSummary','ikCutoffTable'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML='';});
+  drawIKCDF(null);
+  ikLastResult = null;
+  if (resetMaps) {
+    lambdaById={}; maxLambdaAbs=0; lastUsedIds={};
+    estMapData=varMapData=slopeMapData=lagrangeMapData=idwMapData=nnMapData=null;
+    ikMeanMapData = null;
+    ikProbMapData = null;
+    updatePointsTable(); refreshMapLegend(); draw();
+  }
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
