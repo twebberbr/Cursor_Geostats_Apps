@@ -763,6 +763,7 @@
       Ellipse follows anisotropy angle from variogram model
     </div>
   </div>
+  <label><input type="checkbox" id="showTargetEllipses" checked> Show target/search ellipses</label>
   <div id="resultSummary"></div>
 
   <div class="advanced-section">
@@ -983,7 +984,9 @@ function applyVariogramModelToEstimation(payload) {
   draw();
 
   const source = payload.sourceLab || 'unknown source';
-  setVariogramModelStatus(`Variogram model loaded from ${source}.`);
+  const mode = payload.meta && payload.meta.normalizationMode;
+  const modeText = mode === 'normalized_by_variance' ? ' (normalized by variance)' : '';
+  setVariogramModelStatus(`Variogram model loaded from ${source}${modeText}.`);
 }
 
 // Gamma function for single structure
@@ -1223,6 +1226,7 @@ function init() {
           anisoAngle: document.getElementById('anisoAngle').value,
           maxNeighbors: document.getElementById('maxNeighbors').value,
           useSearchRadius: document.getElementById('useSearchRadius').checked,
+          showTargetEllipses: document.getElementById('showTargetEllipses').checked,
           searchRadiusMajor: document.getElementById('searchRadiusMajor').value,
           searchRadiusMinor: document.getElementById('searchRadiusMinor').value,
           gridOriginX: document.getElementById('gridOriginX').value,
@@ -1376,6 +1380,7 @@ function setupEvents() {
   document.getElementById('useOctantSearch').onchange = () => draw();
   document.getElementById('maxPerOctant').onchange = () => draw();
   document.getElementById('minNeighbors').onchange = () => draw();
+  document.getElementById('showTargetEllipses').onchange = () => draw();
   const searchMajorEl = document.getElementById('searchRadiusMajor');
   const searchMinorEl = document.getElementById('searchRadiusMinor');
   if (searchMajorEl) searchMajorEl.onchange = () => draw();
@@ -1671,6 +1676,7 @@ function drawAxes() {
 
 function draw() {
   const axisMargin = 40;
+  const showTargetEllipses = document.getElementById('showTargetEllipses') ? document.getElementById('showTargetEllipses').checked : true;
   
   ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -1730,26 +1736,8 @@ function draw() {
     }
   }
 
-  // Range ellipses for each structure
-  if (target) {
-    const params = getVarioParams();
-    const colors = ['rgba(255,0,0,0.6)', 'rgba(0,0,255,0.6)'];
-    params.structures.forEach((s, idx) => {
-      if (s.range > 0) {
-        const rxInt = Math.abs(internalX(worldX(target.x) + s.range) - target.x);
-        ctx.strokeStyle = colors[idx] || 'rgba(128,0,128,0.6)';
-        ctx.lineWidth = 2/viewScale;
-        ctx.setLineDash([5/viewScale, 5/viewScale]);
-        ctx.beginPath();
-        ctx.ellipse(target.x, target.y, rxInt, rxInt/params.anisoRatio, params.anisoAngle*Math.PI/180, 0, Math.PI*2);
-        ctx.stroke();
-        ctx.setLineDash([]);
-      }
-    });
-  }
-
   // Range ellipses for variogram structures (centered on target)
-  if (target) {
+  if (target && showTargetEllipses) {
     const params = getVarioParams();
     
     // Convert from geographic convention (0°=N-S, clockwise) to canvas rotation
@@ -1835,7 +1823,7 @@ function draw() {
   }
 
   // Search ellipse (green)
-  if (target && document.getElementById('useSearchRadius').checked) {
+  if (target && showTargetEllipses && document.getElementById('useSearchRadius').checked) {
     const searchMajorEl = document.getElementById('searchRadiusMajor');
     const searchMinorEl = document.getElementById('searchRadiusMinor');
     const radiusMajor = searchMajorEl ? parseFloat(searchMajorEl.value) : 50;
@@ -1933,10 +1921,11 @@ function draw() {
   // Ellipse legend (top right corner)
   if (target) {
     const params = getVarioParams();
-    const hasStructures = params.structures.length > 0;
-    const hasSearch = document.getElementById('useSearchRadius').checked;
+    const showTarget = document.getElementById('showTargetEllipses') ? document.getElementById('showTargetEllipses').checked : true;
+    const hasStructures = showTarget && params.structures.length > 0;
+    const hasSearch = showTarget && document.getElementById('useSearchRadius').checked;
     
-    if (hasStructures || hasSearch) {
+    if (showTarget && (hasStructures || hasSearch)) {
       const legendX = canvas.width / window.devicePixelRatio - 10;
       const legendY = 10;
       let yOffset = legendY;

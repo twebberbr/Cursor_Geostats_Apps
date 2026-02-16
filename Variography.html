@@ -3207,21 +3207,23 @@ function getVariogramModelExportPayload() {
   const modelType = document.getElementById('modelType').value || 'spherical';
   const normalizedView = !!document.getElementById('normalizeCheck')?.checked;
 
-  let nugget = parseFloat(document.getElementById('modelNugget').value);
-  let c1 = parseFloat(document.getElementById('modelC1').value);
-  let c2 = parseFloat(document.getElementById('modelC2').value);
-
-  if (normalizedView && unnormalizedModelParams) {
-    if (isFinite(unnormalizedModelParams.nugget)) nugget = unnormalizedModelParams.nugget;
-    if (isFinite(unnormalizedModelParams.c1)) c1 = unnormalizedModelParams.c1;
-    if (isFinite(unnormalizedModelParams.c2)) c2 = unnormalizedModelParams.c2;
-  }
+  const nugget = parseFloat(document.getElementById('modelNugget').value);
+  const c1 = parseFloat(document.getElementById('modelC1').value);
+  const c2 = parseFloat(document.getElementById('modelC2').value);
 
   const range1 = parseFloat(document.getElementById('modelRange1').value);
   const rangeOrtho1 = parseFloat(document.getElementById('modelRangeOrtho1').value);
   const range2 = parseFloat(document.getElementById('modelRange2').value);
   const rangeOrtho2 = parseFloat(document.getElementById('modelRangeOrtho2').value);
   const anisotropyAngle = parseFloat(document.getElementById('directionAngle').value);
+  const estimator = document.getElementById('variogramEstimator')?.value || 'classical';
+
+  let dataVariance = null;
+  if (dataPoints.length > 1) {
+    const vals = dataPoints.map((p) => p.value);
+    const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+    dataVariance = vals.reduce((s, v) => s + (v - mean) * (v - mean), 0) / vals.length;
+  }
 
   const structure1 = {
     enabled: true,
@@ -3250,8 +3252,11 @@ function getVariogramModelExportPayload() {
     },
     meta: {
       normalizedView,
+      normalizationMode: normalizedView ? 'normalized_by_variance' : 'raw_variance_scale',
+      dataVariance: isFinite(dataVariance) ? dataVariance : null,
       modelType,
-      currentDataMode
+      currentDataMode,
+      estimator
     }
   };
 }
@@ -3269,7 +3274,10 @@ function exportVariogramModelFile() {
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
-  showNotification('Variogram model exported. Load this JSON in Estimation or Simulation.', 'success');
+  const modeLabel = payload.meta && payload.meta.normalizationMode === 'normalized_by_variance'
+    ? 'normalized by variance'
+    : 'raw variance scale';
+  showNotification(`Variogram model exported (${modeLabel}). Load this JSON in Estimation or Simulation.`, 'success');
 }
 
 function updateModelPlot() {

@@ -796,6 +796,7 @@
   <label>Max original samples: <input type="number" id="maxOrigNeighbors" value="12" min="0"></label><br>
   <label>Max simulated samples: <input type="number" id="maxSimNeighbors" value="4" min="0"></label><br>
   <label><input type="checkbox" id="useSearchRadius" checked> Limit search ellipse</label>
+  <label><input type="checkbox" id="showTargetEllipses" checked> Show target/search ellipses</label>
   <div id="radiusGroup">
     <label>Major Radius: <input type="number" id="searchRadiusMajor" value="100" step="1"></label><br>
     <label>Minor Radius: <input type="number" id="searchRadiusMinor" value="100" step="1"></label>
@@ -936,6 +937,31 @@
   <div class="matrix-block">
     <h4>Uncertainty and Probability Summary</h4>
     <div id="uncertaintySummary"><em>Run simulations to compute quantiles and exceedance probabilities.</em></div>
+  </div>
+
+  <div class="matrix-block" id="simChecksSection">
+    <h4>Simulation Checks</h4>
+    <div style="font-size:0.82rem; color:var(--text-muted); margin-bottom:6px;">
+      Swath plots (X and Y) and directional experimental variograms computed from realizations.
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:8px;">
+      <label>Lags: <input type="number" id="simCheckLags" value="12" min="3" max="40" step="1"></label>
+      <button id="btnRefreshSimChecks">Refresh checks</button>
+    </div>
+    <div class="histogram-container">
+      <div class="histogram-box">
+        <canvas id="swathXCanvas" width="400" height="260"></canvas>
+      </div>
+      <div class="histogram-box">
+        <canvas id="swathYCanvas" width="400" height="260"></canvas>
+      </div>
+    </div>
+    <div style="margin-top:8px;">
+      <canvas id="realizationVariogramCanvas" width="820" height="300"></canvas>
+    </div>
+    <div id="simChecksSummary" style="margin-top:8px; font-size:0.82rem; color:var(--text-muted);">
+      Run simulations to compute swath and variogram checks.
+    </div>
   </div>
 
   <!-- Realizations Statistics -->
@@ -1090,7 +1116,9 @@ function applyVariogramModelToSimulation(payload) {
   updateModelSummary();
   draw();
   const source = payload.sourceLab || 'unknown source';
-  setVariogramModelStatus(`Variogram model loaded from ${source}.`);
+  const mode = payload.meta && payload.meta.normalizationMode;
+  const modeText = mode === 'normalized_by_variance' ? ' (normalized by variance)' : '';
+  setVariogramModelStatus(`Variogram model loaded from ${source}${modeText}.`);
 }
 
 function gammaStruct(h, type, sill, range) {
@@ -2038,6 +2066,7 @@ function runMultipleSimulations() {
   updateSimSummary();
   updateUncertaintySummary();
   updateRealizationsStats();
+  updateSimulationChecks();
   applyLearningModeSimulation();
   drawHistograms();
   draw();
@@ -2413,6 +2442,7 @@ function executeStep() {
     realizations = [currentRealization];
     computeSummaryMaps();
     updateUncertaintySummary();
+    updateSimulationChecks();
     drawHistograms();
     applyLearningModeSimulation();
     return;
@@ -2551,6 +2581,7 @@ function applyLearningModeSimulation() {
   const stepByStepSection = document.getElementById('stepByStepSection');
   const realizationsStats = document.getElementById('realizationsStats');
   const targetHistogramSection = document.getElementById('targetHistogramSection');
+  const simChecksSection = document.getElementById('simChecksSection');
   const stepButton = document.getElementById('btnStepSimulation');
 
   const showEssential = mode === 'essential';
@@ -2559,6 +2590,7 @@ function applyLearningModeSimulation() {
   if (nscoreSection) nscoreSection.style.display = showEssential ? 'none' : '';
   if (declusterSection) declusterSection.style.display = showEssential ? 'none' : '';
   if (targetHistogramSection) targetHistogramSection.style.display = showEssential ? 'none' : '';
+  if (simChecksSection) simChecksSection.style.display = showEssential ? 'none' : '';
 
   if (nscoreTableSection) nscoreTableSection.style.display = showAdvanced ? '' : 'none';
   if (stepByStepSection && !isStepMode) stepByStepSection.style.display = showAdvanced ? '' : 'none';
@@ -2657,6 +2689,403 @@ function updateUncertaintySummary() {
     <p><b>Uncertainty (Std):</b> mean=${stStd ? stStd.mean.toFixed(3) : '—'} | min=${stStd ? stStd.min.toFixed(3) : '—'} | max=${stStd ? stStd.max.toFixed(3) : '—'}</p>
     <p><b>Interquantile spread (P90-P10):</b> ${stP90 && stP10 ? (stP90.mean - stP10.mean).toFixed(3) : '—'}</p>
   `;
+}
+
+function simQuantileFromSorted(sorted, p) {
+  if (!sorted.length) return NaN;
+  if (p <= 0) return sorted[0];
+  if (p >= 1) return sorted[sorted.length - 1];
+  const pos = (sorted.length - 1) * p;
+  const lo = Math.floor(pos);
+  const hi = Math.ceil(pos);
+  if (lo === hi) return sorted[lo];
+  const t = pos - lo;
+  return sorted[lo] * (1 - t) + sorted[hi] * t;
+}
+
+function computeSwathProfiles() {
+  if (!realizations.length) return null;
+  const grid = getGridParams();
+  const xProfile = [];
+  const yProfile = [];
+
+  const xDataSum = new Array(grid.nx).fill(0);
+  const xDataCount = new Array(grid.nx).fill(0);
+  const yDataSum = new Array(grid.ny).fill(0);
+  const yDataCount = new Array(grid.ny).fill(0);
+  points.filter((p) => p.active).forEach((p) => {
+    const xw = worldX(p.x);
+    const yw = worldY(p.y);
+    const ix = Math.floor((xw - grid.originX) / grid.dx);
+    const iy = Math.floor((yw - grid.originY) / grid.dy);
+    if (ix >= 0 && ix < grid.nx) {
+      xDataSum[ix] += p.value;
+      xDataCount[ix] += 1;
+    }
+    if (iy >= 0 && iy < grid.ny) {
+      yDataSum[iy] += p.value;
+      yDataCount[iy] += 1;
+    }
+  });
+
+  for (let i = 0; i < grid.nx; i++) {
+    const vals = [];
+    for (let r = 0; r < realizations.length; r++) {
+      for (let j = 0; j < grid.ny; j++) {
+        const v = realizations[r][i][j];
+        if (isFinite(v)) vals.push(v);
+      }
+    }
+    vals.sort((a, b) => a - b);
+    const mean = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : NaN;
+    xProfile.push({
+      coord: grid.originX + (i + 0.5) * grid.dx,
+      mean,
+      p10: simQuantileFromSorted(vals, 0.10),
+      p90: simQuantileFromSorted(vals, 0.90),
+      dataMean: xDataCount[i] ? xDataSum[i] / xDataCount[i] : NaN
+    });
+  }
+
+  for (let j = 0; j < grid.ny; j++) {
+    const vals = [];
+    for (let r = 0; r < realizations.length; r++) {
+      for (let i = 0; i < grid.nx; i++) {
+        const v = realizations[r][i][j];
+        if (isFinite(v)) vals.push(v);
+      }
+    }
+    vals.sort((a, b) => a - b);
+    const mean = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : NaN;
+    yProfile.push({
+      coord: grid.originY + (j + 0.5) * grid.dy,
+      mean,
+      p10: simQuantileFromSorted(vals, 0.10),
+      p90: simQuantileFromSorted(vals, 0.90),
+      dataMean: yDataCount[j] ? yDataSum[j] / yDataCount[j] : NaN
+    });
+  }
+
+  return { xProfile, yProfile };
+}
+
+function drawSwathPlot(canvasId, profile, axisLabel) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const c = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  c.clearRect(0, 0, w, h);
+
+  if (!profile || !profile.length) {
+    c.fillStyle = '#64748b';
+    c.font = '12px Arial';
+    c.textAlign = 'center';
+    c.fillText('Run simulations to compute swath plot', w / 2, h / 2);
+    return;
+  }
+
+  const vals = [];
+  profile.forEach((p) => {
+    if (isFinite(p.p10)) vals.push(p.p10);
+    if (isFinite(p.p90)) vals.push(p.p90);
+    if (isFinite(p.dataMean)) vals.push(p.dataMean);
+  });
+  if (!vals.length) return;
+
+  const minY = Math.min(...vals);
+  const maxY = Math.max(...vals);
+  const rangeY = (maxY - minY) || 1;
+  const margin = { t: 28, r: 12, b: 34, l: 48 };
+  const pw = w - margin.l - margin.r;
+  const ph = h - margin.t - margin.b;
+  const x = (idx) => margin.l + (profile.length <= 1 ? 0 : (idx / (profile.length - 1)) * pw);
+  const y = (v) => margin.t + (1 - ((v - minY) / rangeY)) * ph;
+
+  c.strokeStyle = '#334155';
+  c.beginPath();
+  c.moveTo(margin.l, margin.t);
+  c.lineTo(margin.l, h - margin.b);
+  c.lineTo(w - margin.r, h - margin.b);
+  c.stroke();
+
+  c.fillStyle = 'rgba(168, 85, 247, 0.18)';
+  c.beginPath();
+  let started = false;
+  for (let i = 0; i < profile.length; i++) {
+    const p = profile[i];
+    if (!isFinite(p.p10) || !isFinite(p.p90)) continue;
+    if (!started) { c.moveTo(x(i), y(p.p90)); started = true; }
+    else c.lineTo(x(i), y(p.p90));
+  }
+  for (let i = profile.length - 1; i >= 0; i--) {
+    const p = profile[i];
+    if (!isFinite(p.p10) || !isFinite(p.p90)) continue;
+    c.lineTo(x(i), y(p.p10));
+  }
+  if (started) {
+    c.closePath();
+    c.fill();
+  }
+
+  c.strokeStyle = '#7c3aed';
+  c.lineWidth = 2;
+  c.beginPath();
+  let lineStarted = false;
+  for (let i = 0; i < profile.length; i++) {
+    const p = profile[i];
+    if (!isFinite(p.mean)) continue;
+    if (!lineStarted) { c.moveTo(x(i), y(p.mean)); lineStarted = true; }
+    else c.lineTo(x(i), y(p.mean));
+  }
+  if (lineStarted) c.stroke();
+
+  c.setLineDash([4, 3]);
+  c.strokeStyle = '#1f2937';
+  c.lineWidth = 1.6;
+  c.beginPath();
+  let dataStarted = false;
+  for (let i = 0; i < profile.length; i++) {
+    const p = profile[i];
+    if (!isFinite(p.dataMean)) continue;
+    if (!dataStarted) { c.moveTo(x(i), y(p.dataMean)); dataStarted = true; }
+    else c.lineTo(x(i), y(p.dataMean));
+  }
+  if (dataStarted) c.stroke();
+  c.setLineDash([]);
+
+  c.fillStyle = '#111827';
+  c.font = '12px Arial';
+  c.textAlign = 'center';
+  c.fillText(`${axisLabel}-Swath (mean + P10/P90)`, w / 2, 16);
+}
+
+function computeDirectionalStepOffsets(grid, angleDeg) {
+  const rad = angleDeg * Math.PI / 180;
+  const ux = Math.sin(rad);
+  const uy = Math.cos(rad);
+  const baseStep = Math.min(Math.abs(grid.dx), Math.abs(grid.dy));
+  let di = Math.round((ux * baseStep) / Math.max(Math.abs(grid.dx), 1e-9));
+  let dj = Math.round((uy * baseStep) / Math.max(Math.abs(grid.dy), 1e-9));
+  if (di === 0 && Math.abs(ux) > 1e-6) di = ux > 0 ? 1 : -1;
+  if (dj === 0 && Math.abs(uy) > 1e-6) dj = uy > 0 ? 1 : -1;
+  if (di === 0 && dj === 0) dj = 1;
+  return { di, dj };
+}
+
+function computeDirectionalVariogramFromGrid(gridVals, grid, stepOffset, maxLags) {
+  const curve = [];
+  for (let lag = 1; lag <= maxLags; lag++) {
+    const di = stepOffset.di * lag;
+    const dj = stepOffset.dj * lag;
+    const h = Math.sqrt((di * grid.dx) * (di * grid.dx) + (dj * grid.dy) * (dj * grid.dy));
+    if (!(h > 0)) continue;
+    let sumSq = 0;
+    let pairs = 0;
+    for (let i = 0; i < grid.nx; i++) {
+      for (let j = 0; j < grid.ny; j++) {
+        const i2 = i + di;
+        const j2 = j + dj;
+        if (i2 < 0 || i2 >= grid.nx || j2 < 0 || j2 >= grid.ny) continue;
+        const v1 = gridVals[i][j];
+        const v2 = gridVals[i2][j2];
+        if (!isFinite(v1) || !isFinite(v2)) continue;
+        const d = v2 - v1;
+        sumSq += d * d;
+        pairs++;
+      }
+    }
+    if (pairs > 0) curve.push({ lag, h, gamma: 0.5 * (sumSq / pairs), pairs });
+  }
+  return curve;
+}
+
+function modelGammaDirectional(h, params, directionAngle) {
+  const dirStd = (90 - directionAngle) * Math.PI / 180;
+  const anisoStd = (90 - params.anisoAngle) * Math.PI / 180;
+  const delta = dirStd - anisoStd;
+  let g = params.nugget;
+  params.structures.forEach((s) => {
+    const a = Math.max(Number(s.range) || 0, 1e-9);
+    const b = Math.max(Number(s.rangeOrtho) || Number(s.range) || 0, 1e-9);
+    const den = (Math.cos(delta) ** 2) / (a * a) + (Math.sin(delta) ** 2) / (b * b);
+    const rEff = den > 0 ? 1 / Math.sqrt(den) : a;
+    g += gammaStruct(h, s.type, s.sill, rEff);
+  });
+  return g;
+}
+
+function computeSimulationVariogramDiagnostics() {
+  if (!realizations.length) return null;
+  const grid = getGridParams();
+  const params = getVarioParams();
+  const lagInput = parseInt(document.getElementById('simCheckLags')?.value || '12', 10);
+  const maxLags = Math.max(3, Math.min(40, Number.isFinite(lagInput) ? lagInput : 12));
+  const stepOffset = computeDirectionalStepOffsets(grid, params.anisoAngle);
+
+  const curves = [];
+  realizations.forEach((r) => {
+    const curve = computeDirectionalVariogramFromGrid(r, grid, stepOffset, maxLags);
+    if (curve.length) curves.push(curve);
+  });
+  if (!curves.length) return null;
+
+  const meanCurve = [];
+  for (let lag = 1; lag <= maxLags; lag++) {
+    const pts = [];
+    curves.forEach((curve) => {
+      const p = curve.find((x) => x.lag === lag);
+      if (p) pts.push(p);
+    });
+    if (!pts.length) continue;
+    const h = pts.reduce((s, p) => s + p.h, 0) / pts.length;
+    const gamma = pts.reduce((s, p) => s + p.gamma, 0) / pts.length;
+    meanCurve.push({ lag, h, gamma, pairs: pts.reduce((s, p) => s + p.pairs, 0) });
+  }
+
+  const modelCurve = meanCurve.map((p) => ({ h: p.h, gamma: modelGammaDirectional(p.h, params, params.anisoAngle) }));
+  let rmse = NaN;
+  if (meanCurve.length === modelCurve.length && meanCurve.length) {
+    const mse = meanCurve.reduce((s, p, idx) => s + (p.gamma - modelCurve[idx].gamma) ** 2, 0) / meanCurve.length;
+    rmse = Math.sqrt(mse);
+  }
+
+  return {
+    curves,
+    meanCurve,
+    modelCurve,
+    angle: params.anisoAngle,
+    stepOffset,
+    rmse
+  };
+}
+
+function drawRealizationVariogramOverlay(diag) {
+  const canvas = document.getElementById('realizationVariogramCanvas');
+  if (!canvas) return;
+  const c = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  c.clearRect(0, 0, w, h);
+
+  if (!diag || !diag.meanCurve.length) {
+    c.fillStyle = '#64748b';
+    c.font = '12px Arial';
+    c.textAlign = 'center';
+    c.fillText('Run simulations to compute directional variograms', w / 2, h / 2);
+    return;
+  }
+
+  let maxH = 0;
+  let maxG = 0;
+  diag.curves.forEach((curve) => {
+    curve.forEach((p) => {
+      maxH = Math.max(maxH, p.h);
+      maxG = Math.max(maxG, p.gamma);
+    });
+  });
+  diag.modelCurve.forEach((p) => {
+    maxH = Math.max(maxH, p.h);
+    maxG = Math.max(maxG, p.gamma);
+  });
+  if (maxH <= 0) maxH = 1;
+  if (maxG <= 0) maxG = 1;
+
+  const margin = { t: 28, r: 16, b: 36, l: 56 };
+  const pw = w - margin.l - margin.r;
+  const ph = h - margin.t - margin.b;
+  const x = (v) => margin.l + (v / maxH) * pw;
+  const y = (v) => margin.t + (1 - v / maxG) * ph;
+
+  c.strokeStyle = '#334155';
+  c.beginPath();
+  c.moveTo(margin.l, margin.t);
+  c.lineTo(margin.l, h - margin.b);
+  c.lineTo(w - margin.r, h - margin.b);
+  c.stroke();
+
+  c.strokeStyle = 'rgba(37, 99, 235, 0.16)';
+  c.lineWidth = 1;
+  diag.curves.forEach((curve) => {
+    c.beginPath();
+    curve.forEach((p, idx) => {
+      if (idx === 0) c.moveTo(x(p.h), y(p.gamma));
+      else c.lineTo(x(p.h), y(p.gamma));
+    });
+    c.stroke();
+  });
+
+  c.strokeStyle = '#7c3aed';
+  c.lineWidth = 2.2;
+  c.beginPath();
+  diag.meanCurve.forEach((p, idx) => {
+    if (idx === 0) c.moveTo(x(p.h), y(p.gamma));
+    else c.lineTo(x(p.h), y(p.gamma));
+  });
+  c.stroke();
+
+  c.strokeStyle = '#ea580c';
+  c.lineWidth = 2.2;
+  c.beginPath();
+  diag.modelCurve.forEach((p, idx) => {
+    if (idx === 0) c.moveTo(x(p.h), y(p.gamma));
+    else c.lineTo(x(p.h), y(p.gamma));
+  });
+  c.stroke();
+
+  c.fillStyle = '#111827';
+  c.font = '12px Arial';
+  c.textAlign = 'center';
+  c.fillText(`Directional variograms (angle ${diag.angle.toFixed(1)}°)`, w / 2, 16);
+}
+
+function pairedCorrelation(profile) {
+  const pairs = profile.filter((p) => isFinite(p.mean) && isFinite(p.dataMean));
+  if (pairs.length < 2) return NaN;
+  const xm = pairs.reduce((s, p) => s + p.mean, 0) / pairs.length;
+  const ym = pairs.reduce((s, p) => s + p.dataMean, 0) / pairs.length;
+  let cov = 0, vx = 0, vy = 0;
+  pairs.forEach((p) => {
+    cov += (p.mean - xm) * (p.dataMean - ym);
+    vx += (p.mean - xm) ** 2;
+    vy += (p.dataMean - ym) ** 2;
+  });
+  if (!(vx > 0) || !(vy > 0)) return NaN;
+  return cov / Math.sqrt(vx * vy);
+}
+
+function updateSimulationChecks() {
+  const summary = document.getElementById('simChecksSummary');
+  if (!realizations.length) {
+    drawSwathPlot('swathXCanvas', null, 'X');
+    drawSwathPlot('swathYCanvas', null, 'Y');
+    drawRealizationVariogramOverlay(null);
+    if (summary) summary.textContent = 'Run simulations to compute swath and variogram checks.';
+    return;
+  }
+
+  const swath = computeSwathProfiles();
+  if (swath) {
+    drawSwathPlot('swathXCanvas', swath.xProfile, 'X');
+    drawSwathPlot('swathYCanvas', swath.yProfile, 'Y');
+  } else {
+    drawSwathPlot('swathXCanvas', null, 'X');
+    drawSwathPlot('swathYCanvas', null, 'Y');
+  }
+
+  const diag = computeSimulationVariogramDiagnostics();
+  drawRealizationVariogramOverlay(diag);
+
+  if (!summary) return;
+  const corrX = swath ? pairedCorrelation(swath.xProfile) : NaN;
+  const corrY = swath ? pairedCorrelation(swath.yProfile) : NaN;
+  if (!diag) {
+    summary.textContent = 'Not enough information to compute directional realization variograms.';
+    return;
+  }
+  summary.innerHTML =
+    `<b>Swath correlation (conditioning vs E-type):</b> X=${isFinite(corrX) ? corrX.toFixed(3) : 'n/a'}, ` +
+    `Y=${isFinite(corrY) ? corrY.toFixed(3) : 'n/a'}<br>` +
+    `<b>Directional variogram step:</b> Δi=${diag.stepOffset.di}, Δj=${diag.stepOffset.dj} | ` +
+    `<b>Realizations:</b> ${diag.curves.length} | <b>Model RMSE:</b> ${isFinite(diag.rmse) ? diag.rmse.toFixed(4) : 'n/a'}`;
 }
 
 function updateRealizationsStats() {
@@ -2873,6 +3302,7 @@ function drawMap(mapData, alpha = 0.7, forceRainbow = false) {
 
 function draw() {
   const axisMargin = 40;
+  const showTargetEllipses = document.getElementById('showTargetEllipses') ? document.getElementById('showTargetEllipses').checked : true;
   
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -2973,85 +3403,87 @@ function draw() {
     }
   }
   
-  // Variogram ellipses (centered on canvas center or step node)
-  const params = getVarioParams();
-  const rotationRadians = (params.anisoAngle - 90) * Math.PI / 180;
-  
-  // Get center point for ellipses
-  let ellipseCenter;
-  if (isStepMode && stepIndex > 0 && stepIndex <= randomPath.length) {
-    const { i, j } = randomPath[stepIndex - 1];
-    const xWorld = grid.originX + (i + 0.5) * grid.dx;
-    const yWorld = grid.originY + (j + 0.5) * grid.dy;
-    ellipseCenter = { x: internalX(xWorld), y: internalY(yWorld) };
-  } else if (selectedTargetNode) {
-    ellipseCenter = { x: internalX(selectedTargetNode.xWorld), y: internalY(selectedTargetNode.yWorld) };
-  } else {
-    const cx = grid.originX + grid.dx * grid.nx / 2;
-    const cy = grid.originY + grid.dy * grid.ny / 2;
-    ellipseCenter = { x: internalX(cx), y: internalY(cy) };
-  }
-  
-  // Structure 1 ellipse (blue)
-  if (params.structures.length >= 1) {
-    const s1 = params.structures[0];
-    const r1Major = Math.abs(internalX(worldX(ellipseCenter.x) + s1.range) - ellipseCenter.x);
-    const r1Minor = Math.abs(internalY(worldY(ellipseCenter.y) + s1.rangeOrtho) - ellipseCenter.y);
+  if (showTargetEllipses) {
+    // Variogram ellipses (centered on canvas center or step node)
+    const params = getVarioParams();
+    const rotationRadians = (params.anisoAngle - 90) * Math.PI / 180;
     
-    ctx.save();
-    ctx.translate(ellipseCenter.x, ellipseCenter.y);
-    ctx.rotate(rotationRadians);
+    // Get center point for ellipses
+    let ellipseCenter;
+    if (isStepMode && stepIndex > 0 && stepIndex <= randomPath.length) {
+      const { i, j } = randomPath[stepIndex - 1];
+      const xWorld = grid.originX + (i + 0.5) * grid.dx;
+      const yWorld = grid.originY + (j + 0.5) * grid.dy;
+      ellipseCenter = { x: internalX(xWorld), y: internalY(yWorld) };
+    } else if (selectedTargetNode) {
+      ellipseCenter = { x: internalX(selectedTargetNode.xWorld), y: internalY(selectedTargetNode.yWorld) };
+    } else {
+      const cx = grid.originX + grid.dx * grid.nx / 2;
+      const cy = grid.originY + grid.dy * grid.ny / 2;
+      ellipseCenter = { x: internalX(cx), y: internalY(cy) };
+    }
     
-    ctx.strokeStyle = 'rgba(59, 130, 246, 0.6)';
-    ctx.lineWidth = 2 / viewScale;
-    ctx.setLineDash([8 / viewScale, 4 / viewScale]);
-    ctx.beginPath();
-    ctx.ellipse(0, 0, r1Major, r1Minor, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.restore();
-  }
-  
-  // Structure 2 ellipse (red)
-  if (params.structures.length >= 2) {
-    const s2 = params.structures[1];
-    const r2Major = Math.abs(internalX(worldX(ellipseCenter.x) + s2.range) - ellipseCenter.x);
-    const r2Minor = Math.abs(internalY(worldY(ellipseCenter.y) + s2.rangeOrtho) - ellipseCenter.y);
+    // Structure 1 ellipse (blue)
+    if (params.structures.length >= 1) {
+      const s1 = params.structures[0];
+      const r1Major = Math.abs(internalX(worldX(ellipseCenter.x) + s1.range) - ellipseCenter.x);
+      const r1Minor = Math.abs(internalY(worldY(ellipseCenter.y) + s1.rangeOrtho) - ellipseCenter.y);
+      
+      ctx.save();
+      ctx.translate(ellipseCenter.x, ellipseCenter.y);
+      ctx.rotate(rotationRadians);
+      
+      ctx.strokeStyle = 'rgba(59, 130, 246, 0.6)';
+      ctx.lineWidth = 2 / viewScale;
+      ctx.setLineDash([8 / viewScale, 4 / viewScale]);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r1Major, r1Minor, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
     
-    ctx.save();
-    ctx.translate(ellipseCenter.x, ellipseCenter.y);
-    ctx.rotate(rotationRadians);
+    // Structure 2 ellipse (red)
+    if (params.structures.length >= 2) {
+      const s2 = params.structures[1];
+      const r2Major = Math.abs(internalX(worldX(ellipseCenter.x) + s2.range) - ellipseCenter.x);
+      const r2Minor = Math.abs(internalY(worldY(ellipseCenter.y) + s2.rangeOrtho) - ellipseCenter.y);
+      
+      ctx.save();
+      ctx.translate(ellipseCenter.x, ellipseCenter.y);
+      ctx.rotate(rotationRadians);
+      
+      ctx.strokeStyle = 'rgba(239, 68, 68, 0.6)';
+      ctx.lineWidth = 2 / viewScale;
+      ctx.setLineDash([8 / viewScale, 4 / viewScale]);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r2Major, r2Minor, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
     
-    ctx.strokeStyle = 'rgba(239, 68, 68, 0.6)';
-    ctx.lineWidth = 2 / viewScale;
-    ctx.setLineDash([8 / viewScale, 4 / viewScale]);
-    ctx.beginPath();
-    ctx.ellipse(0, 0, r2Major, r2Minor, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.restore();
-  }
-  
-  // Search ellipse (green)
-  if (document.getElementById('useSearchRadius').checked) {
-    const radiusMajor = parseFloat(document.getElementById('searchRadiusMajor').value) || 100;
-    const radiusMinor = parseFloat(document.getElementById('searchRadiusMinor').value) || 100;
-    
-    const rMajorInt = Math.abs(internalX(worldX(ellipseCenter.x) + radiusMajor) - ellipseCenter.x);
-    const rMinorInt = Math.abs(internalY(worldY(ellipseCenter.y) + radiusMinor) - ellipseCenter.y);
-    
-    ctx.save();
-    ctx.translate(ellipseCenter.x, ellipseCenter.y);
-    ctx.rotate(rotationRadians);
-    
-    ctx.strokeStyle = 'rgba(0, 200, 0, 0.8)';
-    ctx.lineWidth = 2 / viewScale;
-    ctx.setLineDash([5 / viewScale, 5 / viewScale]);
-    ctx.beginPath();
-    ctx.ellipse(0, 0, rMajorInt, rMinorInt, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.restore();
+    // Search ellipse (green)
+    if (document.getElementById('useSearchRadius').checked) {
+      const radiusMajor = parseFloat(document.getElementById('searchRadiusMajor').value) || 100;
+      const radiusMinor = parseFloat(document.getElementById('searchRadiusMinor').value) || 100;
+      
+      const rMajorInt = Math.abs(internalX(worldX(ellipseCenter.x) + radiusMajor) - ellipseCenter.x);
+      const rMinorInt = Math.abs(internalY(worldY(ellipseCenter.y) + radiusMinor) - ellipseCenter.y);
+      
+      ctx.save();
+      ctx.translate(ellipseCenter.x, ellipseCenter.y);
+      ctx.rotate(rotationRadians);
+      
+      ctx.strokeStyle = 'rgba(0, 200, 0, 0.8)';
+      ctx.lineWidth = 2 / viewScale;
+      ctx.setLineDash([5 / viewScale, 5 / viewScale]);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, rMajorInt, rMinorInt, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
   }
   
   // Highlight current step node
@@ -3820,6 +4252,7 @@ function init() {
   draw();
   applyLearningModeSimulation();
   updateUncertaintySummary();
+  updateSimulationChecks();
 
   if (window.GeoStatsHub && typeof window.GeoStatsHub.install === 'function') {
     window.GeoStatsHub.install({
@@ -3854,6 +4287,7 @@ function init() {
           maxOrigNeighbors: document.getElementById('maxOrigNeighbors').value,
           maxSimNeighbors: document.getElementById('maxSimNeighbors').value,
           useSearchRadius: document.getElementById('useSearchRadius').checked,
+          showTargetEllipses: document.getElementById('showTargetEllipses').checked,
           searchRadiusMajor: document.getElementById('searchRadiusMajor').value,
           searchRadiusMinor: document.getElementById('searchRadiusMinor').value,
           gridOriginX: document.getElementById('gridOriginX').value,
@@ -3915,6 +4349,7 @@ function init() {
         computeNscoreTransform();
         applyLearningModeSimulation();
         updateUncertaintySummary();
+        updateSimulationChecks();
         draw();
       },
       afterPreset: () => {
@@ -3934,6 +4369,10 @@ function setupEvents() {
   document.getElementById('btnResetPoints').onclick = init;
   document.getElementById('btnShowNscoreTable').onclick = showNscoreTable;
   document.getElementById('simulationLearningMode').onchange = () => applyLearningModeSimulation();
+  const refreshChecksBtn = document.getElementById('btnRefreshSimChecks');
+  if (refreshChecksBtn) refreshChecksBtn.onclick = () => updateSimulationChecks();
+  const simCheckLagsEl = document.getElementById('simCheckLags');
+  if (simCheckLagsEl) simCheckLagsEl.onchange = () => updateSimulationChecks();
   document.getElementById('btnLoadVariogramModel').onclick = () => {
     const input = document.getElementById('variogramModelFileInput');
     if (input) input.click();
@@ -4039,6 +4478,7 @@ function setupEvents() {
     document.getElementById('radiusGroup').style.display = e.target.checked ? '' : 'none';
     draw();
   };
+  document.getElementById('showTargetEllipses').onchange = () => draw();
   document.getElementById('searchRadiusMajor').onchange = () => draw();
   document.getElementById('searchRadiusMinor').onchange = () => draw();
   
@@ -4181,6 +4621,7 @@ function clearResults() {
   document.getElementById('targetStats').innerHTML = '';
   
   applyLearningModeSimulation();
+  updateSimulationChecks();
   draw();
 }
 
