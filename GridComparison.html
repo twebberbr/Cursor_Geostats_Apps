@@ -501,13 +501,35 @@ function updateComparisonOutputs() {
   const intercept = Number.isFinite(slope) ? meanB - slope * meanA : NaN;
   const r2 = Number.isFinite(corr) ? corr * corr : NaN;
   const sDist = computeStats(dists);
+  const sA = computeStats(valsA);
+  const sB = computeStats(valsB);
+  const sDiff = computeStats(diffs);
+
+  const fmt = (v, d = 4) => Number.isFinite(v) ? Number(v).toFixed(d) : 'n/a';
 
   q('summaryBox').innerHTML =
-    `<p><b>Matched pairs:</b> ${n} (A nodes matched to nearest B nodes)</p>` +
-    `<p><b>Mean A:</b> ${meanA.toFixed(4)} | <b>Mean B:</b> ${meanB.toFixed(4)} | <b>Bias (B-A):</b> ${meanDiff.toFixed(4)}</p>` +
-    `<p><b>MAE:</b> ${mae.toFixed(4)} | <b>RMSE:</b> ${rmse.toFixed(4)} | <b>Corr:</b> ${Number.isFinite(corr) ? corr.toFixed(4) : 'n/a'} | <b>R²:</b> ${Number.isFinite(r2) ? r2.toFixed(4) : 'n/a'}</p>` +
-    `<p><b>Regression:</b> B = a + b·A => a=${Number.isFinite(intercept) ? intercept.toFixed(4) : 'n/a'}, b=${Number.isFinite(slope) ? slope.toFixed(4) : 'n/a'}</p>` +
-    `<p><b>Nearest distance:</b> mean=${sDist.mean.toFixed(4)}, p50=${sDist.p50.toFixed(4)}, max=${sDist.max.toFixed(4)}</p>`;
+    `<div class="scroll" style="max-height: 360px;">` +
+    `<table>` +
+    `<thead><tr><th colspan="3" style="text-align:center;">Final Comparison Table</th></tr></thead>` +
+    `<tbody>` +
+    `<tr><th style="text-align:left;">Metric</th><th style="text-align:right;">Value</th><th style="text-align:left;">Notes</th></tr>` +
+    `<tr><td style="text-align:left;">Matched pairs</td><td>${n}</td><td style="text-align:left;">A nodes matched to nearest B nodes</td></tr>` +
+    `<tr><td style="text-align:left;">Bias (B - A)</td><td>${fmt(meanDiff)}</td><td style="text-align:left;">Mean signed difference</td></tr>` +
+    `<tr><td style="text-align:left;">MAE</td><td>${fmt(mae)}</td><td style="text-align:left;">Mean absolute error</td></tr>` +
+    `<tr><td style="text-align:left;">RMSE</td><td>${fmt(rmse)}</td><td style="text-align:left;">Root mean squared error</td></tr>` +
+    `<tr><td style="text-align:left;">Correlation</td><td>${fmt(corr)}</td><td style="text-align:left;">Pearson correlation (A vs B)</td></tr>` +
+    `<tr><td style="text-align:left;">R²</td><td>${fmt(r2)}</td><td style="text-align:left;">Explained variance (linear fit)</td></tr>` +
+    `<tr><td style="text-align:left;">Regression intercept (a)</td><td>${fmt(intercept)}</td><td style="text-align:left;">B = a + b·A</td></tr>` +
+    `<tr><td style="text-align:left;">Regression slope (b)</td><td>${fmt(slope)}</td><td style="text-align:left;">B = a + b·A</td></tr>` +
+    `<tr><td style="text-align:left;">Nearest distance mean</td><td>${fmt(sDist?.mean)}</td><td style="text-align:left;">Spatial mismatch (A→B nearest)</td></tr>` +
+    `<tr><td style="text-align:left;">Nearest distance p50</td><td>${fmt(sDist?.p50)}</td><td style="text-align:left;">Median nearest distance</td></tr>` +
+    `<tr><td style="text-align:left;">Nearest distance max</td><td>${fmt(sDist?.max)}</td><td style="text-align:left;">Largest nearest-node distance</td></tr>` +
+    `<tr><th colspan="3" style="text-align:center;">Distribution summary (matched pairs)</th></tr>` +
+    `<tr><th style="text-align:left;">Series</th><th style="text-align:right;">Mean / Std</th><th style="text-align:left;">P10 / P50 / P90</th></tr>` +
+    `<tr><td style="text-align:left;">A (${datasets.A.fileName || 'A'})</td><td>${fmt(sA?.mean)} / ${fmt(sA?.std)}</td><td style="text-align:left;">${fmt(sA?.p10)} / ${fmt(sA?.p50)} / ${fmt(sA?.p90)}</td></tr>` +
+    `<tr><td style="text-align:left;">B (${datasets.B.fileName || 'B'})</td><td>${fmt(sB?.mean)} / ${fmt(sB?.std)}</td><td style="text-align:left;">${fmt(sB?.p10)} / ${fmt(sB?.p50)} / ${fmt(sB?.p90)}</td></tr>` +
+    `<tr><td style="text-align:left;">Diff (B - A)</td><td>${fmt(sDiff?.mean)} / ${fmt(sDiff?.std)}</td><td style="text-align:left;">${fmt(sDiff?.p10)} / ${fmt(sDiff?.p50)} / ${fmt(sDiff?.p90)}</td></tr>` +
+    `</tbody></table></div>`;
 
   drawMapsPanel();
   drawScatterPlot(valsA, valsB, slope, intercept);
@@ -582,16 +604,23 @@ function drawPointMap(canvas, points, title, valueRange = null, customExtent = n
   const ph = h - margin.t - margin.b;
   const xr = (xMax - xMin) || 1;
   const yr = (yMax - yMin) || 1;
-  const toX = (v) => margin.l + ((v - xMin) / xr) * pw;
-  const toY = (v) => margin.t + (1 - ((v - yMin) / yr)) * ph;
-  const cellW = Number.isFinite(dxGuess) ? Math.max(2, (dxGuess / xr) * pw) : 4;
-  const cellH = Number.isFinite(dyGuess) ? Math.max(2, (dyGuess / yr) * ph) : 4;
+  // Keep x/y in the same geometric scale to avoid axis distortion.
+  const scale = Math.min(pw / xr, ph / yr);
+  const mapW = xr * scale;
+  const mapH = yr * scale;
+  const offsetX = margin.l + (pw - mapW) * 0.5;
+  const offsetY = margin.t + (ph - mapH) * 0.5;
+  const toX = (v) => offsetX + (v - xMin) * scale;
+  const toY = (v) => offsetY + (yMax - v) * scale;
+  const fallbackCell = Math.max(2, Math.min(mapW, mapH) * 0.01);
+  const cellW = Number.isFinite(dxGuess) ? Math.max(2, dxGuess * scale) : fallbackCell;
+  const cellH = Number.isFinite(dyGuess) ? Math.max(2, dyGuess * scale) : fallbackCell;
 
   c.strokeStyle = '#334155';
   c.beginPath();
-  c.moveTo(margin.l, margin.t);
-  c.lineTo(margin.l, h - margin.b);
-  c.lineTo(w - margin.r, h - margin.b);
+  c.moveTo(offsetX, offsetY);
+  c.lineTo(offsetX, offsetY + mapH);
+  c.lineTo(offsetX + mapW, offsetY + mapH);
   c.stroke();
 
   let maxAbs = 1;
@@ -615,11 +644,11 @@ function drawPointMap(canvas, points, title, valueRange = null, customExtent = n
   c.textAlign = 'center';
   c.fillText(title, w / 2, 14);
   c.font = '10px Arial';
-  c.fillText(`X: ${xMin.toFixed(2)} to ${xMax.toFixed(2)}`, w / 2, h - 6);
+  c.fillText(`X: ${xMin.toFixed(2)} to ${xMax.toFixed(2)} | Y: ${yMin.toFixed(2)} to ${yMax.toFixed(2)} | scale: 1:1`, w / 2, h - 6);
   c.save();
   c.translate(11, h / 2);
   c.rotate(-Math.PI / 2);
-  c.fillText(`Y: ${yMin.toFixed(2)} to ${yMax.toFixed(2)}`, 0, 0);
+  c.fillText('Y', 0, 0);
   c.restore();
 }
 
@@ -828,11 +857,32 @@ function drawDensityPlot(aVals, bVals) {
   }
   c.stroke();
 
-  c.fillStyle = '#111827';
+  // Legend with explicit dataset names.
+  const labelA = datasets.A.fileName || 'Dataset A';
+  const labelB = datasets.B.fileName || 'Dataset B';
+  const legendX = margin.l + 8;
+  const legendY = margin.t + 8;
+  c.fillStyle = 'rgba(255,255,255,0.86)';
+  c.strokeStyle = 'rgba(148,163,184,0.6)';
+  c.lineWidth = 1;
+  c.fillRect(legendX - 6, legendY - 8, Math.min(520, w - legendX - 12), 42);
+  c.strokeRect(legendX - 6, legendY - 8, Math.min(520, w - legendX - 12), 42);
+  c.lineWidth = 2.5;
+  c.strokeStyle = '#2563eb';
+  c.beginPath();
+  c.moveTo(legendX, legendY + 4);
+  c.lineTo(legendX + 22, legendY + 4);
+  c.stroke();
+  c.strokeStyle = '#ea580c';
+  c.beginPath();
+  c.moveTo(legendX, legendY + 24);
+  c.lineTo(legendX + 22, legendY + 24);
+  c.stroke();
+  c.fillStyle = '#0f172a';
   c.font = '11px Arial';
-  c.fillText('A', margin.l + 6, margin.t + 12);
-  c.fillStyle = '#ea580c';
-  c.fillText('B', margin.l + 26, margin.t + 12);
+  c.textAlign = 'left';
+  c.fillText(`A: ${labelA}`, legendX + 28, legendY + 8);
+  c.fillText(`B: ${labelB}`, legendX + 28, legendY + 28);
 }
 
 function drawPairsTable(pairs) {
