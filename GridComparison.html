@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GeoStats Lab: Grid Comparison</title>
+  <style>
+    :root {
+      --bg-main: #f3f4f6;
+      --bg-panel: #f9fafb;
+      --bg-card: #ffffff;
+      --border-subtle: rgba(15, 23, 42, 0.14);
+      --accent: #2563eb;
+      --accent-strong: #1d4ed8;
+      --text-main: #111827;
+      --text-muted: #4b5563;
+      --radius-lg: 14px;
+      --radius-md: 10px;
+      --shadow-soft: 0 8px 24px rgba(15, 23, 42, 0.06);
+      --shadow-subtle: 0 4px 14px rgba(15, 23, 42, 0.04);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 12px;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      display: flex;
+      height: 100vh;
+      background: var(--bg-main);
+      color: var(--text-main);
+    }
+    #left-panel, #right-panel {
+      background: var(--bg-panel);
+      border-radius: var(--radius-lg);
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      box-shadow: var(--shadow-soft);
+    }
+    #left-panel {
+      width: 480px;
+      padding: 14px 16px 18px 16px;
+      margin-right: 12px;
+      overflow-y: auto;
+    }
+    #right-panel {
+      flex: 1;
+      padding: 14px 16px 18px 16px;
+      overflow-y: auto;
+    }
+    h2 {
+      margin: 0 0 10px 0;
+      font-size: 1.45rem;
+      color: #0f172a;
+    }
+    h3 {
+      margin: 12px 0 8px 0;
+      font-size: 0.95rem;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      color: #111827;
+    }
+    h4 {
+      margin: 0 0 6px 0;
+      font-size: 0.9rem;
+      color: #0f172a;
+    }
+    .lab-intro {
+      margin: 0 0 12px 0;
+      padding: 10px 12px;
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(37, 99, 235, 0.35);
+      background: #eff6ff;
+      font-size: 0.85rem;
+    }
+    .lab-intro ol { margin: 0 0 6px 18px; padding: 0; }
+    .lab-intro p { margin: 0; color: var(--text-muted); }
+    .block {
+      margin: 8px 0;
+      padding: 10px 12px;
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      background: var(--bg-card);
+    }
+    label {
+      font-size: 0.84rem;
+      color: var(--text-muted);
+    }
+    input[type="number"], input[type="file"], select {
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      padding: 4px 9px;
+      font-size: 0.86rem;
+      margin: 2px 4px;
+      background: #f8fafc;
+    }
+    input[type="number"] { width: 92px; }
+    button {
+      margin: 5px 6px 5px 0;
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      background: #f8fafc;
+      color: #0f172a;
+      font-size: 0.88rem;
+      cursor: pointer;
+      transition: all 0.15s ease-out;
+    }
+    button:hover {
+      border-color: var(--accent);
+      background: #eff6ff;
+      transform: translateY(-1px);
+    }
+    .btn-primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+      font-weight: 600;
+    }
+    .btn-primary:hover {
+      background: var(--accent-strong);
+      border-color: var(--accent-strong);
+      color: #fff;
+    }
+    .status {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+      min-height: 16px;
+    }
+    .csv-selector {
+      display: none;
+      margin-top: 6px;
+      padding: 8px;
+      border: 1px solid rgba(148, 163, 184, 0.45);
+      border-radius: 8px;
+      background: #f8fafc;
+    }
+    .canvas-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 10px;
+    }
+    .canvas-card {
+      border: 1px solid rgba(148, 163, 184, 0.45);
+      border-radius: 10px;
+      padding: 8px;
+      background: #fff;
+      box-shadow: var(--shadow-subtle);
+    }
+    canvas {
+      width: 100%;
+      height: auto;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      border-radius: 8px;
+      background: #fff;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+    th, td {
+      border: 1px solid rgba(31, 41, 55, 0.22);
+      padding: 3px 6px;
+      text-align: right;
+      background: #fff;
+    }
+    th {
+      background: #e5e7eb;
+      color: #111827;
+      font-weight: 600;
+    }
+    .scroll {
+      max-height: 280px;
+      overflow: auto;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      border-radius: 8px;
+    }
+    .muted {
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+<div id="left-panel">
+  <h2>GeoStats Lab: Grid Comparison</h2>
+  <div class="lab-intro">
+    <div><strong>How to use this lab (3 steps)</strong></div>
+    <ol>
+      <li>Load Grid A and Grid B (CSV).</li>
+      <li>Select columns for X, Y, and value.</li>
+      <li>Run comparison to inspect maps, scatter, histograms, KDE, and metrics.</li>
+    </ol>
+    <p><strong>Guiding question:</strong> How different are the two estimated/simulated grids spatially and statistically?</p>
+  </div>
+
+  <div>
+    <button id="btnCompare" class="btn-primary">Compare Grids</button>
+    <button id="btnClear">Clear</button>
+  </div>
+
+  <h3>Dataset A</h3>
+  <div class="block">
+    <input type="file" id="fileA" accept=".csv,text/csv">
+    <div id="statusA" class="status"></div>
+    <div id="selectorA" class="csv-selector">
+      <h4>Columns (A)</h4>
+      <label>X: <select id="colXA"></select></label>
+      <label>Y: <select id="colYA"></select></label>
+      <label>Value: <select id="colVA"></select></label>
+      <button id="btnLoadA">Load A</button>
+    </div>
+  </div>
+
+  <h3>Dataset B</h3>
+  <div class="block">
+    <input type="file" id="fileB" accept=".csv,text/csv">
+    <div id="statusB" class="status"></div>
+    <div id="selectorB" class="csv-selector">
+      <h4>Columns (B)</h4>
+      <label>X: <select id="colXB"></select></label>
+      <label>Y: <select id="colYB"></select></label>
+      <label>Value: <select id="colVB"></select></label>
+      <button id="btnLoadB">Load B</button>
+    </div>
+  </div>
+
+  <h3>Matching Options</h3>
+  <div class="block">
+    <label>Max nearest distance:
+      <input type="number" id="maxMatchDistance" min="0" step="0.1" placeholder="unlimited">
+    </label>
+    <div class="muted">Each node in A is paired to the nearest node in B. Leave empty for no distance filter.</div>
+    <label><input type="checkbox" id="sharedColorScale" checked> Shared value color scale for A/B maps</label>
+  </div>
+
+  <h3>Summary</h3>
+  <div class="block" id="summaryBox"><em>Load both datasets and click "Compare Grids".</em></div>
+</div>
+
+<div id="right-panel">
+  <h3>Maps (side-by-side)</h3>
+  <div class="canvas-grid">
+    <div class="canvas-card">
+      <h4>Dataset A</h4>
+      <canvas id="mapACanvas" width="500" height="340"></canvas>
+    </div>
+    <div class="canvas-card">
+      <h4>Dataset B</h4>
+      <canvas id="mapBCanvas" width="500" height="340"></canvas>
+    </div>
+    <div class="canvas-card" style="grid-column: 1 / -1;">
+      <h4>Difference map (B - A, plotted at A coordinates)</h4>
+      <canvas id="mapDiffCanvas" width="1020" height="320"></canvas>
+    </div>
+  </div>
+
+  <h3>Statistical comparison</h3>
+  <div class="canvas-grid">
+    <div class="canvas-card">
+      <h4>Scatterplot (A vs B)</h4>
+      <canvas id="scatterCanvas" width="500" height="320"></canvas>
+    </div>
+    <div class="canvas-card">
+      <h4>Histogram overlay</h4>
+      <canvas id="histCanvas" width="500" height="320"></canvas>
+    </div>
+    <div class="canvas-card" style="grid-column: 1 / -1;">
+      <h4>Density plot (KDE)</h4>
+      <canvas id="densityCanvas" width="1020" height="280"></canvas>
+    </div>
+  </div>
+
+  <h3>Matched pairs (first 400)</h3>
+  <div id="pairsWrap" class="scroll"></div>
+</div>
+
+<script>
+const datasets = {
+  A: { raw: null, points: [], fileName: '' },
+  B: { raw: null, points: [], fileName: '' }
+};
+let lastPairs = [];
+
+function q(id) { return document.getElementById(id); }
+
+function setStatus(key, message, isError = false) {
+  const el = q(key === 'A' ? 'statusA' : 'statusB');
+  if (!el) return;
+  el.textContent = message || '';
+  el.style.color = isError ? '#b91c1c' : '#475569';
+}
+
+function splitCsvLine(line, delim) {
+  return line.split(delim).map((s) => s.trim());
+}
+
+function detectDelimiter(line) {
+  const counts = [
+    { d: ',', n: (line.match(/,/g) || []).length },
+    { d: ';', n: (line.match(/;/g) || []).length },
+    { d: '\t', n: (line.match(/\t/g) || []).length }
+  ];
+  counts.sort((a, b) => b.n - a.n);
+  return counts[0].n > 0 ? counts[0].d : ',';
+}
+
+function isNumericText(text) {
+  if (!text) return false;
+  const v = Number(String(text).replace(',', '.'));
+  return Number.isFinite(v);
+}
+
+function parseCsvRaw(text) {
+  const cleanLines = String(text || '')
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => l && !l.startsWith('#'));
+  if (cleanLines.length < 1) throw new Error('CSV has no valid lines.');
+  const delim = detectDelimiter(cleanLines[0]);
+  const row0 = splitCsvLine(cleanLines[0], delim);
+  const hasHeader = row0.some((v) => !isNumericText(v));
+  const headers = hasHeader ? row0 : row0.map((_, idx) => `Col ${idx + 1}`);
+  const rows = cleanLines.map((line) => splitCsvLine(line, delim));
+  return { delim, headers, rows, dataStart: hasHeader ? 1 : 0 };
+}
+
+function autoColumnIndex(headers, candidates, fallback = 0) {
+  const h = headers.map((v) => String(v).toLowerCase());
+  const idx = h.findIndex((name) => candidates.includes(name));
+  return idx >= 0 ? idx : fallback;
+}
+
+function fillSelectors(key, headers) {
+  const sx = q(key === 'A' ? 'colXA' : 'colXB');
+  const sy = q(key === 'A' ? 'colYA' : 'colYB');
+  const sv = q(key === 'A' ? 'colVA' : 'colVB');
+  [sx, sy, sv].forEach((sel) => {
+    sel.innerHTML = '';
+    headers.forEach((name, idx) => {
+      const opt = document.createElement('option');
+      opt.value = String(idx);
+      opt.textContent = name || `Col ${idx + 1}`;
+      sel.appendChild(opt);
+    });
+  });
+  sx.value = String(autoColumnIndex(headers, ['x', 'easting', 'lon', 'longitude'], 0));
+  sy.value = String(autoColumnIndex(headers, ['y', 'northing', 'lat', 'latitude'], 1));
+  sv.value = String(autoColumnIndex(headers, ['value', 'z', 'estimate', 'zstar', 'mean', 'etype', 'simulation', 'sim'], 2));
+}
+
+function handleFileChosen(key, file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const raw = parseCsvRaw(String(ev.target.result || ''));
+      datasets[key].raw = raw;
+      datasets[key].fileName = file.name || `${key}.csv`;
+      fillSelectors(key, raw.headers);
+      q(key === 'A' ? 'selectorA' : 'selectorB').style.display = 'block';
+      setStatus(key, `${raw.headers.length} columns found in ${datasets[key].fileName}.`);
+    } catch (err) {
+      setStatus(key, `Failed to parse CSV: ${err.message}`, true);
+    }
+  };
+  reader.readAsText(file);
+}
+
+function loadDatasetFromSelectors(key) {
+  const raw = datasets[key].raw;
+  if (!raw) { setStatus(key, 'Choose a CSV file first.', true); return; }
+  const sx = parseInt(q(key === 'A' ? 'colXA' : 'colXB').value, 10);
+  const sy = parseInt(q(key === 'A' ? 'colYA' : 'colYB').value, 10);
+  const sv = parseInt(q(key === 'A' ? 'colVA' : 'colVB').value, 10);
+  const pts = [];
+  for (let r = raw.dataStart; r < raw.rows.length; r++) {
+    const row = raw.rows[r];
+    const x = Number(String(row[sx] ?? '').replace(',', '.'));
+    const y = Number(String(row[sy] ?? '').replace(',', '.'));
+    const value = Number(String(row[sv] ?? '').replace(',', '.'));
+    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(value)) continue;
+    pts.push({ x, y, value });
+  }
+  if (!pts.length) {
+    setStatus(key, 'No valid points after column mapping.', true);
+    return;
+  }
+  datasets[key].points = pts;
+  setStatus(key, `${pts.length} points loaded (${datasets[key].fileName}).`);
+  drawPointMap(key === 'A' ? q('mapACanvas') : q('mapBCanvas'), pts, `${key} preview`, null, q('sharedColorScale').checked ? null : null);
+}
+
+function computeStats(values) {
+  if (!values.length) return null;
+  const sorted = values.slice().sort((a, b) => a - b);
+  const n = values.length;
+  const mean = values.reduce((a, b) => a + b, 0) / n;
+  const variance = values.reduce((s, v) => s + (v - mean) ** 2, 0) / n;
+  const std = Math.sqrt(variance);
+  const qv = (p) => {
+    const pos = (n - 1) * p;
+    const lo = Math.floor(pos);
+    const hi = Math.ceil(pos);
+    if (lo === hi) return sorted[lo];
+    const t = pos - lo;
+    return sorted[lo] * (1 - t) + sorted[hi] * t;
+  };
+  return { n, mean, std, min: sorted[0], max: sorted[n - 1], p10: qv(0.10), p50: qv(0.50), p90: qv(0.90) };
+}
+
+function buildKDTree(points, depth = 0) {
+  if (!points.length) return null;
+  const axis = depth % 2;
+  const sorted = points.slice().sort((a, b) => axis === 0 ? a.x - b.x : a.y - b.y);
+  const mid = Math.floor(sorted.length / 2);
+  return {
+    point: sorted[mid],
+    axis,
+    left: buildKDTree(sorted.slice(0, mid), depth + 1),
+    right: buildKDTree(sorted.slice(mid + 1), depth + 1)
+  };
+}
+
+function nearestKD(node, target, best = null) {
+  if (!node) return best;
+  const dx = node.point.x - target.x;
+  const dy = node.point.y - target.y;
+  const dist2 = dx * dx + dy * dy;
+  if (!best || dist2 < best.dist2) best = { point: node.point, dist2 };
+  const axisDelta = node.axis === 0 ? target.x - node.point.x : target.y - node.point.y;
+  const near = axisDelta < 0 ? node.left : node.right;
+  const far = axisDelta < 0 ? node.right : node.left;
+  best = nearestKD(near, target, best);
+  if (axisDelta * axisDelta < best.dist2) best = nearestKD(far, target, best);
+  return best;
+}
+
+function compareDatasets() {
+  const aPts = datasets.A.points;
+  const bPts = datasets.B.points;
+  if (!aPts.length || !bPts.length) {
+    q('summaryBox').innerHTML = '<em>Load both datasets before comparing.</em>';
+    return;
+  }
+  const maxDistRaw = Number(q('maxMatchDistance').value);
+  const maxDist = Number.isFinite(maxDistRaw) && maxDistRaw > 0 ? maxDistRaw : Infinity;
+  const tree = buildKDTree(bPts);
+  const pairs = [];
+  for (let i = 0; i < aPts.length; i++) {
+    const a = aPts[i];
+    const nn = nearestKD(tree, a, null);
+    if (!nn) continue;
+    const d = Math.sqrt(nn.dist2);
+    if (d > maxDist) continue;
+    pairs.push({
+      idx: i + 1,
+      x: a.x,
+      y: a.y,
+      a: a.value,
+      b: nn.point.value,
+      diff: nn.point.value - a.value,
+      dist: d
+    });
+  }
+  if (!pairs.length) {
+    q('summaryBox').innerHTML = '<em>No matched pairs (check distance filter).</em>';
+    return;
+  }
+  lastPairs = pairs;
+  updateComparisonOutputs();
+}
+
+function updateComparisonOutputs() {
+  const pairs = lastPairs;
+  if (!pairs.length) return;
+  const valsA = pairs.map((p) => p.a);
+  const valsB = pairs.map((p) => p.b);
+  const diffs = pairs.map((p) => p.diff);
+  const dists = pairs.map((p) => p.dist);
+  const n = pairs.length;
+  const meanA = valsA.reduce((a, b) => a + b, 0) / n;
+  const meanB = valsB.reduce((a, b) => a + b, 0) / n;
+  const meanDiff = diffs.reduce((a, b) => a + b, 0) / n;
+  const mae = diffs.reduce((s, v) => s + Math.abs(v), 0) / n;
+  const rmse = Math.sqrt(diffs.reduce((s, v) => s + v * v, 0) / n);
+  let cov = 0, varA = 0, varB = 0;
+  for (let i = 0; i < n; i++) {
+    const da = valsA[i] - meanA;
+    const db = valsB[i] - meanB;
+    cov += da * db;
+    varA += da * da;
+    varB += db * db;
+  }
+  cov /= n;
+  varA /= n;
+  varB /= n;
+  const corr = (varA > 0 && varB > 0) ? cov / Math.sqrt(varA * varB) : NaN;
+  const slope = varA > 0 ? cov / varA : NaN;
+  const intercept = Number.isFinite(slope) ? meanB - slope * meanA : NaN;
+  const r2 = Number.isFinite(corr) ? corr * corr : NaN;
+  const sDist = computeStats(dists);
+
+  q('summaryBox').innerHTML =
+    `<p><b>Matched pairs:</b> ${n} (A nodes matched to nearest B nodes)</p>` +
+    `<p><b>Mean A:</b> ${meanA.toFixed(4)} | <b>Mean B:</b> ${meanB.toFixed(4)} | <b>Bias (B-A):</b> ${meanDiff.toFixed(4)}</p>` +
+    `<p><b>MAE:</b> ${mae.toFixed(4)} | <b>RMSE:</b> ${rmse.toFixed(4)} | <b>Corr:</b> ${Number.isFinite(corr) ? corr.toFixed(4) : 'n/a'} | <b>R²:</b> ${Number.isFinite(r2) ? r2.toFixed(4) : 'n/a'}</p>` +
+    `<p><b>Regression:</b> B = a + b·A => a=${Number.isFinite(intercept) ? intercept.toFixed(4) : 'n/a'}, b=${Number.isFinite(slope) ? slope.toFixed(4) : 'n/a'}</p>` +
+    `<p><b>Nearest distance:</b> mean=${sDist.mean.toFixed(4)}, p50=${sDist.p50.toFixed(4)}, max=${sDist.max.toFixed(4)}</p>`;
+
+  drawMapsPanel();
+  drawScatterPlot(valsA, valsB, slope, intercept);
+  drawHistogramOverlay(valsA, valsB);
+  drawDensityPlot(valsA, valsB);
+  drawPairsTable(pairs);
+}
+
+function rainbowColor(t, alpha = 1) {
+  const tt = Math.max(0, Math.min(1, t));
+  let r = 0, g = 0, b = 0;
+  if (tt < 0.25) { g = Math.round(255 * tt / 0.25); b = 255; }
+  else if (tt < 0.5) { g = 255; b = Math.round(255 * (1 - (tt - 0.25) / 0.25)); }
+  else if (tt < 0.75) { r = Math.round(255 * (tt - 0.5) / 0.25); g = 255; }
+  else { r = 255; g = Math.round(255 * (1 - (tt - 0.75) / 0.25)); }
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function divergingColor(v, maxAbs, alpha = 1) {
+  const t = Math.max(-1, Math.min(1, maxAbs > 0 ? v / maxAbs : 0));
+  let r, g, b;
+  if (t < 0) {
+    const k = t + 1;
+    r = Math.round(255 * k);
+    g = Math.round(255 * k);
+    b = 255;
+  } else {
+    const k = 1 - t;
+    r = 255;
+    g = Math.round(255 * k);
+    b = Math.round(255 * k);
+  }
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function estimateStep(values) {
+  const uniq = Array.from(new Set(values.map((v) => Number(v.toFixed(6))))).sort((a, b) => a - b);
+  const diffs = [];
+  for (let i = 1; i < uniq.length; i++) {
+    const d = uniq[i] - uniq[i - 1];
+    if (d > 1e-9) diffs.push(d);
+  }
+  if (!diffs.length) return NaN;
+  diffs.sort((a, b) => a - b);
+  return diffs[Math.floor(diffs.length / 2)];
+}
+
+function drawPointMap(canvas, points, title, valueRange = null, customExtent = null, diffMode = false) {
+  const c = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  c.clearRect(0, 0, w, h);
+  if (!points || !points.length) return;
+
+  const xs = points.map((p) => p.x);
+  const ys = points.map((p) => p.y);
+  const vals = points.map((p) => p.value);
+  const xMin = customExtent ? customExtent.xMin : Math.min(...xs);
+  const xMax = customExtent ? customExtent.xMax : Math.max(...xs);
+  const yMin = customExtent ? customExtent.yMin : Math.min(...ys);
+  const yMax = customExtent ? customExtent.yMax : Math.max(...ys);
+  const dxGuess = estimateStep(xs);
+  const dyGuess = estimateStep(ys);
+
+  let vMin = Math.min(...vals), vMax = Math.max(...vals);
+  if (valueRange && Number.isFinite(valueRange.min) && Number.isFinite(valueRange.max)) {
+    vMin = valueRange.min;
+    vMax = valueRange.max;
+  }
+  const range = (vMax - vMin) || 1;
+  const margin = { t: 24, r: 12, b: 28, l: 42 };
+  const pw = w - margin.l - margin.r;
+  const ph = h - margin.t - margin.b;
+  const xr = (xMax - xMin) || 1;
+  const yr = (yMax - yMin) || 1;
+  const toX = (v) => margin.l + ((v - xMin) / xr) * pw;
+  const toY = (v) => margin.t + (1 - ((v - yMin) / yr)) * ph;
+  const cellW = Number.isFinite(dxGuess) ? Math.max(2, (dxGuess / xr) * pw) : 4;
+  const cellH = Number.isFinite(dyGuess) ? Math.max(2, (dyGuess / yr) * ph) : 4;
+
+  c.strokeStyle = '#334155';
+  c.beginPath();
+  c.moveTo(margin.l, margin.t);
+  c.lineTo(margin.l, h - margin.b);
+  c.lineTo(w - margin.r, h - margin.b);
+  c.stroke();
+
+  let maxAbs = 1;
+  if (diffMode) {
+    maxAbs = Math.max(Math.abs(vMin), Math.abs(vMax), 1e-9);
+  }
+  points.forEach((p) => {
+    let color;
+    if (diffMode) {
+      color = divergingColor(p.value, maxAbs, 0.8);
+    } else {
+      const t = (p.value - vMin) / range;
+      color = rainbowColor(t, 0.78);
+    }
+    c.fillStyle = color;
+    c.fillRect(toX(p.x) - cellW * 0.5, toY(p.y) - cellH * 0.5, cellW, cellH);
+  });
+
+  c.fillStyle = '#111827';
+  c.font = '12px Arial';
+  c.textAlign = 'center';
+  c.fillText(title, w / 2, 14);
+  c.font = '10px Arial';
+  c.fillText(`X: ${xMin.toFixed(2)} to ${xMax.toFixed(2)}`, w / 2, h - 6);
+  c.save();
+  c.translate(11, h / 2);
+  c.rotate(-Math.PI / 2);
+  c.fillText(`Y: ${yMin.toFixed(2)} to ${yMax.toFixed(2)}`, 0, 0);
+  c.restore();
+}
+
+function drawMapsPanel() {
+  const aPts = datasets.A.points;
+  const bPts = datasets.B.points;
+  const pairs = lastPairs;
+  if (!aPts.length || !bPts.length || !pairs.length) return;
+  const shared = q('sharedColorScale').checked;
+  const valsA = aPts.map((p) => p.value);
+  const valsB = bPts.map((p) => p.value);
+  const rangeAB = shared
+    ? { min: Math.min(Math.min(...valsA), Math.min(...valsB)), max: Math.max(Math.max(...valsA), Math.max(...valsB)) }
+    : null;
+
+  const extentA = {
+    xMin: Math.min(...aPts.map((p) => p.x)),
+    xMax: Math.max(...aPts.map((p) => p.x)),
+    yMin: Math.min(...aPts.map((p) => p.y)),
+    yMax: Math.max(...aPts.map((p) => p.y))
+  };
+  const extentB = {
+    xMin: Math.min(...bPts.map((p) => p.x)),
+    xMax: Math.max(...bPts.map((p) => p.x)),
+    yMin: Math.min(...bPts.map((p) => p.y)),
+    yMax: Math.max(...bPts.map((p) => p.y))
+  };
+  drawPointMap(q('mapACanvas'), aPts, `A (${datasets.A.fileName})`, rangeAB, extentA, false);
+  drawPointMap(q('mapBCanvas'), bPts, `B (${datasets.B.fileName})`, rangeAB, extentB, false);
+
+  const diffPts = pairs.map((p) => ({ x: p.x, y: p.y, value: p.diff }));
+  drawPointMap(q('mapDiffCanvas'), diffPts, 'Difference B-A at A nodes', null, extentA, true);
+}
+
+function drawScatterPlot(xVals, yVals, slope, intercept) {
+  const canvas = q('scatterCanvas');
+  const c = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  c.clearRect(0, 0, w, h);
+  if (!xVals.length) return;
+  const minV = Math.min(...xVals, ...yVals);
+  const maxV = Math.max(...xVals, ...yVals);
+  const range = (maxV - minV) || 1;
+  const margin = { t: 24, r: 14, b: 34, l: 46 };
+  const pw = w - margin.l - margin.r;
+  const ph = h - margin.t - margin.b;
+  const x = (v) => margin.l + ((v - minV) / range) * pw;
+  const y = (v) => margin.t + (1 - ((v - minV) / range)) * ph;
+
+  c.strokeStyle = '#334155';
+  c.beginPath();
+  c.moveTo(margin.l, margin.t);
+  c.lineTo(margin.l, h - margin.b);
+  c.lineTo(w - margin.r, h - margin.b);
+  c.stroke();
+
+  c.setLineDash([4, 3]);
+  c.strokeStyle = '#94a3b8';
+  c.beginPath();
+  c.moveTo(x(minV), y(minV));
+  c.lineTo(x(maxV), y(maxV));
+  c.stroke();
+  c.setLineDash([]);
+
+  if (Number.isFinite(slope) && Number.isFinite(intercept)) {
+    c.strokeStyle = '#2563eb';
+    c.lineWidth = 2;
+    c.beginPath();
+    c.moveTo(x(minV), y(intercept + slope * minV));
+    c.lineTo(x(maxV), y(intercept + slope * maxV));
+    c.stroke();
+  }
+
+  c.fillStyle = 'rgba(220, 38, 38, 0.6)';
+  for (let i = 0; i < xVals.length; i++) {
+    c.beginPath();
+    c.arc(x(xVals[i]), y(yVals[i]), 2.2, 0, Math.PI * 2);
+    c.fill();
+  }
+
+  c.fillStyle = '#111827';
+  c.font = '11px Arial';
+  c.textAlign = 'center';
+  c.fillText('A', w / 2, h - 8);
+  c.save();
+  c.translate(12, h / 2);
+  c.rotate(-Math.PI / 2);
+  c.fillText('B', 0, 0);
+  c.restore();
+}
+
+function drawHistogramOverlay(aVals, bVals) {
+  const canvas = q('histCanvas');
+  const c = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  c.clearRect(0, 0, w, h);
+  if (!aVals.length || !bVals.length) return;
+  const minV = Math.min(...aVals, ...bVals);
+  const maxV = Math.max(...aVals, ...bVals);
+  const range = (maxV - minV) || 1;
+  const bins = Math.min(40, Math.max(12, Math.round(Math.sqrt(Math.max(aVals.length, bVals.length)))));
+  const binW = range / bins;
+  const hA = new Array(bins).fill(0);
+  const hB = new Array(bins).fill(0);
+  const add = (arr, v) => {
+    let idx = Math.floor((v - minV) / binW);
+    if (idx < 0) idx = 0;
+    if (idx >= bins) idx = bins - 1;
+    arr[idx] += 1;
+  };
+  aVals.forEach((v) => add(hA, v));
+  bVals.forEach((v) => add(hB, v));
+  const maxC = Math.max(...hA, ...hB, 1);
+  const margin = { t: 24, r: 12, b: 32, l: 46 };
+  const pw = w - margin.l - margin.r;
+  const ph = h - margin.t - margin.b;
+  const bw = pw / bins;
+
+  c.strokeStyle = '#334155';
+  c.beginPath();
+  c.moveTo(margin.l, margin.t);
+  c.lineTo(margin.l, h - margin.b);
+  c.lineTo(w - margin.r, h - margin.b);
+  c.stroke();
+
+  for (let i = 0; i < bins; i++) {
+    const x = margin.l + i * bw;
+    const ha = (hA[i] / maxC) * ph;
+    const hb = (hB[i] / maxC) * ph;
+    c.fillStyle = 'rgba(37, 99, 235, 0.45)';
+    c.fillRect(x, h - margin.b - ha, bw - 1, ha);
+    c.fillStyle = 'rgba(234, 88, 12, 0.45)';
+    c.fillRect(x, h - margin.b - hb, bw - 1, hb);
+  }
+
+  c.fillStyle = '#111827';
+  c.font = '11px Arial';
+  c.textAlign = 'left';
+  c.fillText('Blue: A', margin.l + 4, margin.t + 12);
+  c.fillStyle = '#c2410c';
+  c.fillText('Orange: B', margin.l + 70, margin.t + 12);
+}
+
+function kde(values, xGrid) {
+  const n = values.length;
+  if (!n) return xGrid.map(() => NaN);
+  const mean = values.reduce((a, b) => a + b, 0) / n;
+  const variance = values.reduce((s, v) => s + (v - mean) ** 2, 0) / n;
+  const std = Math.sqrt(variance) || 1;
+  const min = Math.min(...values), max = Math.max(...values);
+  const h = Math.max(1e-6, 1.06 * std * Math.pow(n, -0.2), (max - min) / 80 || 1e-3);
+  const inv = 1 / (n * h * Math.sqrt(2 * Math.PI));
+  return xGrid.map((x) => {
+    let s = 0;
+    for (let i = 0; i < n; i++) {
+      const u = (x - values[i]) / h;
+      s += Math.exp(-0.5 * u * u);
+    }
+    return inv * s;
+  });
+}
+
+function drawDensityPlot(aVals, bVals) {
+  const canvas = q('densityCanvas');
+  const c = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  c.clearRect(0, 0, w, h);
+  if (!aVals.length || !bVals.length) return;
+  const minV = Math.min(...aVals, ...bVals);
+  const maxV = Math.max(...aVals, ...bVals);
+  const xGrid = [];
+  const nGrid = 160;
+  for (let i = 0; i < nGrid; i++) xGrid.push(minV + (i / (nGrid - 1)) * ((maxV - minV) || 1));
+  const dA = kde(aVals, xGrid);
+  const dB = kde(bVals, xGrid);
+  const maxD = Math.max(...dA, ...dB, 1e-9);
+
+  const margin = { t: 24, r: 12, b: 32, l: 48 };
+  const pw = w - margin.l - margin.r;
+  const ph = h - margin.t - margin.b;
+  const x = (v) => margin.l + ((v - minV) / ((maxV - minV) || 1)) * pw;
+  const y = (v) => margin.t + (1 - v / maxD) * ph;
+
+  c.strokeStyle = '#334155';
+  c.beginPath();
+  c.moveTo(margin.l, margin.t);
+  c.lineTo(margin.l, h - margin.b);
+  c.lineTo(w - margin.r, h - margin.b);
+  c.stroke();
+
+  c.strokeStyle = '#2563eb';
+  c.lineWidth = 2;
+  c.beginPath();
+  for (let i = 0; i < xGrid.length; i++) {
+    if (i === 0) c.moveTo(x(xGrid[i]), y(dA[i]));
+    else c.lineTo(x(xGrid[i]), y(dA[i]));
+  }
+  c.stroke();
+
+  c.strokeStyle = '#ea580c';
+  c.lineWidth = 2;
+  c.beginPath();
+  for (let i = 0; i < xGrid.length; i++) {
+    if (i === 0) c.moveTo(x(xGrid[i]), y(dB[i]));
+    else c.lineTo(x(xGrid[i]), y(dB[i]));
+  }
+  c.stroke();
+
+  c.fillStyle = '#111827';
+  c.font = '11px Arial';
+  c.fillText('A', margin.l + 6, margin.t + 12);
+  c.fillStyle = '#ea580c';
+  c.fillText('B', margin.l + 26, margin.t + 12);
+}
+
+function drawPairsTable(pairs) {
+  const wrap = q('pairsWrap');
+  let html = '<table><thead><tr><th>#</th><th>X</th><th>Y</th><th>A</th><th>B(nearest)</th><th>B-A</th><th>dist</th></tr></thead><tbody>';
+  pairs.slice(0, 400).forEach((p) => {
+    html += `<tr><td>${p.idx}</td><td>${p.x.toFixed(4)}</td><td>${p.y.toFixed(4)}</td><td>${p.a.toFixed(5)}</td><td>${p.b.toFixed(5)}</td><td>${p.diff.toFixed(5)}</td><td>${p.dist.toFixed(5)}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  if (pairs.length > 400) html += `<div class="muted" style="padding:6px;">Showing first 400 of ${pairs.length} matched pairs.</div>`;
+  wrap.innerHTML = html;
+}
+
+function clearAll() {
+  datasets.A = { raw: null, points: [], fileName: '' };
+  datasets.B = { raw: null, points: [], fileName: '' };
+  lastPairs = [];
+  q('fileA').value = '';
+  q('fileB').value = '';
+  q('selectorA').style.display = 'none';
+  q('selectorB').style.display = 'none';
+  setStatus('A', '');
+  setStatus('B', '');
+  q('summaryBox').innerHTML = '<em>Load both datasets and click "Compare Grids".</em>';
+  q('pairsWrap').innerHTML = '';
+  ['mapACanvas', 'mapBCanvas', 'mapDiffCanvas', 'scatterCanvas', 'histCanvas', 'densityCanvas'].forEach((id) => {
+    const cv = q(id);
+    if (!cv) return;
+    cv.getContext('2d').clearRect(0, 0, cv.width, cv.height);
+  });
+}
+
+function setupEvents() {
+  q('fileA').onchange = (e) => handleFileChosen('A', e.target.files && e.target.files[0]);
+  q('fileB').onchange = (e) => handleFileChosen('B', e.target.files && e.target.files[0]);
+  q('btnLoadA').onclick = () => loadDatasetFromSelectors('A');
+  q('btnLoadB').onclick = () => loadDatasetFromSelectors('B');
+  q('btnCompare').onclick = () => compareDatasets();
+  q('btnClear').onclick = () => clearAll();
+  q('sharedColorScale').onchange = () => { if (lastPairs.length) drawMapsPanel(); };
+}
+
+setupEvents();
+</script>
+</body>
+</html>

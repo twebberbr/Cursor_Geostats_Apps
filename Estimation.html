@@ -754,6 +754,24 @@
     <canvas id="legendCanvas" width="220" height="20"></canvas>
     <div id="legendLabels"><em>No active map</em></div>
   </div>
+  <div class="map-section">
+    <h4>Export Grid</h4>
+    <label>Source:
+      <select id="estExportMapSource">
+        <option value="auto" selected>Auto (active map)</option>
+        <option value="est">Kriging Z*</option>
+        <option value="var">Kriging variance (σ²)</option>
+        <option value="slope">Kriging slope (SR)</option>
+        <option value="lagrange">Kriging Lagrange (μ)</option>
+        <option value="idw">IDW</option>
+        <option value="nn">Nearest Neighbor</option>
+        <option value="ik_mean">IK E[Z]</option>
+        <option value="ik_prob">IK P(Z ≤ zq)</option>
+      </select>
+    </label>
+    <button id="btnExportEstGrid">Export CSV</button>
+    <div id="estExportStatus" class="ik-muted"></div>
+  </div>
 
   
 <!-- INDICATOR KRIGING SECTION -->
@@ -1675,6 +1693,8 @@ function setupEvents() {
   document.getElementById('btnRunCV').onclick = () => runCrossValidation();
   document.getElementById('btnClear').onclick = () => clearResults();
   document.getElementById('btnResetView').onclick = () => { viewScale=1; viewOffsetX=0; viewOffsetY=0; draw(); };
+  document.getElementById('btnExportEstGrid').onclick = () => exportEstimationGridCSV();
+  document.getElementById('estExportMapSource').onchange = () => setEstExportStatus('');
   document.getElementById('btnResetPoints').onclick = () => init();
   document.getElementById('learningMode').onchange = () => applyLearningModeEstimation();
   document.getElementById('tabConventional').onclick = () => setEstimationMode('conventional');
@@ -2503,6 +2523,130 @@ function refreshMapLegend() {
     legendCtx.beginPath(); legendCtx.moveTo(x,0); legendCtx.lineTo(x,legendCanvas.height); legendCtx.stroke();
   }
   labelsDiv.innerHTML = `<b>${label}</b>: ${data.min.toFixed(3)} — ${data.max.toFixed(3)}`;
+}
+
+function setEstExportStatus(message, isError = false) {
+  const el = document.getElementById('estExportStatus');
+  if (!el) return;
+  el.textContent = message || '';
+  el.style.color = isError ? '#b91c1c' : 'var(--text-muted)';
+}
+
+function downloadTextFile(filename, content, mimeType = 'text/plain;charset=utf-8') {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function normalizeGridMapForExport(mapData) {
+  if (!mapData || !mapData.values) return null;
+  const nx = Number(mapData.nx);
+  const ny = Number(mapData.ny);
+  const originX = Number(mapData.originX);
+  const originY = Number(mapData.originY);
+  const dx = Number(mapData.spacingX ?? mapData.dx);
+  const dy = Number(mapData.spacingY ?? mapData.dy);
+  if (!Number.isFinite(nx) || !Number.isFinite(ny) || !Number.isFinite(originX) || !Number.isFinite(originY) || !Number.isFinite(dx) || !Number.isFinite(dy)) {
+    return null;
+  }
+  return {
+    nx: Math.max(0, Math.floor(nx)),
+    ny: Math.max(0, Math.floor(ny)),
+    originX,
+    originY,
+    dx,
+    dy,
+    values: mapData.values
+  };
+}
+
+function getAutoEstimationMapSelection() {
+  if (document.getElementById('showIKMeanMap')?.checked && ikMeanMapData) return { key: 'ik_mean', label: 'IK E[Z]', map: ikMeanMapData };
+  if (document.getElementById('showIKProbMap')?.checked && ikProbMapData) return { key: 'ik_prob', label: 'IK P(Z<=zq)', map: ikProbMapData };
+  if (document.getElementById('showEstMap')?.checked && estMapData) return { key: 'est', label: 'Kriging Z*', map: estMapData };
+  if (document.getElementById('showVarMap')?.checked && varMapData) return { key: 'var', label: 'Kriging variance', map: varMapData };
+  if (document.getElementById('showSlopeMap')?.checked && slopeMapData) return { key: 'slope', label: 'Kriging SR', map: slopeMapData };
+  if (document.getElementById('showLagrangeMap')?.checked && lagrangeMapData) return { key: 'lagrange', label: 'Kriging mu', map: lagrangeMapData };
+  if (document.getElementById('showIDWMap')?.checked && idwMapData) return { key: 'idw', label: 'IDW', map: idwMapData };
+  if (document.getElementById('showNNMap')?.checked && nnMapData) return { key: 'nn', label: 'Nearest Neighbor', map: nnMapData };
+  return null;
+}
+
+function getEstimationMapForExport(source) {
+  if (source === 'auto') return getAutoEstimationMapSelection();
+  if (source === 'est' || source === 'var' || source === 'slope' || source === 'lagrange') {
+    if (isIKMode()) {
+      throw new Error('Conventional kriging maps are available in Conventional mode.');
+    }
+    if (!estMapData && !varMapData && !slopeMapData && !lagrangeMapData) computeKrigingMaps();
+    if (source === 'est') return estMapData ? { key: 'est', label: 'Kriging Z*', map: estMapData } : null;
+    if (source === 'var') return varMapData ? { key: 'var', label: 'Kriging variance', map: varMapData } : null;
+    if (source === 'slope') return slopeMapData ? { key: 'slope', label: 'Kriging SR', map: slopeMapData } : null;
+    return lagrangeMapData ? { key: 'lagrange', label: 'Kriging mu', map: lagrangeMapData } : null;
+  }
+  if (source === 'idw') {
+    if (isIKMode()) throw new Error('IDW map export is available in Conventional mode.');
+    if (!idwMapData) computeIDWMap();
+    return idwMapData ? { key: 'idw', label: 'IDW', map: idwMapData } : null;
+  }
+  if (source === 'nn') {
+    if (isIKMode()) throw new Error('NN map export is available in Conventional mode.');
+    if (!nnMapData) computeNNMap();
+    return nnMapData ? { key: 'nn', label: 'Nearest Neighbor', map: nnMapData } : null;
+  }
+  if (source === 'ik_mean' || source === 'ik_prob') {
+    if (!ikMeanMapData && !ikProbMapData) computeIKMaps();
+    if (source === 'ik_mean') return ikMeanMapData ? { key: 'ik_mean', label: 'IK E[Z]', map: ikMeanMapData } : null;
+    return ikProbMapData ? { key: 'ik_prob', label: 'IK P(Z<=zq)', map: ikProbMapData } : null;
+  }
+  return null;
+}
+
+function exportEstimationGridCSV() {
+  try {
+    const source = document.getElementById('estExportMapSource')?.value || 'auto';
+    const selected = getEstimationMapForExport(source);
+    if (!selected || !selected.map) {
+      throw new Error('No grid map available for the selected source.');
+    }
+    const map = normalizeGridMapForExport(selected.map);
+    if (!map) throw new Error('Invalid map metadata for export.');
+    const rows = [];
+    rows.push('# geostats_grid_export_v1');
+    rows.push('# source_lab=estimation');
+    rows.push(`# map_key=${selected.key}`);
+    rows.push(`# map_label=${selected.label}`);
+    rows.push(`# nx=${map.nx}`);
+    rows.push(`# ny=${map.ny}`);
+    rows.push(`# origin_x=${map.originX}`);
+    rows.push(`# origin_y=${map.originY}`);
+    rows.push(`# spacing_x=${map.dx}`);
+    rows.push(`# spacing_y=${map.dy}`);
+    rows.push('i,j,x,y,value');
+    for (let i = 0; i < map.nx; i++) {
+      for (let j = 0; j < map.ny; j++) {
+        const v = map.values?.[i]?.[j];
+        if (!isFinite(v)) continue;
+        const x = map.originX + (i + 0.5) * map.dx;
+        const y = map.originY + (j + 0.5) * map.dy;
+        rows.push(`${i},${j},${x.toFixed(6)},${y.toFixed(6)},${Number(v).toFixed(6)}`);
+      }
+    }
+    if (rows.length <= 11) throw new Error('Selected map has no finite nodes to export.');
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const safeLabel = selected.label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    const filename = `estimation_grid_${safeLabel || 'map'}_${stamp}.csv`;
+    downloadTextFile(filename, rows.join('\n'), 'text/csv;charset=utf-8');
+    setEstExportStatus(`Grid exported: ${filename}`);
+  } catch (err) {
+    setEstExportStatus(`Export failed: ${err.message}`, true);
+  }
 }
 
 function rainbowColor(t, alpha) {

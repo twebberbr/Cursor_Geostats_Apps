@@ -651,6 +651,21 @@
     <div class="realization-selector" id="realizationSelector" style="display:none;">
       <label>Realization: <select id="realizationSelect"></select></label>
     </div>
+    <div style="margin-top:8px; padding-top:8px; border-top:1px dashed rgba(148,163,184,0.45);">
+      <label>Export:
+        <select id="simExportSource">
+          <option value="current" selected>Current realization</option>
+          <option value="realization_index">Specific realization #</option>
+          <option value="mean">E-type mean</option>
+        </select>
+      </label>
+      <label id="simExportIndexWrap" style="display:none;">
+        #:
+        <input type="number" id="simExportRealizationIndex" value="1" min="1" step="1" style="width:70px;">
+      </label>
+      <button id="btnExportSimGrid">Export CSV</button>
+      <div id="simExportStatus" style="margin-top:4px; font-size:0.8rem; color:var(--text-muted);"></div>
+    </div>
   </div>
   <div id="mapLegendContainer">
     <canvas id="legendCanvas" width="220" height="20"></canvas>
@@ -2056,6 +2071,10 @@ function runMultipleSimulations() {
   }
 
   currentRealization = realizations[0];
+  const exportIdxEl = document.getElementById('simExportRealizationIndex');
+  if (exportIdxEl) exportIdxEl.value = '1';
+  updateSimulationExportControls();
+  setSimExportStatus('');
 
   // Update E-type and standard deviation maps, when available
   if (typeof computeSummaryMaps === 'function') {
@@ -3716,6 +3735,92 @@ function refreshMapLegend() {
   labelsDiv.innerHTML = `<b>${label}</b>: ${data.min.toFixed(3)} — ${data.max.toFixed(3)}`;
 }
 
+function setSimExportStatus(message, isError = false) {
+  const el = document.getElementById('simExportStatus');
+  if (!el) return;
+  el.textContent = message || '';
+  el.style.color = isError ? '#b91c1c' : 'var(--text-muted)';
+}
+
+function updateSimulationExportControls() {
+  const srcEl = document.getElementById('simExportSource');
+  const idxWrap = document.getElementById('simExportIndexWrap');
+  const idxEl = document.getElementById('simExportRealizationIndex');
+  if (!srcEl || !idxWrap || !idxEl) return;
+  idxWrap.style.display = srcEl.value === 'realization_index' ? '' : 'none';
+  const n = Math.max(1, realizations.length || 1);
+  idxEl.max = String(n);
+  if (!Number.isFinite(Number(idxEl.value)) || Number(idxEl.value) < 1) idxEl.value = '1';
+  if (Number(idxEl.value) > n) idxEl.value = String(n);
+}
+
+function getSimulationGridForExport(source) {
+  const grid = getGridParams();
+  if (source === 'mean') {
+    if (!meanMap && realizations.length) computeSummaryMaps();
+    if (!meanMap || !meanMap.values) throw new Error('Mean map is not available. Run simulations first.');
+    return { label: 'etype_mean', nx: meanMap.nx, ny: meanMap.ny, originX: meanMap.originX, originY: meanMap.originY, dx: meanMap.dx, dy: meanMap.dy, values: meanMap.values };
+  }
+  if (source === 'realization_index') {
+    const idxRaw = parseInt(document.getElementById('simExportRealizationIndex')?.value || '1', 10);
+    const idx = Math.max(1, idxRaw) - 1;
+    if (!realizations[idx]) throw new Error('Requested realization index is unavailable.');
+    return { label: `realization_${idx + 1}`, nx: grid.nx, ny: grid.ny, originX: grid.originX, originY: grid.originY, dx: grid.dx, dy: grid.dy, values: realizations[idx] };
+  }
+  if (!currentRealization) throw new Error('Current realization is not available. Run simulation first.');
+  let label = 'current_realization';
+  const idx = realizations.indexOf(currentRealization);
+  if (idx >= 0) label = `realization_${idx + 1}`;
+  return { label, nx: grid.nx, ny: grid.ny, originX: grid.originX, originY: grid.originY, dx: grid.dx, dy: grid.dy, values: currentRealization };
+}
+
+function downloadSimTextFile(filename, content, mimeType = 'text/plain;charset=utf-8') {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function exportSimulationGridCSV() {
+  try {
+    const source = document.getElementById('simExportSource')?.value || 'current';
+    const map = getSimulationGridForExport(source);
+    if (!map || !map.values) throw new Error('No grid data available for export.');
+    const rows = [];
+    rows.push('# geostats_grid_export_v1');
+    rows.push('# source_lab=simulation');
+    rows.push(`# map_label=${map.label}`);
+    rows.push(`# nx=${map.nx}`);
+    rows.push(`# ny=${map.ny}`);
+    rows.push(`# origin_x=${map.originX}`);
+    rows.push(`# origin_y=${map.originY}`);
+    rows.push(`# spacing_x=${map.dx}`);
+    rows.push(`# spacing_y=${map.dy}`);
+    rows.push('i,j,x,y,value');
+    for (let i = 0; i < map.nx; i++) {
+      for (let j = 0; j < map.ny; j++) {
+        const v = map.values?.[i]?.[j];
+        if (!isFinite(v)) continue;
+        const x = map.originX + (i + 0.5) * map.dx;
+        const y = map.originY + (j + 0.5) * map.dy;
+        rows.push(`${i},${j},${x.toFixed(6)},${y.toFixed(6)},${Number(v).toFixed(6)}`);
+      }
+    }
+    if (rows.length <= 11) throw new Error('Selected grid has no finite values to export.');
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const fileName = `simulation_grid_${map.label}_${stamp}.csv`;
+    downloadSimTextFile(fileName, rows.join('\n'), 'text/csv;charset=utf-8');
+    setSimExportStatus(`Grid exported: ${fileName}`);
+  } catch (err) {
+    setSimExportStatus(`Export failed: ${err.message}`, true);
+  }
+}
+
 // ============ HISTOGRAMS ============
 function drawHistograms() {
   const active = points.filter(p => p.active);
@@ -4260,6 +4365,8 @@ function init() {
   updateAspectTransform();
   
   setupEvents();
+  updateSimulationExportControls();
+  setSimExportStatus('');
   updatePointsTable();
   updateModelSummary();
   updateGridInfo();
@@ -4380,10 +4487,16 @@ function setupEvents() {
   document.getElementById('btnStepSimulation').onclick = startStepByStep;
   document.getElementById('btnNextStep').onclick = executeStep;
   document.getElementById('btnClear').onclick = clearResults;
+  document.getElementById('btnExportSimGrid').onclick = exportSimulationGridCSV;
   document.getElementById('btnResetView').onclick = () => { viewScale = 1; viewOffsetX = 0; viewOffsetY = 0; draw(); };
   document.getElementById('btnResetPoints').onclick = init;
   document.getElementById('btnShowNscoreTable').onclick = showNscoreTable;
   document.getElementById('simulationLearningMode').onchange = () => applyLearningModeSimulation();
+  document.getElementById('simExportSource').onchange = () => {
+    updateSimulationExportControls();
+    setSimExportStatus('');
+  };
+  document.getElementById('simExportRealizationIndex').onchange = () => setSimExportStatus('');
   const refreshChecksBtn = document.getElementById('btnRefreshSimChecks');
   if (refreshChecksBtn) refreshChecksBtn.onclick = () => updateSimulationChecks();
   const simCheckLagsEl = document.getElementById('simCheckLags');
@@ -4484,6 +4597,8 @@ function setupEvents() {
     const idx = parseInt(e.target.value);
     if (realizations[idx]) {
       currentRealization = realizations[idx];
+      const exportIdxEl = document.getElementById('simExportRealizationIndex');
+      if (exportIdxEl) exportIdxEl.value = String(idx + 1);
       draw();
     }
   };
@@ -4637,6 +4752,8 @@ function clearResults() {
   
   applyLearningModeSimulation();
   updateSimulationChecks();
+  updateSimulationExportControls();
+  setSimExportStatus('');
   draw();
 }
 
