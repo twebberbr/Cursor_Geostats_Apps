@@ -3617,7 +3617,7 @@ function startTBStepByStep() {
 
 function executeTBStep() {
   if (stepIndex >= randomPath.length){
-    document.getElementById('currentNodeInfo').innerHTML = '<b style="color: #059669;">✓ Turning Bands Simulation Complete!</b>';
+    document.getElementById('currentNodeInfo').innerHTML = '<b style="color: #059669;">✓ Simulação Turning Bands Completa!</b>';
     document.getElementById('btnNextStep').style.display = 'none';
     document.getElementById('btnStepSimulation').style.display = 'inline-flex';
     isStepMode = false;
@@ -3640,8 +3640,24 @@ function executeTBStep() {
   const neighbors = getNearestPoints(x0, y0, []);
   currentNeighbors = neighbors;
   const skMean = nscoreMean;
+  const neighborCondIdx = neighbors.map(nb => st.condData.indexOf(nb));
+
+  const perBand = [];
+  if (st.bandData) {
+    for (let l = 0; l < st.nBands; l++) {
+      const bd = st.bandData[l];
+      const projNode = bd.projG[flatIdx];
+      const yNode = interpolate1DValue(bd.t1D, bd.yVals, projNode);
+      const condDetails = neighborCondIdx.map(ci => {
+        if (ci < 0) return {proj:0, yVal:0};
+        return {proj: bd.projC[ci], yVal: interpolate1DValue(bd.t1D, bd.yVals, bd.projC[ci])};
+      });
+      perBand.push({angle:st.bands[l].angle, ux:st.bands[l].ux, uy:st.bands[l].uy, projNode, yNode, condDetails});
+    }
+  }
+
   const skData = simpleKriging(x0, y0, neighbors, params, skMean);
-  const tbNbVals = neighbors.map(nb => {const idx=st.condData.indexOf(nb);return idx>=0?st.tbCond[idx]:0;});
+  const tbNbVals = neighborCondIdx.map(ci => ci >= 0 ? st.tbCond[ci] : 0);
   const tbNb = neighbors.map((nb,k) => ({...nb, value:tbNbVals[k]}));
   const skSim = simpleKriging(x0, y0, tbNb, params, 0);
   const residual = tbVal - skSim.estimate;
@@ -3651,97 +3667,172 @@ function executeTBStep() {
   currentRealization[i][j] = simValue;
   simulatedNodes.push({x:x0,y:y0,value:simNs,originalValue:simValue,gridI:i,gridJ:j,isOriginal:false});
 
-  updateTBStepDisplay(i, j, xWorld, yWorld, neighbors, skData, skSim, tbVal, tbNbVals, residual, simNs, simValue, skMean);
+  updateTBStepDisplay(i, j, xWorld, yWorld, neighbors, neighborCondIdx, skData, skSim, tbVal, tbNbVals, residual, simNs, simValue, skMean, perBand);
   stepIndex++;
   draw();
 }
 
-function updateTBStepDisplay(i, j, xWorld, yWorld, neighbors, skData, skSim, tbVal, tbNbVals, residual, simNs, simValue, skMean) {
+function updateTBStepDisplay(i, j, xWorld, yWorld, neighbors, neighborCondIdx, skData, skSim, tbVal, tbNbVals, residual, simNs, simValue, skMean, perBand) {
   const st = tbStepState;
+  const sqL = Math.sqrt(st.nBands);
+  const nNb = neighbors.length;
+  const F = (v,d) => (typeof v==='number') ? v.toFixed(d===undefined?4:d) : String(v);
 
   document.getElementById('currentNodeInfo').innerHTML = `
-    <b>Node ${stepIndex+1} of ${randomPath.length}</b> — <span style="color:#ea580c;font-weight:600;">Turning Bands</span><br>
-    Grid position: (${i}, ${j}) | World: (${xWorld.toFixed(2)}, ${yWorld.toFixed(2)})<br>
-    <b>${st.nBands} bands</b> | Z_TB (unconditional) = <span style="color:#7c3aed;font-weight:700;">${tbVal.toFixed(4)}</span>`;
+    <b>Nó ${stepIndex+1} de ${randomPath.length}</b> — <span style="color:#ea580c;font-weight:600;">Turning Bands</span><br>
+    Grid: (${i}, ${j}) | Mundo: (${F(xWorld,2)}, ${F(yWorld,2)})<br>
+    <b>${st.nBands} bandas</b> | Z_TB = <span style="color:#7c3aed;font-weight:700;">${F(tbVal)}</span>`;
 
-  // Step 1: TB info
-  let s1 = `<p><b>Method:</b> Turning Bands with <b>${st.nBands}</b> equispaced bands (θᵢ = i×π/${st.nBands})</p>`;
-  s1 += `<p>The unconditional TB field was pre-computed for all grid nodes in one pass.</p>`;
-  s1 += `<p><b>Z_TB(x₀) = (1/√${st.nBands}) × Σ Yₗ(proj(x₀, ℓ)) = <span class="calc-highlight-purple">${tbVal.toFixed(4)}</span></b></p>`;
-  s1 += `<details><summary style="cursor:pointer;color:var(--accent);font-weight:600;">Show band projections for this node</summary>`;
-  s1 += `<table><tr><th>Band</th><th>θ (°)</th><th>proj(x₀)</th></tr>`;
-  const projX0 = st.bands.map(b => xWorld*b.ux + yWorld*b.uy);
-  st.bands.forEach((b,l) => {
-    if (l < 20 || l === st.nBands-1) {
-      s1 += `<tr><td>L${l+1}</td><td>${(b.angle*180/Math.PI).toFixed(1)}</td><td>${projX0[l].toFixed(4)}</td></tr>`;
-    } else if (l === 20) {
-      s1 += `<tr><td colspan="3">… (${st.nBands-21} more bands) …</td></tr>`;
+  // ===== STEP 1: BANDAS, PROJEÇÕES, VALORES 1D =====
+  let s1 = `<p><b>Turning Bands</b>: ${st.nBands} bandas equiespaçadas, θₗ = l×π/${st.nBands}</p>`;
+  s1 += `<div style="padding:6px 10px;background:#faf5ff;border-radius:6px;border:1px dashed rgba(124,58,237,0.4);font-family:monospace;font-size:0.84rem;margin:6px 0;">`;
+  s1 += `proj(x₀, bandₗ) = x₀·cos(θₗ) + y₀·sin(θₗ)<br>`;
+  s1 += `Z_TB(x₀) = (1/√L) × Σₗ Yₗ(proj(x₀, bandₗ))`;
+  s1 += `</div>`;
+
+  if (perBand.length > 0) {
+    s1 += `<details${st.nBands <= 8 ? ' open' : ''}><summary style="cursor:pointer;color:#7c3aed;font-weight:600;">📊 ${st.nBands} bandas — projeções e valores simulados Yₗ</summary>`;
+    s1 += `<div style="max-height:400px;overflow-y:auto;margin-top:4px;">`;
+    s1 += `<table><tr><th>Banda</th><th>θₗ (°)</th><th>uₗ</th><th>proj(x₀)</th><th style="color:#7c3aed;">Yₗ(x₀)</th>`;
+    for (let k = 0; k < Math.min(nNb, 5); k++) s1 += `<th>proj(z${k+1})</th><th style="color:#059669;">Yₗ(z${k+1})</th>`;
+    s1 += `</tr>`;
+    const showAll = st.nBands <= 15;
+    const bShow = showAll ? perBand : perBand.slice(0, 10);
+    bShow.forEach((pb, l) => {
+      s1 += `<tr><td>L${l+1}</td><td>${F(pb.angle*180/Math.PI,1)}</td><td>(${F(pb.ux,4)}, ${F(pb.uy,4)})</td><td>${F(pb.projNode,3)}</td><td style="font-weight:600;color:#7c3aed;">${F(pb.yNode)}</td>`;
+      for (let k = 0; k < Math.min(nNb, 5); k++) s1 += `<td>${F(pb.condDetails[k].proj,3)}</td><td style="color:#059669;">${F(pb.condDetails[k].yVal)}</td>`;
+      s1 += `</tr>`;
+    });
+    if (!showAll) {
+      s1 += `<tr><td colspan="${5+Math.min(nNb,5)*2}" style="text-align:center;color:var(--text-muted);">⋮ (${st.nBands-11} bandas omitidas) ⋮</td></tr>`;
+      const last = perBand[perBand.length-1];
+      s1 += `<tr><td>L${st.nBands}</td><td>${F(last.angle*180/Math.PI,1)}</td><td>(${F(last.ux,4)}, ${F(last.uy,4)})</td><td>${F(last.projNode,3)}</td><td style="font-weight:600;color:#7c3aed;">${F(last.yNode)}</td>`;
+      for (let k = 0; k < Math.min(nNb, 5); k++) s1 += `<td>${F(last.condDetails[k].proj,3)}</td><td style="color:#059669;">${F(last.condDetails[k].yVal)}</td>`;
+      s1 += `</tr>`;
     }
-  });
-  s1 += `</table></details>`;
-  s1 += `<p>Nodes conditioned: <b>${stepIndex}</b> | Remaining: <b>${randomPath.length - stepIndex - 1}</b></p>`;
+    s1 += `</table></div></details>`;
+
+    const sumY = perBand.reduce((s, pb) => s + pb.yNode, 0);
+    s1 += `<div style="margin-top:8px;padding:10px;background:#faf5ff;border-radius:8px;border:2px solid rgba(124,58,237,0.35);">`;
+    s1 += `<p style="font-weight:600;color:#7c3aed;margin-bottom:4px;">Combinação das bandas → Z_TB(x₀):</p>`;
+    s1 += `<div style="font-family:monospace;font-size:0.84rem;line-height:1.8;">`;
+    if (st.nBands <= 8) s1 += `Σ Yₗ(x₀) = ${perBand.map(pb => F(pb.yNode)).join(' + ')}<br>`;
+    else s1 += `Σ Yₗ(x₀) = ${perBand.slice(0,4).map(pb=>F(pb.yNode)).join(' + ')} + ⋯ + ${F(perBand[perBand.length-1].yNode)}<br>`;
+    s1 += `Σ Yₗ(x₀) = <b>${F(sumY)}</b><br>`;
+    s1 += `Z_TB(x₀) = (1/√${st.nBands}) × ${F(sumY)} = <b style="color:#7c3aed;font-size:1.05rem;">${F(tbVal)}</b>`;
+    s1 += `</div></div>`;
+
+    if (nNb > 0) {
+      s1 += `<details><summary style="cursor:pointer;color:#059669;font-weight:600;">Valores Z_TB nos ${nNb} condicionantes</summary>`;
+      for (let k = 0; k < nNb; k++) {
+        const sumCk = perBand.reduce((s, pb) => s + pb.condDetails[k].yVal, 0);
+        s1 += `<div style="font-family:monospace;font-size:0.82rem;padding:4px 0;border-bottom:1px solid rgba(0,0,0,0.05);">`;
+        if (st.nBands <= 8) s1 += `z${k+1}: Σ Yₗ = ${perBand.map(pb => F(pb.condDetails[k].yVal)).join(' + ')} = ${F(sumCk)}<br>`;
+        else s1 += `z${k+1}: Σ Yₗ = ${perBand.slice(0,3).map(pb=>F(pb.condDetails[k].yVal)).join(' + ')} + ⋯ = ${F(sumCk)}<br>`;
+        s1 += `Z_TB(z${k+1}) = (1/${F(sqL)}) × ${F(sumCk)} = <b style="color:#059669;">${F(tbNbVals[k])}</b></div>`;
+      }
+      s1 += `</details>`;
+    }
+  }
+  s1 += `<p style="margin-top:6px;font-size:0.85rem;color:var(--text-muted);">Nós condicionados: ${stepIndex} | Restantes: ${randomPath.length-stepIndex-1}</p>`;
   document.getElementById('stepPath').innerHTML = s1;
 
-  // Step 2: Conditioning data
-  let s2 = `<p>Neighbors: <b>${neighbors.length}</b> (original data only — TB does not need previously simulated nodes)</p>`;
-  if (neighbors.length > 0) {
+  // ===== STEP 2: DADOS CONDICIONANTES =====
+  let s2 = `<p>Vizinhos: <b>${nNb}</b> (apenas dados originais — TB não usa nós previamente simulados)</p>`;
+  if (nNb > 0) {
     s2 += '<table><tr><th>#</th><th>X</th><th>Y</th><th>Z_data (n-score)</th><th>Z_TB</th><th>Dist</th></tr>';
     neighbors.forEach((n, idx) => {
-      const d = Math.sqrt((n.x-internalX(xWorld))**2 + (n.y-internalY(yWorld))**2);
-      s2 += `<tr><td>${idx+1}</td><td>${worldX(n.x).toFixed(2)}</td><td>${worldY(n.y).toFixed(2)}</td><td>${n.value.toFixed(4)}</td><td>${tbNbVals[idx].toFixed(4)}</td><td>${d.toFixed(2)}</td></tr>`;
+      const dx=worldX(n.x)-xWorld, dy=worldY(n.y)-yWorld;
+      s2 += `<tr><td>z${idx+1}</td><td>${F(worldX(n.x),2)}</td><td>${F(worldY(n.y),2)}</td><td>${F(n.value)}</td><td>${F(tbNbVals[idx])}</td><td>${F(Math.sqrt(dx*dx+dy*dy),2)}</td></tr>`;
     });
     s2 += '</table>';
   }
   document.getElementById('stepConditioning').innerHTML = s2;
 
-  // Step 3: SK of real data
-  let s3 = `<p><b>SK Mean (m):</b> ${skMean.toFixed(4)}</p>`;
-  s3 += `<p><b>SK Estimate Z*_KS(data):</b> <span class="calc-highlight">${skData.estimate.toFixed(4)}</span></p>`;
-  s3 += `<p><b>SK Variance σ²_KS:</b> ${skData.variance.toFixed(4)}</p>`;
-  if (skData.lambdas && skData.lambdas.length > 0) {
-    s3 += '<p><b>Weights (λ):</b></p><table><tr><th>#</th><th>λᵢ</th><th>zᵢ (data)</th><th>λᵢ(zᵢ−m)</th></tr>';
-    let sumT = 0;
-    skData.lambdas.forEach((l, idx) => { const term=l*(neighbors[idx].value-skMean); sumT+=term;
-      s3 += `<tr><td>${idx+1}</td><td>${l.toFixed(4)}</td><td>${neighbors[idx].value.toFixed(4)}</td><td>${term.toFixed(4)}</td></tr>`;
+  // ===== STEP 3: SK DOS DADOS REAIS (DETALHADA) =====
+  let s3 = `<p><b>Krigagem Simples (SK) dos dados reais em x₀</b></p>`;
+  s3 += `<p>SK Mean (m) = ${F(skMean)}</p>`;
+  if (nNb > 0 && skData.Cov && skData.cov0) {
+    s3 += `<details open><summary style="cursor:pointer;color:#2563eb;font-weight:600;">① Matriz de covariância C(zᵢ, zⱼ)</summary>`;
+    s3 += `<p style="font-size:0.8rem;color:var(--text-muted);font-style:italic;">C(p₁,p₂) = Sill − γ(p₁,p₂). Diagonal = C(0) = ${F(st.params.totalSill)}</p>`;
+    s3 += `<div style="font-family:monospace;font-size:0.8rem;background:var(--bg-card-alt);padding:6px 8px;border-radius:6px;margin:4px 0;">`;
+    for (let r=0;r<nNb;r++) for (let c=r+1;c<nNb;c++){
+      const dx=worldX(neighbors[r].x)-worldX(neighbors[c].x), dy=worldY(neighbors[r].y)-worldY(neighbors[c].y);
+      s3 += `d(z${r+1},z${c+1}) = ${F(Math.sqrt(dx*dx+dy*dy),2)} → C = ${F(skData.Cov[r][c])}<br>`;
+    }
+    s3 += `</div><table><tr><th>C</th>`;
+    for (let k=0;k<nNb;k++) s3+=`<th>z${k+1}</th>`;
+    s3+=`</tr>`;
+    for (let r=0;r<nNb;r++){s3+=`<tr><th>z${r+1}</th>`;for(let c=0;c<nNb;c++) s3+=`<td style="${r===c?'font-weight:700;color:#ea580c;':''}">${F(skData.Cov[r][c])}</td>`;s3+=`</tr>`;}
+    s3 += `</table></details>`;
+
+    s3 += `<details open><summary style="cursor:pointer;color:#2563eb;font-weight:600;">② Vetor c₀ = C(x₀, zᵢ)</summary>`;
+    s3 += `<div style="font-family:monospace;font-size:0.8rem;background:var(--bg-card-alt);padding:6px 8px;border-radius:6px;margin:4px 0;">`;
+    for (let k=0;k<nNb;k++){
+      const dx=worldX(neighbors[k].x)-xWorld, dy=worldY(neighbors[k].y)-yWorld;
+      s3 += `c₀[z${k+1}]: d = ${F(Math.sqrt(dx*dx+dy*dy),2)} → C(x₀,z${k+1}) = <b>${F(skData.cov0[k])}</b><br>`;
+    }
+    s3 += `c₀ = (${skData.cov0.map(v=>F(v)).join(', ')})</div></details>`;
+
+    s3 += `<details open><summary style="cursor:pointer;color:#2563eb;font-weight:600;">③ Sistema C·λ = c₀ → Pesos</summary>`;
+    s3 += `<table><tr><th>#</th><th>λᵢ</th><th>zᵢ (data)</th><th>zᵢ − m</th><th>λᵢ(zᵢ−m)</th></tr>`;
+    let sumWt = 0;
+    skData.lambdas.forEach((l, idx) => {const r=neighbors[idx].value-skMean, t=l*r; sumWt+=t;
+      s3 += `<tr><td>z${idx+1}</td><td style="font-weight:600;">${F(l)}</td><td>${F(neighbors[idx].value)}</td><td>${F(r)}</td><td>${F(t)}</td></tr>`;
     });
-    s3 += `</table><p>Σλ = ${skData.lambdas.reduce((a,b)=>a+b,0).toFixed(4)}</p>`;
-    s3 += `<p>Z*_KS(data) = m + Σλᵢ(zᵢ−m) = ${skMean.toFixed(4)} + ${sumT.toFixed(4)} = <span class="calc-highlight">${skData.estimate.toFixed(4)}</span></p>`;
+    s3 += `</table><p style="font-family:monospace;font-size:0.82rem;">Σλ = ${F(skData.lambdas.reduce((a,b)=>a+b,0))}</p></details>`;
+
+    s3 += `<div style="padding:10px;background:var(--bg-card);border-radius:8px;border:2px solid rgba(37,99,235,0.3);margin-top:6px;">`;
+    s3 += `<div style="font-family:monospace;font-size:0.85rem;line-height:1.9;">`;
+    s3 += `<b>Z*_KS(dados)</b> = m + Σλᵢ(zᵢ−m) = ${F(skMean)} + ${F(sumWt)} = <b style="color:#f97316;font-size:1.05rem;">${F(skData.estimate)}</b><br>`;
+    let sumLC=0; for(let k=0;k<nNb;k++) sumLC+=skData.lambdas[k]*skData.cov0[k];
+    s3 += `<b>σ²_KS</b> = C(0) − Σλᵢ·c₀ᵢ = ${F(st.params.totalSill)} − ${F(sumLC)} = <b>${F(skData.variance)}</b>`;
+    s3 += `</div></div>`;
+  } else {
+    s3 += `<p>Sem vizinhos → Z*_KS = m = <b style="color:#f97316;">${F(skMean)}</b>, σ²_KS = ${F(st.params.totalSill)}</p>`;
   }
   document.getElementById('stepKriging').innerHTML = s3;
 
-  // Step 4: TB conditioning
-  let s4 = `<p><b>Z_TB(x₀) =</b> <span class="calc-highlight-purple">${tbVal.toFixed(4)}</span></p>`;
-  s4 += `<p><b>SK of unconditional TB values at data locations (mean=0):</b></p>`;
-  if (skSim.lambdas && skSim.lambdas.length > 0) {
-    s4 += '<table><tr><th>#</th><th>λᵢ</th><th>Z_TB(zᵢ)</th><th>λᵢ×Z_TB(zᵢ)</th></tr>';
-    let sumS = 0;
-    skSim.lambdas.forEach((l, idx) => { const term=l*tbNbVals[idx]; sumS+=term;
-      s4 += `<tr><td>${idx+1}</td><td>${l.toFixed(4)}</td><td>${tbNbVals[idx].toFixed(4)}</td><td>${term.toFixed(4)}</td></tr>`;
+  // ===== STEP 4: CONDICIONAMENTO TB =====
+  let s4 = `<p><b>Condicionamento: combinar SK(dados) com resíduo TB</b></p>`;
+  s4 += `<p>Z_TB(x₀) = <span style="color:#7c3aed;font-weight:700;">${F(tbVal)}</span></p>`;
+  if (nNb > 0 && skSim.lambdas) {
+    s4 += `<details open><summary style="cursor:pointer;color:#7c3aed;font-weight:600;">SK dos valores TB nos condicionantes (μ_sim=0)</summary>`;
+    s4 += `<p style="font-size:0.82rem;color:var(--text-muted);font-style:italic;">Mesma geometria → mesmos pesos λ, valores Z_TB:</p>`;
+    s4 += `<table><tr><th>#</th><th>λᵢ</th><th>Z_TB(zᵢ)</th><th>λᵢ×Z_TB(zᵢ)</th></tr>`;
+    let sumSim=0;
+    skSim.lambdas.forEach((l, idx) => {const t=l*tbNbVals[idx]; sumSim+=t;
+      s4 += `<tr><td>z${idx+1}</td><td>${F(l)}</td><td>${F(tbNbVals[idx])}</td><td>${F(t)}</td></tr>`;
     });
-    s4 += `</table>`;
-    s4 += `<p>Z*_KS,sim = Σλᵢ × Z_TB(zᵢ) = <span class="calc-highlight-purple">${skSim.estimate.toFixed(4)}</span></p>`;
+    s4 += `</table><p style="font-family:monospace;">Z*_KS,sim = Σλᵢ×Z_TB(zᵢ) = <b style="color:#7c3aed;">${F(skSim.estimate)}</b></p></details>`;
   }
-  s4 += `<hr style="margin:8px 0;border-color:rgba(148,163,184,0.3);">`;
-  s4 += `<p><b>Residual</b> = Z_TB(x₀) − Z*_KS,sim = ${tbVal.toFixed(4)} − ${skSim.estimate.toFixed(4)} = <span class="calc-highlight-green">${residual.toFixed(4)}</span></p>`;
-  s4 += `<p class="calc-eq" style="font-size:1rem;margin-top:8px;"><b>Z_cond = Z*_KS(data) + [ Z_TB(x₀) − Z*_KS,sim ]</b></p>`;
-  s4 += `<p class="calc-eq">Z_cond = ${skData.estimate.toFixed(4)} + ${residual.toFixed(4)} = <span class="calc-highlight-purple" style="font-size:1.1rem;">${simNs.toFixed(4)}</span></p>`;
+  s4 += `<div style="padding:12px;background:#faf5ff;border-radius:8px;border:2px solid rgba(124,58,237,0.5);margin-top:8px;">`;
+  s4 += `<div style="font-family:monospace;font-size:0.88rem;line-height:2;">`;
+  s4 += `<b style="color:#7c3aed;">Resíduo simulado:</b><br>`;
+  s4 += `R = Z_TB(x₀) − Z*_KS,sim = ${F(tbVal)} − ${F(skSim.estimate)} = <b style="color:#059669;font-size:1.05rem;">${F(residual)}</b><br><br>`;
+  s4 += `<b style="font-size:1.1rem;color:#7c3aed;">Z_cond(x₀) = Z*_KS(dados) + [ Z_TB(x₀) − Z*_KS,sim ]</b><br>`;
+  s4 += `Z_cond = ${F(skData.estimate)} + ${F(residual)} = <b style="color:#7c3aed;font-size:1.2rem;">${F(simNs)}</b>`;
+  s4 += `</div></div>`;
+  s4 += `<p style="margin-top:6px;font-size:0.82rem;color:var(--text-muted);font-style:italic;">O resíduo tem E[R]=0 e Var(R)=σ²_KS=${F(skData.variance)}. Ao somar com Z*_KS(dados), honra-se os dados e preserva-se a covariância.</p>`;
   document.getElementById('stepRandom').innerHTML = s4;
 
-  // Step 5: Back-transform
-  document.getElementById('stepBacktransform').innerHTML = `
-    <p><b>Conditioned value (N-score):</b> ${simNs.toFixed(4)}</p>
-    <p><b>Back-transformed (original):</b> <span class="calc-highlight-green">${simValue.toFixed(4)}</span></p>
-    <p><em>Z_cond = SK*(data) + simulated residual. Back-transform via N-score table interpolation.</em></p>`;
+  // ===== STEP 5: BACK-TRANSFORM =====
+  let s5 = `<div style="font-family:monospace;font-size:0.88rem;line-height:1.9;">`;
+  s5 += `<b>Valor condicionado (N-score):</b> ${F(simNs)}<br><br>`;
+  s5 += `<b>Back-transform → espaço original:</b><br>`;
+  s5 += `N-score ${F(simNs)} → <b style="color:#059669;font-size:1.15rem;">${F(simValue)}</b>`;
+  s5 += `</div>`;
+  document.getElementById('stepBacktransform').innerHTML = s5;
 }
 
 function updateStepTitles(method) {
   const titles = document.querySelectorAll('#stepByStepSection .calc-title');
   if (titles.length < 5) return;
   if (method === 'tb') {
-    titles[0].innerHTML = '<span class="step-indicator" style="background:#ea580c;">1</span>Current Node & TB Bands';
-    titles[1].innerHTML = '<span class="step-indicator" style="background:#ea580c;">2</span>Conditioning Data (Original Only)';
-    titles[2].innerHTML = '<span class="step-indicator" style="background:#ea580c;">3</span>Simple Kriging of Real Data';
-    titles[3].innerHTML = '<span class="step-indicator" style="background:#ea580c;">4</span>TB Conditioning Formula';
+    titles[0].innerHTML = '<span class="step-indicator" style="background:#ea580c;">1</span>Bandas, Projeções e Valores 1D';
+    titles[1].innerHTML = '<span class="step-indicator" style="background:#ea580c;">2</span>Dados Condicionantes';
+    titles[2].innerHTML = '<span class="step-indicator" style="background:#ea580c;">3</span>Krigagem Simples dos Dados Reais';
+    titles[3].innerHTML = '<span class="step-indicator" style="background:#ea580c;">4</span>Condicionamento TB';
     titles[4].innerHTML = '<span class="step-indicator" style="background:#ea580c;">5</span>Back-Transform';
   } else {
     titles[0].innerHTML = '<span class="step-indicator">1</span>Random Path & Current Node';
