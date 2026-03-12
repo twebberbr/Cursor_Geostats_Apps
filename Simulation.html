@@ -545,7 +545,7 @@
 <body>
 
 <div id="left-panel">
-  <h2>SGS Simulation - Laboratory</h2>
+  <h2 id="mainTitle">SGS Simulation - Laboratory</h2>
 
   <div>
     <button id="btnRunSimulation" class="btn-simulate">🎲 Run N Simulations</button>
@@ -738,6 +738,19 @@
   <label>y: <input type="number" id="targetY" step="0.1"></label>
   <button id="btnUpdateTarget">Update</button><br>
   <label><input type="checkbox" id="lockTarget"> Lock target position</label>
+
+  <!-- Simulation Method -->
+  <div class="simulation-section" style="border-color: rgba(234, 88, 12, 0.7); background: #fff7ed;">
+    <h4>🔬 Simulation Method</h4>
+    <label><input type="radio" name="simMethod" value="sgs" checked> Sequential Gaussian Simulation (SGS)</label><br>
+    <label><input type="radio" name="simMethod" value="tb"> Turning Bands (TB)</label>
+    <div id="tbParams" style="display:none; margin-top: 8px; padding: 8px; background: white; border-radius: 6px;">
+      <label>Number of bands (L): <input type="number" id="nBands" value="100" min="3" max="1000"></label>
+      <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">
+        More bands → better covariance reproduction. Typical: 50–500.
+      </div>
+    </div>
+  </div>
 
   <!-- Simulation Parameters -->
   <div class="simulation-section">
@@ -1843,15 +1856,14 @@ function runMultipleSimulations() {
   const nReal = parseInt(document.getElementById('nRealizations').value) || 10;
   const useSeed = document.getElementById('useSeed').checked;
   const seed = parseInt(document.getElementById('randomSeed').value) || 12345;
+  const method = getSimMethod();
 
   if (useSeed) resetRng(seed);
 
-  // Sempre preparar dados condicionantes em espaço normal-score para a simulação
   prepareBaseConditioningData();
 
   realizations = [];
 
-  // Mostrar barra de progresso e seleção de realizações
   document.getElementById('simProgress').style.display = 'block';
   document.getElementById('progressFill').style.width = '0%';
   document.getElementById('progressText').textContent = '';
@@ -1859,14 +1871,13 @@ function runMultipleSimulations() {
 
   const grid = getGridParams();
 
-  // Rodar as simulações
   for (let r = 0; r < nReal; r++) {
-    const simGrid = runSingleSimulation();
+    const simGrid = method === 'tb' ? runTBSingleSimulation(false) : runSingleSimulation();
     realizations.push(simGrid);
 
     const progress = ((r + 1) / nReal * 100).toFixed(0);
     document.getElementById('progressFill').style.width = progress + '%';
-    document.getElementById('progressText').textContent = `${r + 1} / ${nReal} realizations`;
+    document.getElementById('progressText').textContent = `${r + 1} / ${nReal} realizations (${method === 'tb' ? 'TB' : 'SGS'})`;
   }
 
   // Atualizar seletor de realizações
@@ -2189,6 +2200,7 @@ function startStepByStep() {
   }
 
   // Show step-by-step section
+  updateStepTitles('sgs');
   document.getElementById('stepByStepSection').style.display = 'block';
   document.getElementById('btnNextStep').style.display = 'inline-flex';
   document.getElementById('btnStepSimulation').style.display = 'none';
@@ -3436,6 +3448,310 @@ function removePoint(idx) {
   draw();
 }
 
+// ============ TURNING BANDS SIMULATION ============
+function getSimMethod() {
+  const r = document.querySelector('input[name="simMethod"]:checked');
+  return r ? r.value : 'sgs';
+}
+
+function covariance1DOnBand(h, bandUx, bandUy, params) {
+  if (h === 0) return params.totalSill;
+  return covarianceAniso({x:0,y:0}, {x:h*bandUx, y:h*bandUy}, params);
+}
+
+function interpolate1DValue(tGrid, values, t) {
+  const n = tGrid.length;
+  if (n === 0) return 0;
+  if (t <= tGrid[0]) return values[0];
+  if (t >= tGrid[n-1]) return values[n-1];
+  let lo = 0, hi = n - 1;
+  while (lo < hi - 1) { const mid = (lo+hi)>>1; if (tGrid[mid]<=t) lo=mid; else hi=mid; }
+  const d = tGrid[hi] - tGrid[lo];
+  return d > 1e-12 ? values[lo] + (t - tGrid[lo]) / d * (values[hi] - values[lo]) : values[lo];
+}
+
+function simulate1DBandGP(tGrid, bandUx, bandUy, params, maxNb) {
+  maxNb = maxNb || 20;
+  const n = tGrid.length;
+  const vals = new Float64Array(n);
+  const totalSill = params.totalSill;
+  const idx = Array.from({length:n}, (_,i) => i);
+  for (let k = n-1; k > 0; k--) { const r = Math.floor(seededRandom()*(k+1)); [idx[k],idx[r]]=[idx[r],idx[k]]; }
+  const sim = [];
+  for (let step = 0; step < n; step++) {
+    const ii = idx[step], t = tGrid[ii];
+    let lo2 = 0, hi2 = sim.length;
+    while (lo2 < hi2) { const m = (lo2+hi2)>>1; if (sim[m].t < t) lo2=m+1; else hi2=m; }
+    const ins = lo2;
+    const nbs = [];
+    let lf = ins-1, rt = ins;
+    while (nbs.length < maxNb && (lf >= 0 || rt < sim.length)) {
+      const dL = lf >= 0 ? Math.abs(sim[lf].t - t) : Infinity;
+      const dR = rt < sim.length ? Math.abs(sim[rt].t - t) : Infinity;
+      if (dL < dR) nbs.push(sim[lf--]); else nbs.push(sim[rt++]);
+    }
+    if (nbs.length === 0) {
+      vals[ii] = Math.sqrt(totalSill) * randomNormal();
+    } else {
+      const nn = nbs.length;
+      const C = []; for (let i=0;i<nn;i++){C[i]=[];for(let j=0;j<nn;j++){C[i][j]=covariance1DOnBand(Math.abs(nbs[i].t-nbs[j].t),bandUx,bandUy,params);}}
+      const c0 = nbs.map(nb => covariance1DOnBand(Math.abs(nb.t-t), bandUx, bandUy, params));
+      const lam = solveLinearSystem(C, c0);
+      let est = 0; for (let i=0;i<nn;i++) est += lam[i]*nbs[i].v;
+      let vr = totalSill; for (let i=0;i<nn;i++) vr -= lam[i]*c0[i]; vr = Math.max(0,vr);
+      vals[ii] = est + Math.sqrt(vr) * randomNormal();
+    }
+    sim.splice(ins, 0, {t:t, v:vals[ii]});
+  }
+  return vals;
+}
+
+let tbStepState = null;
+
+function runTBSingleSimulation(storeBandState) {
+  const grid = getGridParams();
+  const params = getVarioParams();
+  const nBands = parseInt(document.getElementById('nBands').value) || 100;
+
+  const simGrid = [];
+  for (let i=0;i<grid.nx;i++){simGrid[i]=[];for(let j=0;j<grid.ny;j++) simGrid[i][j]=NaN;}
+
+  prepareBaseConditioningData();
+  const condData = baseCondPoints.slice();
+  const nCond = condData.length;
+
+  const bands = [];
+  for (let l=0;l<nBands;l++){const a=l*Math.PI/nBands;bands.push({ux:Math.cos(a),uy:Math.sin(a),angle:a});}
+
+  const gridNodes = [];
+  for (let i=0;i<grid.nx;i++) for (let j=0;j<grid.ny;j++)
+    gridNodes.push({i,j, xW:grid.originX+(i+0.5)*grid.dx, yW:grid.originY+(j+0.5)*grid.dy});
+  const nGrid = gridNodes.length;
+
+  const condWorld = condData.map(c => ({xW:worldX(c.x), yW:worldY(c.y)}));
+
+  const tbGrid = new Float64Array(nGrid);
+  const tbCond = new Float64Array(nCond);
+
+  const bandData = storeBandState ? [] : null;
+
+  for (let l=0;l<nBands;l++){
+    const band = bands[l];
+    const projG = gridNodes.map(n => n.xW*band.ux + n.yW*band.uy);
+    const projC = condWorld.map(c => c.xW*band.ux + c.yW*band.uy);
+
+    const allP = projG.concat(projC);
+    let tMin = Infinity, tMax = -Infinity;
+    for (const v of allP){if(v<tMin)tMin=v;if(v>tMax)tMax=v;}
+    const pad = Math.max((tMax-tMin)*0.05, Math.min(grid.dx,grid.dy));
+    tMin -= pad; tMax += pad;
+
+    const minSp = Math.min(grid.dx,grid.dy)*0.5;
+    const nPts = Math.min(800, Math.max(50, Math.ceil((tMax-tMin)/minSp)+1));
+    const t1D = [];
+    for (let k=0;k<nPts;k++) t1D.push(tMin + k*(tMax-tMin)/(nPts-1));
+
+    const yVals = simulate1DBandGP(t1D, band.ux, band.uy, params, 20);
+
+    for (let k=0;k<nGrid;k++) tbGrid[k] += interpolate1DValue(t1D, yVals, projG[k]);
+    for (let k=0;k<nCond;k++) tbCond[k] += interpolate1DValue(t1D, yVals, projC[k]);
+
+    if (bandData) bandData.push({t1D, yVals, projG, projC, band});
+  }
+
+  const sqL = Math.sqrt(nBands);
+  for (let k=0;k<nGrid;k++) tbGrid[k] /= sqL;
+  for (let k=0;k<nCond;k++) tbCond[k] /= sqL;
+
+  const skMean = nscoreMean;
+
+  for (let k=0;k<nGrid;k++){
+    const node = gridNodes[k];
+    const x0 = internalX(node.xW), y0 = internalY(node.yW);
+    const neighbors = getNearestPoints(x0, y0, []);
+
+    if (neighbors.length === 0){
+      simGrid[node.i][node.j] = fromNscore(tbGrid[k] + skMean);
+      continue;
+    }
+
+    const skData = simpleKriging(x0, y0, neighbors, params, skMean);
+    const tbNb = neighbors.map(nb => {const idx=condData.indexOf(nb);return{...nb,value:idx>=0?tbCond[idx]:0};});
+    const skSim = simpleKriging(x0, y0, tbNb, params, 0);
+    const simNs = skData.estimate + (tbGrid[k] - skSim.estimate);
+    simGrid[node.i][node.j] = fromNscore(simNs);
+  }
+
+  if (storeBandState) {
+    tbStepState = {bands, tbGrid, tbCond, condData, gridNodes, condWorld, nBands, bandData, grid, params};
+  }
+
+  return simGrid;
+}
+
+function startTBStepByStep() {
+  const useSeed = document.getElementById('useSeed').checked;
+  const seed = parseInt(document.getElementById('randomSeed').value) || 12345;
+  if (useSeed) resetRng(seed);
+
+  prepareBaseConditioningData();
+  const grid = getGridParams();
+
+  isStepMode = true;
+  stepIndex = 0;
+  simulatedNodes = [];
+  randomPath = generateRandomPath(grid.nx, grid.ny);
+
+  currentRealization = [];
+  for (let i=0;i<grid.nx;i++){currentRealization[i]=[];for(let j=0;j<grid.ny;j++) currentRealization[i][j]=NaN;}
+
+  runTBSingleSimulation(true);
+
+  updateStepTitles('tb');
+  document.getElementById('stepByStepSection').style.display = 'block';
+  document.getElementById('btnNextStep').style.display = 'inline-flex';
+  document.getElementById('btnStepSimulation').style.display = 'none';
+
+  executeTBStep();
+}
+
+function executeTBStep() {
+  if (stepIndex >= randomPath.length){
+    document.getElementById('currentNodeInfo').innerHTML = '<b style="color: #059669;">✓ Turning Bands Simulation Complete!</b>';
+    document.getElementById('btnNextStep').style.display = 'none';
+    document.getElementById('btnStepSimulation').style.display = 'inline-flex';
+    isStepMode = false;
+    realizations = [currentRealization];
+    computeSummaryMaps();
+    drawHistograms();
+    return;
+  }
+
+  const grid = getGridParams();
+  const params = getVarioParams();
+  const st = tbStepState;
+  const {i,j} = randomPath[stepIndex];
+  const xWorld = grid.originX + (i+0.5)*grid.dx;
+  const yWorld = grid.originY + (j+0.5)*grid.dy;
+  const x0 = internalX(xWorld), y0 = internalY(yWorld);
+  const flatIdx = i * grid.ny + j;
+  const tbVal = st.tbGrid[flatIdx];
+
+  const neighbors = getNearestPoints(x0, y0, []);
+  currentNeighbors = neighbors;
+  const skMean = nscoreMean;
+  const skData = simpleKriging(x0, y0, neighbors, params, skMean);
+  const tbNbVals = neighbors.map(nb => {const idx=st.condData.indexOf(nb);return idx>=0?st.tbCond[idx]:0;});
+  const tbNb = neighbors.map((nb,k) => ({...nb, value:tbNbVals[k]}));
+  const skSim = simpleKriging(x0, y0, tbNb, params, 0);
+  const residual = tbVal - skSim.estimate;
+  const simNs = skData.estimate + residual;
+  const simValue = fromNscore(simNs);
+
+  currentRealization[i][j] = simValue;
+  simulatedNodes.push({x:x0,y:y0,value:simNs,originalValue:simValue,gridI:i,gridJ:j,isOriginal:false});
+
+  updateTBStepDisplay(i, j, xWorld, yWorld, neighbors, skData, skSim, tbVal, tbNbVals, residual, simNs, simValue, skMean);
+  stepIndex++;
+  draw();
+}
+
+function updateTBStepDisplay(i, j, xWorld, yWorld, neighbors, skData, skSim, tbVal, tbNbVals, residual, simNs, simValue, skMean) {
+  const st = tbStepState;
+
+  document.getElementById('currentNodeInfo').innerHTML = `
+    <b>Node ${stepIndex+1} of ${randomPath.length}</b> — <span style="color:#ea580c;font-weight:600;">Turning Bands</span><br>
+    Grid position: (${i}, ${j}) | World: (${xWorld.toFixed(2)}, ${yWorld.toFixed(2)})<br>
+    <b>${st.nBands} bands</b> | Z_TB (unconditional) = <span style="color:#7c3aed;font-weight:700;">${tbVal.toFixed(4)}</span>`;
+
+  // Step 1: TB info
+  let s1 = `<p><b>Method:</b> Turning Bands with <b>${st.nBands}</b> equispaced bands (θᵢ = i×π/${st.nBands})</p>`;
+  s1 += `<p>The unconditional TB field was pre-computed for all grid nodes in one pass.</p>`;
+  s1 += `<p><b>Z_TB(x₀) = (1/√${st.nBands}) × Σ Yₗ(proj(x₀, ℓ)) = <span class="calc-highlight-purple">${tbVal.toFixed(4)}</span></b></p>`;
+  s1 += `<details><summary style="cursor:pointer;color:var(--accent);font-weight:600;">Show band projections for this node</summary>`;
+  s1 += `<table><tr><th>Band</th><th>θ (°)</th><th>proj(x₀)</th></tr>`;
+  const projX0 = st.bands.map(b => xWorld*b.ux + yWorld*b.uy);
+  st.bands.forEach((b,l) => {
+    if (l < 20 || l === st.nBands-1) {
+      s1 += `<tr><td>L${l+1}</td><td>${(b.angle*180/Math.PI).toFixed(1)}</td><td>${projX0[l].toFixed(4)}</td></tr>`;
+    } else if (l === 20) {
+      s1 += `<tr><td colspan="3">… (${st.nBands-21} more bands) …</td></tr>`;
+    }
+  });
+  s1 += `</table></details>`;
+  s1 += `<p>Nodes conditioned: <b>${stepIndex}</b> | Remaining: <b>${randomPath.length - stepIndex - 1}</b></p>`;
+  document.getElementById('stepPath').innerHTML = s1;
+
+  // Step 2: Conditioning data
+  let s2 = `<p>Neighbors: <b>${neighbors.length}</b> (original data only — TB does not need previously simulated nodes)</p>`;
+  if (neighbors.length > 0) {
+    s2 += '<table><tr><th>#</th><th>X</th><th>Y</th><th>Z_data (n-score)</th><th>Z_TB</th><th>Dist</th></tr>';
+    neighbors.forEach((n, idx) => {
+      const d = Math.sqrt((n.x-internalX(xWorld))**2 + (n.y-internalY(yWorld))**2);
+      s2 += `<tr><td>${idx+1}</td><td>${worldX(n.x).toFixed(2)}</td><td>${worldY(n.y).toFixed(2)}</td><td>${n.value.toFixed(4)}</td><td>${tbNbVals[idx].toFixed(4)}</td><td>${d.toFixed(2)}</td></tr>`;
+    });
+    s2 += '</table>';
+  }
+  document.getElementById('stepConditioning').innerHTML = s2;
+
+  // Step 3: SK of real data
+  let s3 = `<p><b>SK Mean (m):</b> ${skMean.toFixed(4)}</p>`;
+  s3 += `<p><b>SK Estimate Z*_KS(data):</b> <span class="calc-highlight">${skData.estimate.toFixed(4)}</span></p>`;
+  s3 += `<p><b>SK Variance σ²_KS:</b> ${skData.variance.toFixed(4)}</p>`;
+  if (skData.lambdas && skData.lambdas.length > 0) {
+    s3 += '<p><b>Weights (λ):</b></p><table><tr><th>#</th><th>λᵢ</th><th>zᵢ (data)</th><th>λᵢ(zᵢ−m)</th></tr>';
+    let sumT = 0;
+    skData.lambdas.forEach((l, idx) => { const term=l*(neighbors[idx].value-skMean); sumT+=term;
+      s3 += `<tr><td>${idx+1}</td><td>${l.toFixed(4)}</td><td>${neighbors[idx].value.toFixed(4)}</td><td>${term.toFixed(4)}</td></tr>`;
+    });
+    s3 += `</table><p>Σλ = ${skData.lambdas.reduce((a,b)=>a+b,0).toFixed(4)}</p>`;
+    s3 += `<p>Z*_KS(data) = m + Σλᵢ(zᵢ−m) = ${skMean.toFixed(4)} + ${sumT.toFixed(4)} = <span class="calc-highlight">${skData.estimate.toFixed(4)}</span></p>`;
+  }
+  document.getElementById('stepKriging').innerHTML = s3;
+
+  // Step 4: TB conditioning
+  let s4 = `<p><b>Z_TB(x₀) =</b> <span class="calc-highlight-purple">${tbVal.toFixed(4)}</span></p>`;
+  s4 += `<p><b>SK of unconditional TB values at data locations (mean=0):</b></p>`;
+  if (skSim.lambdas && skSim.lambdas.length > 0) {
+    s4 += '<table><tr><th>#</th><th>λᵢ</th><th>Z_TB(zᵢ)</th><th>λᵢ×Z_TB(zᵢ)</th></tr>';
+    let sumS = 0;
+    skSim.lambdas.forEach((l, idx) => { const term=l*tbNbVals[idx]; sumS+=term;
+      s4 += `<tr><td>${idx+1}</td><td>${l.toFixed(4)}</td><td>${tbNbVals[idx].toFixed(4)}</td><td>${term.toFixed(4)}</td></tr>`;
+    });
+    s4 += `</table>`;
+    s4 += `<p>Z*_KS,sim = Σλᵢ × Z_TB(zᵢ) = <span class="calc-highlight-purple">${skSim.estimate.toFixed(4)}</span></p>`;
+  }
+  s4 += `<hr style="margin:8px 0;border-color:rgba(148,163,184,0.3);">`;
+  s4 += `<p><b>Residual</b> = Z_TB(x₀) − Z*_KS,sim = ${tbVal.toFixed(4)} − ${skSim.estimate.toFixed(4)} = <span class="calc-highlight-green">${residual.toFixed(4)}</span></p>`;
+  s4 += `<p class="calc-eq" style="font-size:1rem;margin-top:8px;"><b>Z_cond = Z*_KS(data) + [ Z_TB(x₀) − Z*_KS,sim ]</b></p>`;
+  s4 += `<p class="calc-eq">Z_cond = ${skData.estimate.toFixed(4)} + ${residual.toFixed(4)} = <span class="calc-highlight-purple" style="font-size:1.1rem;">${simNs.toFixed(4)}</span></p>`;
+  document.getElementById('stepRandom').innerHTML = s4;
+
+  // Step 5: Back-transform
+  document.getElementById('stepBacktransform').innerHTML = `
+    <p><b>Conditioned value (N-score):</b> ${simNs.toFixed(4)}</p>
+    <p><b>Back-transformed (original):</b> <span class="calc-highlight-green">${simValue.toFixed(4)}</span></p>
+    <p><em>Z_cond = SK*(data) + simulated residual. Back-transform via N-score table interpolation.</em></p>`;
+}
+
+function updateStepTitles(method) {
+  const titles = document.querySelectorAll('#stepByStepSection .calc-title');
+  if (titles.length < 5) return;
+  if (method === 'tb') {
+    titles[0].innerHTML = '<span class="step-indicator" style="background:#ea580c;">1</span>Current Node & TB Bands';
+    titles[1].innerHTML = '<span class="step-indicator" style="background:#ea580c;">2</span>Conditioning Data (Original Only)';
+    titles[2].innerHTML = '<span class="step-indicator" style="background:#ea580c;">3</span>Simple Kriging of Real Data';
+    titles[3].innerHTML = '<span class="step-indicator" style="background:#ea580c;">4</span>TB Conditioning Formula';
+    titles[4].innerHTML = '<span class="step-indicator" style="background:#ea580c;">5</span>Back-Transform';
+  } else {
+    titles[0].innerHTML = '<span class="step-indicator">1</span>Random Path & Current Node';
+    titles[1].innerHTML = '<span class="step-indicator">2</span>Conditioning Data Selection';
+    titles[2].innerHTML = '<span class="step-indicator">3</span>Simple Kriging Solution';
+    titles[3].innerHTML = '<span class="step-indicator">4</span>Random Number & Simulated Value';
+    titles[4].innerHTML = '<span class="step-indicator">5</span>Back-Transform';
+  }
+}
+
 // ============ INITIALIZATION ============
 function init() {
   canvas = document.getElementById('simCanvas');
@@ -3476,8 +3792,12 @@ function init() {
 
 function setupEvents() {
   document.getElementById('btnRunSimulation').onclick = runMultipleSimulations;
-  document.getElementById('btnStepSimulation').onclick = startStepByStep;
-  document.getElementById('btnNextStep').onclick = executeStep;
+  document.getElementById('btnStepSimulation').onclick = function() {
+    if (getSimMethod() === 'tb') startTBStepByStep(); else startStepByStep();
+  };
+  document.getElementById('btnNextStep').onclick = function() {
+    if (getSimMethod() === 'tb') executeTBStep(); else executeStep();
+  };
   document.getElementById('btnClear').onclick = clearResults;
   document.getElementById('btnResetView').onclick = () => { viewScale = 1; viewOffsetX = 0; viewOffsetY = 0; draw(); };
   document.getElementById('btnResetPoints').onclick = init;
@@ -3568,6 +3888,15 @@ function setupEvents() {
     draw();
   };
   
+  // Simulation method toggle
+  document.querySelectorAll('input[name="simMethod"]').forEach(radio => {
+    radio.onchange = () => {
+      const isTB = getSimMethod() === 'tb';
+      document.getElementById('tbParams').style.display = isTB ? 'block' : 'none';
+      document.getElementById('mainTitle').textContent = isTB ? 'Turning Bands Simulation - Laboratory' : 'SGS Simulation - Laboratory';
+    };
+  });
+
   // Declustering
   document.querySelectorAll('input[name="declusterMethod"]').forEach(radio => {
     radio.onchange = toggleDeclusterParams;

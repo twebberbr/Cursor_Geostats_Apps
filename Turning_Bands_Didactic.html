@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Turning Bands — Simulação Condicional Explícita</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,300;8..60,400;8..60,600;8..60,700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+  :root {
+    --bg:#0f1117; --bg2:#181b24; --bg3:#1e222e; --bg4:#242836;
+    --fg:#e0ddd5; --fg2:#9a968c; --fg3:#6b6760;
+    --accent:#f0c050; --accent2:#e07840;
+    --c0:#f0c050; --c1:#ff6b6b; --c2:#4ecdc4; --c3:#a78bfa;
+    --ok:#6ee870; --radius:10px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--fg);font-family:'Source Serif 4',Georgia,serif;line-height:1.6;}
+  .container{max-width:1320px;margin:0 auto;padding:28px 18px 80px;}
+
+  header{text-align:center;padding:36px 0 28px;border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:28px;}
+  header h1{font-size:2.1em;font-weight:700;letter-spacing:-0.5px;}
+  header h1 span{color:var(--accent);}
+  header p{color:var(--fg2);font-size:1em;max-width:740px;margin:6px auto 0;}
+
+  .controls{background:var(--bg2);border:1px solid rgba(255,255,255,0.06);border-radius:var(--radius);padding:16px 20px;margin-bottom:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:14px;align-items:end;}
+  .cg label{display:block;font-size:.72em;color:var(--fg2);margin-bottom:3px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.5px;}
+  .cg input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;}
+  .cg .vd{font-family:'JetBrains Mono',monospace;font-size:.88em;color:var(--accent);margin-top:2px;}
+
+  .cond-bar{background:var(--bg2);border:1px solid rgba(255,255,255,0.06);border-radius:var(--radius);padding:12px 20px;margin-bottom:20px;display:flex;flex-wrap:wrap;gap:14px;align-items:center;font-family:'JetBrains Mono',monospace;font-size:.8em;}
+  .cond-bar .lbl{color:var(--fg2);text-transform:uppercase;letter-spacing:.5px;font-size:.75em;margin-right:2px;}
+  .cd{display:flex;align-items:center;gap:5px;}
+  .cdot{width:12px;height:12px;border-radius:50%;display:inline-block;}
+  .cd input{width:52px;background:var(--bg3);border:1px solid rgba(255,255,255,0.12);color:var(--fg);font-family:'JetBrains Mono',monospace;font-size:.88em;padding:2px 5px;border-radius:4px;text-align:center;}
+
+  .btn{font-family:'JetBrains Mono',monospace;font-size:.8em;font-weight:600;padding:8px 16px;border:none;border-radius:6px;cursor:pointer;transition:all .2s;text-transform:uppercase;letter-spacing:.5px;}
+  .btn-p{background:var(--accent);color:var(--bg);}
+  .btn-p:hover{background:#f5cc66;transform:translateY(-1px);}
+
+  /* Steps */
+  .sbar{display:flex;gap:3px;margin-bottom:16px;flex-wrap:wrap;align-items:center;}
+  .sd{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:.72em;font-weight:600;background:var(--bg3);border:2px solid rgba(255,255,255,.1);color:var(--fg2);cursor:pointer;transition:all .25s;}
+  .sd.a{border-color:var(--accent);color:var(--accent);background:rgba(240,192,80,.12);}
+  .sd.d{border-color:var(--ok);color:var(--ok);background:rgba(110,232,112,.06);}
+  .sl{font-family:'JetBrains Mono',monospace;font-size:.68em;color:var(--fg2);margin:0 8px 0 3px;}
+
+  /* Panels */
+  .mg{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:20px;}
+  @media(max-width:900px){.mg{grid-template-columns:1fr;}}
+  .pn{background:var(--bg2);border:1px solid rgba(255,255,255,.06);border-radius:var(--radius);overflow:hidden;}
+  .ph{padding:10px 16px;background:var(--bg3);border-bottom:1px solid rgba(255,255,255,.06);font-family:'JetBrains Mono',monospace;font-size:.75em;text-transform:uppercase;letter-spacing:1px;color:var(--fg2);}
+  .pb{padding:12px;}
+  canvas{display:block;width:100%;border-radius:4px;}
+
+  .dh{display:inline-flex;align-items:center;gap:5px;font-family:'JetBrains Mono',monospace;font-size:.7em;color:var(--fg2);background:var(--bg3);padding:3px 8px;border-radius:14px;margin-bottom:6px;}
+  .dh::before{content:'✋';font-size:.9em;}
+
+  /* Calc panel */
+  .cp{background:var(--bg2);border:1px solid rgba(255,255,255,.06);border-radius:var(--radius);padding:22px;margin-bottom:18px;}
+  .cp h3{font-size:1.02em;margin-bottom:12px;color:var(--accent);font-weight:600;}
+  .cp p{font-size:.92em;line-height:1.7;margin-bottom:6px;}
+  .cp .note{font-size:.82em;color:var(--fg2);font-style:italic;margin-top:8px;}
+
+  .fb{background:var(--bg3);border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:12px 16px;margin:8px 0;font-family:'JetBrains Mono',monospace;font-size:.8em;overflow-x:auto;line-height:1.85;white-space:pre-wrap;word-break:break-all;}
+  .fb.c{text-align:center;}
+  .fb .h{color:var(--accent);font-weight:600;}
+  .fb .c1{color:var(--c1);font-weight:600;}
+  .fb .c2{color:var(--c2);font-weight:600;}
+  .fb .c3{color:var(--c3);font-weight:600;}
+  .fb .ok{color:var(--ok);font-weight:600;}
+  .fb .dim{color:var(--fg3);}
+
+  .ct{width:100%;border-collapse:collapse;font-family:'JetBrains Mono',monospace;font-size:.78em;margin:8px 0;}
+  .ct th{text-align:left;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.1);color:var(--fg2);font-weight:500;}
+  .ct td{padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.04);}
+  .ct tr:last-child td{border-bottom:none;}
+
+  .bdot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:3px;vertical-align:middle;}
+
+  details{margin:8px 0;}
+  details summary{cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:.82em;color:var(--accent);padding:6px 0;user-select:none;}
+  details summary:hover{color:#f5cc66;}
+  details[open] summary{margin-bottom:6px;}
+  details .inner{padding-left:8px;border-left:2px solid rgba(240,192,80,.15);}
+
+  .rb{background:rgba(240,192,80,.08);border:2px solid var(--accent);border-radius:var(--radius);padding:16px 22px;text-align:center;margin:12px 0;}
+  .rb .rl{font-family:'JetBrains Mono',monospace;font-size:.75em;color:var(--fg2);text-transform:uppercase;letter-spacing:1px;}
+  .rb .rv{font-size:1.7em;font-weight:700;color:var(--accent);font-family:'JetBrains Mono',monospace;}
+
+  .mr3{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:10px 0;}
+  .mr{background:var(--bg3);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:10px;text-align:center;}
+  .mr .rl{font-family:'JetBrains Mono',monospace;font-size:.68em;color:var(--fg2);text-transform:uppercase;}
+  .mr .rv{font-size:1.2em;font-weight:700;font-family:'JetBrains Mono',monospace;}
+
+  .sep{text-align:center;font-size:1.2em;color:var(--fg3);margin:4px 0;}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Turning <span>Bands</span> — Simulação Condicional</h1>
+    <p>Cada operação aritmética mostrada explicitamente: projeções, matrizes de covariância, decomposição de Cholesky, geração dos valores, krigagem e condicionamento.</p>
+  </header>
+
+  <div class="controls">
+    <div class="cg"><label>Bandas (L)</label><input type="range" id="sL" min="2" max="8" value="3" step="1"><div class="vd" id="vL">3</div></div>
+    <div class="cg"><label>Alcance (a)</label><input type="range" id="sA" min="2" max="20" value="8" step=".5"><div class="vd" id="vA">8.0</div></div>
+    <div class="cg"><label>Média μ (SK)</label><input type="range" id="sM" min="-3" max="3" value="0" step=".1"><div class="vd" id="vM">0.0</div></div>
+    <div class="cg"><label>Seed</label><input type="range" id="sS" min="1" max="200" value="42" step="1"><div class="vd" id="vS">42</div></div>
+    <div class="cg" style="align-self:end;"><button class="btn btn-p" id="btnR">▶ Nova Sim.</button></div>
+  </div>
+
+  <div class="cond-bar">
+    <span class="lbl">Condicionantes:</span>
+    <div class="cd"><span class="cdot" style="background:var(--c1)"></span>z₁=<input type="number" id="z1" value="2.5" step=".1"></div>
+    <div class="cd"><span class="cdot" style="background:var(--c2)"></span>z₂=<input type="number" id="z2" value="-1.0" step=".1"></div>
+    <div class="cd"><span class="cdot" style="background:var(--c3)"></span>z₃=<input type="number" id="z3" value="1.8" step=".1"></div>
+    <span style="color:var(--fg3);font-size:.72em;">← arraste no mapa</span>
+  </div>
+
+  <div class="sbar" id="sbar"></div>
+
+  <div class="mg">
+    <div class="pn"><div class="ph">Mapa 2D</div><div class="pb"><div class="dh">Arraste pontos</div><canvas id="c2d" width="580" height="580"></canvas></div></div>
+    <div class="pn"><div class="ph">Valores Simulados nas Bandas (1D)</div><div class="pb"><canvas id="c1d" width="580" height="580"></canvas></div></div>
+  </div>
+
+  <div class="cp" id="cpanel"><h3 id="cT"></h3><div id="cC"></div></div>
+</div>
+
+<script>
+// ========== PRNG ==========
+function RNG(seed){
+  let s=[(seed)>>>0,(seed^0xdeadbeef)>>>0,(seed^0x12345678)>>>0,(seed^0xabcdef01)>>>0];
+  const rotl=(x,k)=>((x<<k)|(x>>>(32-k)))>>>0;
+  function next(){const r=(rotl((s[1]*5)>>>0,7)*9)>>>0,t=(s[1]<<9)>>>0;s[2]^=s[0];s[3]^=s[1];s[1]^=s[2];s[0]^=s[3];s[2]^=t;s[3]=rotl(s[3],11);return r/4294967296;}
+  for(let i=0;i<20;i++)next();
+  return{u:next,n:()=>{let u=next(),v=next();while(!u)u=next();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}};
+}
+
+// ========== Linear algebra ==========
+function chol(A){
+  const n=A.length,L=Array.from({length:n},()=>new Float64Array(n));
+  for(let i=0;i<n;i++)for(let j=0;j<=i;j++){
+    let s=0;for(let k=0;k<j;k++)s+=L[i][k]*L[j][k];
+    L[i][j]=i===j?Math.sqrt(Math.max(1e-14,A[i][i]-s)):(L[j][j]>1e-14?(A[i][j]-s)/L[j][j]:0);
+  }
+  return L;
+}
+function solvL(L,b){const n=b.length,x=new Float64Array(n);for(let i=0;i<n;i++){let s=0;for(let j=0;j<i;j++)s+=L[i][j]*x[j];x[i]=(b[i]-s)/L[i][i];}return x;}
+function solvU(L,b){const n=b.length,x=new Float64Array(n);for(let i=n-1;i>=0;i--){let s=0;for(let j=i+1;j<n;j++)s+=L[j][i]*x[j];x[i]=(b[i]-s)/L[i][i];}return x;}
+function solvSPD(A,b){const Lm=chol(A);return solvU(Lm,solvL(Lm,b));}
+
+// ========== State ==========
+const bCols=['#5ec4e8','#e85e8a','#6ee870','#c89aff','#ffb86c','#50fa7b','#ff5555','#8be9fd'];
+const cCols=['#ff6b6b','#4ecdc4','#a78bfa'];
+const ptLbl=['x₀','z₁','z₂','z₃'];
+const ptCls=['h','c1','c2','c3'];
+
+let S={
+  L:3,a:8,mu:0,seed:42,step:0,
+  tx:3,ty:2,
+  conds:[{x:-4,y:3,z:2.5},{x:2,y:-3,z:-1.0},{x:5,y:5,z:1.8}],
+  bands:[],projT:[],projC:[[],[],[]],
+  // Per band: {Sigma4, L4, w4, Y4} for the 4 key points
+  bandCalc:[],
+  Zinc:{t:0,c:[0,0,0]},
+  // Kriging
+  Cd:[],c0d:[],Ld3:[],lamd:[],Zskd:0,vskd:0,
+  lams:[],Zsks:0,Zcond:0,
+  wMin:-10,wMax:10,dragging:null
+};
+
+function C1(h,a){return Math.exp(-Math.abs(h)/a);}
+function C2(dx,dy,a){return Math.exp(-Math.sqrt(dx*dx+dy*dy)/a);}
+
+// ========== Simulation ==========
+function simulate(){
+  const rng=RNG(S.seed);
+  const pts=[{x:S.tx,y:S.ty},...S.conds]; // 4 points
+
+  // Bands
+  S.bands=[];
+  for(let i=0;i<S.L;i++){
+    const ang=i*Math.PI/S.L;
+    S.bands.push({ang,ux:Math.cos(ang),uy:Math.sin(ang),col:bCols[i%bCols.length]});
+  }
+
+  // Projections
+  S.projT=S.bands.map(b=>S.tx*b.ux+S.ty*b.uy);
+  S.projC=S.conds.map(c=>S.bands.map(b=>c.x*b.ux+c.y*b.uy));
+
+  // Per-band 4-point simulation
+  S.bandCalc=[];
+  for(let i=0;i<S.L;i++){
+    const t4=[S.projT[i], ...S.projC.map(c=>c[i])]; // [t_target, t_c1, t_c2, t_c3]
+    // Distance matrix
+    const dist4=Array.from({length:4},(_,r)=>Array.from({length:4},(_,c)=>Math.abs(t4[r]-t4[c])));
+    // Covariance matrix
+    const Sig4=dist4.map(row=>row.map(d=>C1(d,S.a)));
+    // Cholesky
+    const L4=chol(Sig4);
+    // Random vector
+    const w4=[rng.n(),rng.n(),rng.n(),rng.n()];
+    // Y = L*w
+    const Y4=Array.from({length:4},(_,r)=>{let s=0;for(let c=0;c<=r;c++)s+=L4[r][c]*w4[c];return s;});
+
+    // Dense grid for visualization: conditional simulation given the 4 known Y4 values
+    const tGMin=-14,tGMax=14,dtG=0.4;
+    let tGrid=[];
+    for(let t=tGMin;t<=tGMax;t+=dtG) tGrid.push(t);
+    // For each grid point, compute conditional mean & var given Y4, then sample
+    const L4arr=L4.map(r=>Array.from(r));
+    const alpha=Array.from(solvU(L4arr,solvL(L4arr,Y4)));
+    const yGrid=[];
+    for(let gi=0;gi<tGrid.length;gi++){
+      const tg=tGrid[gi];
+      const cvec=[0,1,2,3].map(j=>C1(tg-t4[j],S.a));
+      let mu_c=0; for(let j=0;j<4;j++) mu_c+=cvec[j]*alpha[j];
+      const lam_c=Array.from(solvU(L4arr,solvL(L4arr,cvec)));
+      let v_c=1; for(let j=0;j<4;j++) v_c-=lam_c[j]*cvec[j];
+      if(v_c<0) v_c=0;
+      yGrid.push(mu_c+Math.sqrt(v_c)*rng.n());
+    }
+
+    S.bandCalc.push({t4,dist4,Sig4,L4:L4.map(r=>Array.from(r)),w4,Y4,tGrid,yGrid});
+  }
+
+  // Combine
+  let sT=0; const sC=[0,0,0];
+  for(let i=0;i<S.L;i++){
+    sT+=S.bandCalc[i].Y4[0];
+    for(let j=0;j<3;j++) sC[j]+=S.bandCalc[i].Y4[j+1];
+  }
+  const sqL=Math.sqrt(S.L);
+  S.Zinc={t:sT/sqL,c:sC.map(s=>s/sqL)};
+
+  // Kriging (SK) of real data
+  const cd=S.conds;
+  S.Cd=Array.from({length:3},(_,i)=>Array.from({length:3},(_,j)=>C2(cd[i].x-cd[j].x,cd[i].y-cd[j].y,S.a)));
+  S.c0d=cd.map(c=>C2(S.tx-c.x,S.ty-c.y,S.a));
+  S.Ld3=chol(S.Cd).map(r=>Array.from(r));
+  const y3=solvL(S.Ld3,S.c0d);
+  S.lamd=Array.from(solvU(S.Ld3,y3));
+  S.Zskd=S.mu;
+  for(let i=0;i<3;i++) S.Zskd+=S.lamd[i]*(cd[i].z-S.mu);
+  S.vskd=1;
+  for(let i=0;i<3;i++) S.vskd-=S.lamd[i]*S.c0d[i];
+
+  // Kriging of simulated values
+  S.lams=S.lamd.slice();
+  S.Zsks=0;
+  for(let i=0;i<3;i++) S.Zsks+=S.lams[i]*S.Zinc.c[i];
+
+  S.Zcond=S.Zskd+(S.Zinc.t-S.Zsks);
+}
+
+// ========== Canvas drawing ==========
+const cv2=document.getElementById('c2d'),x2=cv2.getContext('2d');
+const cv1=document.getElementById('c1d'),x1=cv1.getContext('2d');
+function dpr(){return window.devicePixelRatio||1;}
+function sC(cv,ct){const r=cv.getBoundingClientRect(),d=dpr();cv.width=r.width*d;cv.height=r.height*d;ct.setTransform(d,0,0,d,0,0);return{w:r.width,h:r.height};}
+const MG=36;
+function w2c(wx,wy,w,h){return[(wx-S.wMin)/(S.wMax-S.wMin)*(w-2*MG)+MG,(1-(wy-S.wMin)/(S.wMax-S.wMin))*(h-2*MG)+MG];}
+function c2w(cx,cy,w,h){return[(cx-MG)/(w-2*MG)*(S.wMax-S.wMin)+S.wMin,(1-(cy-MG)/(h-2*MG))*(S.wMax-S.wMin)+S.wMin];}
+function circ(ctx,cx,cy,r,f,s,lw){ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);if(f){ctx.fillStyle=f;ctx.fill();}if(s){ctx.strokeStyle=s;ctx.lineWidth=lw||1;ctx.stroke();}}
+
+function draw2D(){
+  const{w,h}=sC(cv2,x2),c=x2;
+  c.fillStyle='#13151d';c.fillRect(0,0,w,h);
+  // Grid
+  c.strokeStyle='rgba(255,255,255,.04)';c.lineWidth=.5;
+  for(let v=-10;v<=10;v+=2){let[a,b]=w2c(v,-10,w,h),[d,e]=w2c(v,10,w,h);c.beginPath();c.moveTo(a,b);c.lineTo(d,e);c.stroke();[a,b]=w2c(-10,v,w,h);[d,e]=w2c(10,v,w,h);c.beginPath();c.moveTo(a,b);c.lineTo(d,e);c.stroke();}
+  c.strokeStyle='rgba(255,255,255,.15)';c.lineWidth=1;
+  let[a,b]=w2c(0,-10,w,h),[d,e]=w2c(0,10,w,h);c.beginPath();c.moveTo(a,b);c.lineTo(d,e);c.stroke();
+  [a,b]=w2c(-10,0,w,h);[d,e]=w2c(10,0,w,h);c.beginPath();c.moveTo(a,b);c.lineTo(d,e);c.stroke();
+
+  // Bands
+  for(let i=0;i<S.bands.length;i++){
+    const B=S.bands[i],len=14;
+    const[x1,y1]=w2c(-B.ux*len,-B.uy*len,w,h),[x2,y2]=w2c(B.ux*len,B.uy*len,w,h);
+    c.save();c.strokeStyle=B.col;c.globalAlpha=S.step===0?.7:.25;c.lineWidth=S.step===0?2:1;c.setLineDash([5,4]);
+    c.beginPath();c.moveTo(x1,y1);c.lineTo(x2,y2);c.stroke();c.setLineDash([]);c.restore();
+    if(S.step===0){const ld=9.2,[lx,ly]=w2c(B.ux*ld,B.uy*ld,w,h);c.font='bold 10px "JetBrains Mono",monospace';c.fillStyle=B.col;c.fillText(`L${i+1} (${Math.round(B.ang*180/Math.PI)}°)`,lx+3,ly-4);}
+  }
+
+  // Projections (step>=1)
+  if(S.step>=1){
+    for(let i=0;i<S.bands.length;i++){
+      const B=S.bands[i];
+      // Target
+      const tT=S.projT[i],px=B.ux*tT,py=B.uy*tT;
+      const[cpx,cpy]=w2c(px,py,w,h),[ctx_,cty]=w2c(S.tx,S.ty,w,h);
+      c.save();c.strokeStyle='rgba(240,192,80,.3)';c.lineWidth=1;c.setLineDash([2,3]);c.beginPath();c.moveTo(ctx_,cty);c.lineTo(cpx,cpy);c.stroke();c.setLineDash([]);c.restore();
+      circ(c,cpx,cpy,4,S.bands[i].col);
+      // Conds
+      for(let j=0;j<3;j++){
+        const tC=S.projC[j][i],qx=B.ux*tC,qy=B.uy*tC;
+        const[cqx,cqy]=w2c(qx,qy,w,h),[ccx,ccy]=w2c(S.conds[j].x,S.conds[j].y,w,h);
+        c.save();c.strokeStyle=cCols[j];c.globalAlpha=.18;c.lineWidth=.7;c.setLineDash([2,3]);c.beginPath();c.moveTo(ccx,ccy);c.lineTo(cqx,cqy);c.stroke();c.setLineDash([]);c.restore();
+        circ(c,cqx,cqy,3,cCols[j]);
+      }
+    }
+  }
+
+  // Conditioning points
+  for(let j=0;j<3;j++){
+    const cd=S.conds[j],[cx,cy]=w2c(cd.x,cd.y,w,h);
+    const g=c.createRadialGradient(cx,cy,0,cx,cy,13);g.addColorStop(0,cCols[j]+'55');g.addColorStop(1,cCols[j]+'00');
+    c.fillStyle=g;c.beginPath();c.arc(cx,cy,13,0,Math.PI*2);c.fill();
+    circ(c,cx,cy,6,cCols[j],'#fff',1.5);
+    c.font='bold 10px "JetBrains Mono",monospace';c.fillStyle=cCols[j];
+    c.fillText(`z${j+1}=${cd.z.toFixed(1)}`,cx+11,cy-7);
+    c.font='9px "JetBrains Mono",monospace';c.fillStyle='rgba(255,255,255,.35)';
+    c.fillText(`(${cd.x.toFixed(1)},${cd.y.toFixed(1)})`,cx+11,cy+6);
+  }
+
+  // Target
+  const[tx,ty]=w2c(S.tx,S.ty,w,h);
+  const tg=c.createRadialGradient(tx,ty,0,tx,ty,18);tg.addColorStop(0,'rgba(240,192,80,.4)');tg.addColorStop(1,'rgba(240,192,80,0)');
+  c.fillStyle=tg;c.beginPath();c.arc(tx,ty,18,0,Math.PI*2);c.fill();
+  circ(c,tx,ty,7,'#f0c050','#fff',2);
+  c.font='bold 11px "JetBrains Mono",monospace';c.fillStyle='#f0c050';
+  c.fillText(`x₀=(${S.tx.toFixed(1)},${S.ty.toFixed(1)})`,tx+14,ty-9);
+
+  if(S.step>=6){
+    c.save();c.font='bold 13px "JetBrains Mono",monospace';
+    const vt=`Z=${S.Zcond.toFixed(4)}`,tw=c.measureText(vt).width;
+    c.fillStyle='rgba(240,192,80,.12)';c.beginPath();c.roundRect(tx-tw/2-9,ty+14,tw+18,26,6);c.fill();
+    c.strokeStyle='rgba(240,192,80,.5)';c.lineWidth=1;c.stroke();
+    c.fillStyle='#f0c050';c.fillText(vt,tx-tw/2,ty+32);c.restore();
+  }else if(S.step>=3){
+    c.save();c.font='bold 11px "JetBrains Mono",monospace';
+    const vt=`Zinc=${S.Zinc.t.toFixed(3)}`,tw=c.measureText(vt).width;
+    c.fillStyle='rgba(255,255,255,.05)';c.beginPath();c.roundRect(tx-tw/2-6,ty+13,tw+12,20,4);c.fill();
+    c.fillStyle='rgba(240,192,80,.65)';c.fillText(vt,tx-tw/2,ty+28);c.restore();
+  }
+}
+
+function draw1D(){
+  const{w,h}=sC(cv1,x1),c=x1;
+  c.fillStyle='#13151d';c.fillRect(0,0,w,h);
+  if(S.step<2){c.font='13px "Source Serif 4",serif';c.fillStyle='rgba(255,255,255,.2)';c.textAlign='center';c.fillText('Aparecerá no Passo 3',w/2,h/2);c.textAlign='left';return;}
+
+  const L=S.L,mg={t:14,b:14,l:50,r:16};
+  const stripH=(h-mg.t-mg.b)/L;
+
+  for(let i=0;i<L;i++){
+    const bc=S.bandCalc[i],band=S.bands[i];
+    const yBase=mg.t+i*stripH;
+
+    c.fillStyle=i%2===0?'rgba(255,255,255,.012)':'rgba(255,255,255,.004)';
+    c.fillRect(0,yBase,w,stripH);
+
+    c.font='bold 10px "JetBrains Mono",monospace';c.fillStyle=band.col;c.textAlign='left';
+    c.fillText(`L${i+1}`,6,yBase+stripH/2+3);
+    c.font='8px "JetBrains Mono",monospace';c.fillStyle='rgba(255,255,255,.22)';
+    c.fillText(`${Math.round(band.ang*180/Math.PI)}°`,6,yBase+stripH/2+14);
+
+    const pL=mg.l,pR=w-mg.r,pW=pR-pL;
+    const tMin=-14,tMax=14;
+    function t2x(t){return pL+(t-tMin)/(tMax-tMin)*pW;}
+
+    // Axis
+    const midY=yBase+stripH/2;
+    c.strokeStyle='rgba(255,255,255,.07)';c.lineWidth=.5;
+    c.beginPath();c.moveTo(pL,midY);c.lineTo(pR,midY);c.stroke();
+
+    // Tick marks
+    c.font='7px "JetBrains Mono",monospace';c.fillStyle='rgba(255,255,255,.15)';
+    for(let t=-12;t<=12;t+=4){const tx=t2x(t);c.beginPath();c.moveTo(tx,midY-3);c.lineTo(tx,midY+3);c.stroke();c.fillText(t,tx-5,midY+14);}
+
+    // Find Y range from BOTH the dense grid and the 4 key points
+    let yMin=Infinity,yMax=-Infinity;
+    for(const v of bc.yGrid){if(v<yMin)yMin=v;if(v>yMax)yMax=v;}
+    for(const v of bc.Y4){if(v<yMin)yMin=v;if(v>yMax)yMax=v;}
+    const yRng=Math.max(yMax-yMin,.5),yPad=yRng*.2;
+    const plotTop=yBase+8,plotBot=yBase+stripH-20,plotH=plotBot-plotTop;
+    function v2y(v){return plotBot-(v-(yMin-yPad))/(yRng+2*yPad)*plotH;}
+
+    // Zero line
+    if(yMin-yPad<0&&yMax+yPad>0){
+      const zy=v2y(0);
+      c.strokeStyle='rgba(255,255,255,.05)';c.setLineDash([2,4]);c.beginPath();c.moveTo(pL,zy);c.lineTo(pR,zy);c.stroke();c.setLineDash([]);
+    }
+
+    // ---- Draw the continuous GP curve from dense grid ----
+    c.beginPath();
+    let started=false;
+    for(let gi=0;gi<bc.tGrid.length;gi++){
+      const tg=bc.tGrid[gi];
+      if(tg<tMin||tg>tMax) continue;
+      const gx=t2x(tg),gy=v2y(bc.yGrid[gi]);
+      if(!started){c.moveTo(gx,gy);started=true;} else c.lineTo(gx,gy);
+    }
+    c.strokeStyle=band.col;c.globalAlpha=0.55;c.lineWidth=1.5;c.stroke();c.globalAlpha=1;
+
+    // Light fill under curve
+    if(started){
+      // close path down to baseline
+      const lastT=Math.min(bc.tGrid[bc.tGrid.length-1],tMax);
+      const firstT=Math.max(bc.tGrid[0],tMin);
+      c.lineTo(t2x(lastT),v2y(yMin-yPad));
+      c.lineTo(t2x(firstT),v2y(yMin-yPad));
+      c.closePath();
+      c.globalAlpha=0.05;c.fillStyle=band.col;c.fill();c.globalAlpha=1;
+    }
+
+    // ---- Draw the 4 key points on top ----
+    const colors=['#f0c050','#ff6b6b','#4ecdc4','#a78bfa'];
+    const labels=['x₀','z₁','z₂','z₃'];
+    for(let j=0;j<4;j++){
+      const px=t2x(bc.t4[j]),py=v2y(bc.Y4[j]);
+      // Vertical dashed line
+      c.save();c.strokeStyle=colors[j];c.globalAlpha=.25;c.lineWidth=.7;c.setLineDash([2,2]);
+      c.beginPath();c.moveTo(px,plotTop);c.lineTo(px,plotBot);c.stroke();c.setLineDash([]);c.restore();
+      // Dot
+      circ(c,px,py,j===0?5:4,colors[j],'#fff',.8);
+      // Label
+      c.font='bold 9px "JetBrains Mono",monospace';c.fillStyle=colors[j];c.textAlign='left';
+      const offY=j%2===0?-7:10;
+      c.fillText(`${labels[j]}=${bc.Y4[j].toFixed(3)}`,px+7,py+offY);
+      // t value
+      c.font='7px "JetBrains Mono",monospace';c.fillStyle='rgba(255,255,255,.3)';
+      c.fillText(`t=${bc.t4[j].toFixed(2)}`,px+7,py+offY+(j%2===0?-10:10));
+    }
+  }
+}
+
+// ========== Formatting helpers ==========
+function F(v,d){return(typeof v==='number')?v.toFixed(d===undefined?4:d):String(v);}
+function FS(v,d){const s=F(v,d);return(v>=0?'+':'')+s;}
+
+function matStr(M,n,labels,colorMap){
+  // Returns an HTML table-like matrix display
+  let s='<table style="display:inline-table;border-collapse:collapse;margin:4px 0;"><tr><td></td>';
+  for(let j=0;j<n;j++) s+=`<td style="text-align:center;padding:2px 6px;font-size:.72em;color:${colorMap?colorMap[j]:'var(--fg2)'}">${labels[j]}</td>`;
+  s+='</tr>';
+  for(let i=0;i<n;i++){
+    s+=`<tr><td style="padding:2px 6px;font-size:.72em;color:${colorMap?colorMap[i]:'var(--fg2)'}">${labels[i]}</td>`;
+    for(let j=0;j<n;j++){
+      const isD=i===j;
+      s+=`<td style="text-align:right;padding:3px 7px;${isD?'color:var(--accent);font-weight:600;':'color:var(--fg);'}font-size:.82em;">${F(M[i][j])}</td>`;
+    }
+    s+='</tr>';
+  }
+  s+='</table>';
+  return s;
+}
+
+// ========== Build step bar ==========
+function buildStepBar(){
+  const names=['Bandas','Projeções','Sim 1D','Z incond.','KS dados','KS sim.','Z cond.'];
+  const bar=document.getElementById('sbar');
+  bar.innerHTML='';
+  names.forEach((n,i)=>{
+    const d=document.createElement('div');d.className='sd'+(i===S.step?' a':'');d.dataset.step=i;d.textContent=i+1;
+    d.addEventListener('click',()=>setStep(i));
+    bar.appendChild(d);
+    const sp=document.createElement('span');sp.className='sl';sp.textContent=n;
+    bar.appendChild(sp);
+  });
+}
+
+// ========== Calc display ==========
+function updateCalc(){
+  const T=document.getElementById('cT'),C=document.getElementById('cC');
+  // Update dots
+  document.querySelectorAll('.sd').forEach(d=>{const s=+d.dataset.step;d.classList.toggle('a',s===S.step);d.classList.toggle('d',s<S.step);});
+
+  const st=S,L=st.L,a=st.a;
+  const ptC=['var(--c0)','var(--c1)','var(--c2)','var(--c3)'];
+
+  // ============== STEP 0: BANDS ==============
+  if(st.step===0){
+    T.textContent=`Passo 1 — Definir ${L} bandas equiespaçadas`;
+    let h=`<p>O semicírculo [0°, 180°) é dividido em ${L} direções. Cada banda é uma reta passando pela origem com direção unitária <strong>uᵢ</strong>.</p>`;
+    h+=`<div class="fb c">θᵢ = i × π / ${L} &emsp;&emsp; uᵢ = (cos θᵢ, sin θᵢ) &emsp;&emsp; i = 0, 1, …, ${L-1}</div>`;
+
+    h+=`<table class="ct"><tr><th>Banda</th><th>i</th><th>θᵢ = i×π/${L}</th><th>θᵢ (graus)</th><th>cos θᵢ</th><th>sin θᵢ</th><th>uᵢ</th></tr>`;
+    st.bands.forEach((b,i)=>{
+      h+=`<tr><td><span class="bdot" style="background:${b.col}"></span>L${i+1}</td>
+        <td>${i}</td>
+        <td>${i}×π/${L} = ${F(b.ang)} rad</td>
+        <td>${F(b.ang*180/Math.PI,1)}°</td>
+        <td>${F(b.ux)}</td>
+        <td>${F(b.uy)}</td>
+        <td><strong>(${F(b.ux)}, ${F(b.uy)})</strong></td></tr>`;
+    });
+    h+='</table>';
+    h+=`<p class="note">Usamos semicírculo: θ e θ+180° definem a mesma reta. As bandas originam-se em (0,0) e se estendem ao infinito em ambas as direções.</p>`;
+    C.innerHTML=h;
+
+  // ============== STEP 1: PROJECTIONS ==============
+  }else if(st.step===1){
+    T.textContent='Passo 2 — Projetar todos os pontos em cada banda';
+    const allPts=[{x:st.tx,y:st.ty,lbl:'x₀',cls:'h'},...st.conds.map((c,j)=>({x:c.x,y:c.y,lbl:`z${j+1}`,cls:ptCls[j+1]}))];
+
+    let h=`<p>A projeção de um ponto <strong>p = (pₓ, pᵧ)</strong> sobre a banda i é o produto escalar:</p>`;
+    h+=`<div class="fb c">tᵢ = p · uᵢ = pₓ × cos θᵢ + pᵧ × sin θᵢ</div>`;
+    h+=`<p>Temos ${L} bandas × 4 pontos = <strong>${L*4} projeções</strong>. Mostramos cada cálculo explicitamente:</p>`;
+
+    st.bands.forEach((b,i)=>{
+      h+=`<details${i===0?' open':''}><summary><span class="bdot" style="background:${b.col}"></span> Banda L${i+1} — θ = ${F(b.ang*180/Math.PI,1)}° — u = (${F(b.ux)}, ${F(b.uy)})</summary><div class="inner">`;
+
+      allPts.forEach((p,j)=>{
+        const tVal=j===0?st.projT[i]:st.projC[j-1][i];
+        const term1=p.x*b.ux, term2=p.y*b.uy;
+        h+=`<div class="fb"><span class="${p.cls}">${p.lbl}</span> = (${F(p.x,1)}, ${F(p.y,1)})
+  t = (${F(p.x,1)}) × (${F(b.ux)}) + (${F(p.y,1)}) × (${F(b.uy)})
+    = ${F(term1)} + ${F(term2)}
+    = <span class="${p.cls}">${F(tVal)}</span></div>`;
+      });
+      h+=`</div></details>`;
+    });
+
+    // Summary table
+    h+=`<p style="margin-top:12px;"><strong>Tabela resumo de projeções:</strong></p>`;
+    h+=`<table class="ct"><tr><th>Banda</th><th style="color:var(--c0)">t(x₀)</th>`;
+    for(let j=0;j<3;j++) h+=`<th style="color:${cCols[j]}">t(z${j+1})</th>`;
+    h+='</tr>';
+    st.bands.forEach((b,i)=>{
+      h+=`<tr><td><span class="bdot" style="background:${b.col}"></span>L${i+1}</td>
+        <td style="color:var(--accent);font-weight:600">${F(st.projT[i])}</td>`;
+      for(let j=0;j<3;j++) h+=`<td style="color:${cCols[j]}">${F(st.projC[j][i])}</td>`;
+      h+='</tr>';
+    });
+    h+='</table>';
+    C.innerHTML=h;
+
+  // ============== STEP 2: 1D SIMULATION ==============
+  }else if(st.step===2){
+    T.textContent='Passo 3 — Simular GP 1D em cada banda (4 pontos)';
+    let h=`<p>Em cada banda, simulamos um <strong>campo gaussiano 1D</strong> nos 4 pontos projetados usando a covariância C₁(h) = exp(−|h|/${F(a,1)}).</p>`;
+    h+=`<div class="fb c">Procedimento (por banda):
+1. Calcular distâncias |tᵢ − tⱼ| entre os 4 pontos projetados
+2. Montar matriz Σ (4×4): Σᵢⱼ = C₁(|tᵢ − tⱼ|) = exp(−|tᵢ − tⱼ| / ${F(a,1)})
+3. Decomposição de Cholesky: Σ = L · Lᵀ
+4. Gerar vetor aleatório: w = (w₁, w₂, w₃, w₄) ~ N(0, I)
+5. Calcular Y = L · w → vetor com covariância Σ</div>`;
+
+    st.bands.forEach((b,i)=>{
+      const bc=S.bandCalc[i];
+      h+=`<details${i===0?' open':''}><summary><span class="bdot" style="background:${b.col}"></span> Banda L${i+1} — cálculos completos</summary><div class="inner">`;
+
+      // Projected values
+      h+=`<p><strong>Valores projetados (do Passo 2):</strong></p><div class="fb">`;
+      ptLbl.forEach((l,j)=>{h+=`${l}: t = ${F(bc.t4[j])}\n`;});
+      h+=`</div>`;
+
+      // Distance matrix
+      h+=`<p><strong>① Matriz de distâncias |tᵢ − tⱼ|:</strong></p>`;
+      h+=`<div class="fb">`;
+      for(let r=0;r<4;r++){
+        for(let c=0;c<4;c++){
+          if(c>r){
+            h+=`d(${ptLbl[r]},${ptLbl[c]}) = |${F(bc.t4[r])} − ${F(bc.t4[c])}| = ${F(bc.dist4[r][c])}\n`;
+          }
+        }
+      }
+      h+=`</div>`;
+      h+=matStr(bc.dist4,4,ptLbl);
+
+      // Covariance matrix
+      h+=`<p><strong>② Matriz de covariância Σ = C₁(d) = exp(−d/${F(a,1)}):</strong></p>`;
+      h+=`<div class="fb">`;
+      for(let r=0;r<4;r++){
+        for(let c=r;c<4;c++){
+          if(r===c){h+=`Σ[${ptLbl[r]},${ptLbl[c]}] = C₁(0) = <span class="h">1.0000</span>\n`;}
+          else{h+=`Σ[${ptLbl[r]},${ptLbl[c]}] = exp(−${F(bc.dist4[r][c])}/${F(a,1)}) = exp(${F(-bc.dist4[r][c]/a)}) = ${F(bc.Sig4[r][c])}\n`;}
+        }
+      }
+      h+=`</div>`;
+      h+=matStr(bc.Sig4,4,ptLbl);
+
+      // Cholesky decomposition - EVERY element
+      h+=`<p><strong>③ Decomposição de Cholesky: Σ = L · Lᵀ</strong></p>`;
+      h+=`<div class="fb">`;
+      const Lm=bc.L4;
+      // L[0][0]
+      h+=`<span class="dim">──── Linha 1 ────</span>\n`;
+      h+=`L[1,1] = √(Σ[1,1]) = √(${F(bc.Sig4[0][0])}) = <span class="h">${F(Lm[0][0])}</span>\n\n`;
+      // L[1][0], L[1][1]
+      h+=`<span class="dim">──── Linha 2 ────</span>\n`;
+      h+=`L[2,1] = Σ[2,1] / L[1,1] = ${F(bc.Sig4[1][0])} / ${F(Lm[0][0])} = <span class="h">${F(Lm[1][0])}</span>\n`;
+      const v11=bc.Sig4[1][1]-Lm[1][0]*Lm[1][0];
+      h+=`L[2,2] = √(Σ[2,2] − L[2,1]²) = √(${F(bc.Sig4[1][1])} − ${F(Lm[1][0])}²) = √(${F(bc.Sig4[1][1])} − ${F(Lm[1][0]*Lm[1][0])}) = √(${F(v11)}) = <span class="h">${F(Lm[1][1])}</span>\n\n`;
+      // L[2][0], L[2][1], L[2][2]
+      h+=`<span class="dim">──── Linha 3 ────</span>\n`;
+      h+=`L[3,1] = Σ[3,1] / L[1,1] = ${F(bc.Sig4[2][0])} / ${F(Lm[0][0])} = <span class="h">${F(Lm[2][0])}</span>\n`;
+      const num21=bc.Sig4[2][1]-Lm[2][0]*Lm[1][0];
+      h+=`L[3,2] = (Σ[3,2] − L[3,1]×L[2,1]) / L[2,2]
+       = (${F(bc.Sig4[2][1])} − ${F(Lm[2][0])}×${F(Lm[1][0])}) / ${F(Lm[1][1])}
+       = (${F(bc.Sig4[2][1])} − ${F(Lm[2][0]*Lm[1][0])}) / ${F(Lm[1][1])}
+       = ${F(num21)} / ${F(Lm[1][1])} = <span class="h">${F(Lm[2][1])}</span>\n`;
+      const v22=bc.Sig4[2][2]-Lm[2][0]*Lm[2][0]-Lm[2][1]*Lm[2][1];
+      h+=`L[3,3] = √(Σ[3,3] − L[3,1]² − L[3,2]²)
+       = √(${F(bc.Sig4[2][2])} − ${F(Lm[2][0])}² − ${F(Lm[2][1])}²)
+       = √(${F(bc.Sig4[2][2])} − ${F(Lm[2][0]*Lm[2][0])} − ${F(Lm[2][1]*Lm[2][1])})
+       = √(${F(v22)}) = <span class="h">${F(Lm[2][2])}</span>\n\n`;
+      // L[3][0..3]
+      h+=`<span class="dim">──── Linha 4 ────</span>\n`;
+      h+=`L[4,1] = Σ[4,1] / L[1,1] = ${F(bc.Sig4[3][0])} / ${F(Lm[0][0])} = <span class="h">${F(Lm[3][0])}</span>\n`;
+      const num31=bc.Sig4[3][1]-Lm[3][0]*Lm[1][0];
+      h+=`L[4,2] = (Σ[4,2] − L[4,1]×L[2,1]) / L[2,2]
+       = (${F(bc.Sig4[3][1])} − ${F(Lm[3][0])}×${F(Lm[1][0])}) / ${F(Lm[1][1])}
+       = ${F(num31)} / ${F(Lm[1][1])} = <span class="h">${F(Lm[3][1])}</span>\n`;
+      const num32=bc.Sig4[3][2]-Lm[3][0]*Lm[2][0]-Lm[3][1]*Lm[2][1];
+      h+=`L[4,3] = (Σ[4,3] − L[4,1]×L[3,1] − L[4,2]×L[3,2]) / L[3,3]
+       = (${F(bc.Sig4[3][2])} − ${F(Lm[3][0])}×${F(Lm[2][0])} − ${F(Lm[3][1])}×${F(Lm[2][1])}) / ${F(Lm[2][2])}
+       = (${F(bc.Sig4[3][2])} − ${F(Lm[3][0]*Lm[2][0])} − ${F(Lm[3][1]*Lm[2][1])}) / ${F(Lm[2][2])}
+       = ${F(num32)} / ${F(Lm[2][2])} = <span class="h">${F(Lm[3][2])}</span>\n`;
+      const v33=bc.Sig4[3][3]-Lm[3][0]*Lm[3][0]-Lm[3][1]*Lm[3][1]-Lm[3][2]*Lm[3][2];
+      h+=`L[4,4] = √(Σ[4,4] − L[4,1]² − L[4,2]² − L[4,3]²)
+       = √(${F(bc.Sig4[3][3])} − ${F(Lm[3][0]*Lm[3][0])} − ${F(Lm[3][1]*Lm[3][1])} − ${F(Lm[3][2]*Lm[3][2])})
+       = √(${F(v33)}) = <span class="h">${F(Lm[3][3])}</span>`;
+      h+=`</div>`;
+
+      // Show L matrix
+      h+=`<p>Matriz L resultante:</p>`;
+      const Ldisp=bc.L4.map(r=>r.map(v=>v===0?'0':F(v)));
+      h+=matStr(bc.L4,4,ptLbl);
+
+      // Random vector
+      h+=`<p><strong>④ Vetor aleatório w ~ N(0, I):</strong></p>`;
+      h+=`<div class="fb">w = (${bc.w4.map(v=>F(v)).join(', ')})</div>`;
+
+      // Y = L * w
+      h+=`<p><strong>⑤ Y = L · w (multiplicação linha por linha):</strong></p>`;
+      h+=`<div class="fb">`;
+      for(let r=0;r<4;r++){
+        let terms=[],vals=[];
+        for(let c=0;c<=r;c++){
+          terms.push(`L[${r+1},${c+1}]×w${c+1}`);
+          vals.push(`${F(Lm[r][c])}×(${F(bc.w4[c])})`);
+        }
+        let prods=[];
+        for(let c=0;c<=r;c++) prods.push(F(Lm[r][c]*bc.w4[c]));
+        h+=`Y(${ptLbl[r]}) = ${terms.join(' + ')}
+        = ${vals.join(' + ')}
+        = ${prods.join(' + ')}
+        = <span class="${ptCls[r]}">${F(bc.Y4[r])}</span>\n${r<3?'\n':''}`;
+      }
+      h+=`</div>`;
+
+      h+=`</div></details>`;
+    });
+
+    // Summary
+    h+=`<p style="margin-top:14px;"><strong>Resumo — valores simulados em cada banda:</strong></p>`;
+    h+=`<table class="ct"><tr><th>Banda</th><th style="color:var(--accent)">Y(x₀)</th>`;
+    for(let j=0;j<3;j++) h+=`<th style="color:${cCols[j]}">Y(z${j+1})</th>`;
+    h+='</tr>';
+    st.bands.forEach((b,i)=>{
+      const bc=S.bandCalc[i];
+      h+=`<tr><td><span class="bdot" style="background:${b.col}"></span>L${i+1}</td>
+        <td style="color:var(--accent);font-weight:600">${F(bc.Y4[0])}</td>`;
+      for(let j=0;j<3;j++) h+=`<td style="color:${cCols[j]}">${F(bc.Y4[j+1])}</td>`;
+      h+='</tr>';
+    });
+    h+='</table>';
+    C.innerHTML=h;
+
+  // ============== STEP 3: COMBINE ==============
+  }else if(st.step===3){
+    T.textContent='Passo 4 — Combinar bandas → valores incondicionais Z_TB';
+    const sqL=Math.sqrt(L);
+    let h=`<p>Somamos as contribuições de cada banda, normalizando por 1/√L:</p>`;
+    h+=`<div class="fb c">Z_TB(p) = (1/√${L}) × Σᵢ₌₁..${L} Yᵢ(p) = (1/${F(sqL)}) × Σᵢ Yᵢ(p)</div>`;
+
+    // Target
+    const tTerms=st.bandCalc.map(bc=>F(bc.Y4[0]));
+    const tSum=st.bandCalc.reduce((a,bc)=>a+bc.Y4[0],0);
+    h+=`<div class="fb"><span class="h">Z_TB(x₀)</span> = (1/${F(sqL)}) × (${tTerms.join(' + ')})
+         = (1/${F(sqL)}) × (${F(tSum)})
+         = <span class="h">${F(st.Zinc.t)}</span></div>`;
+
+    // Conds
+    for(let j=0;j<3;j++){
+      const terms=st.bandCalc.map(bc=>F(bc.Y4[j+1]));
+      const sum=st.bandCalc.reduce((a,bc)=>a+bc.Y4[j+1],0);
+      h+=`<div class="fb"><span class="${ptCls[j+1]}">Z_TB(z${j+1})</span> = (1/${F(sqL)}) × (${terms.join(' + ')})
+         = (1/${F(sqL)}) × (${F(sum)})
+         = <span class="${ptCls[j+1]}">${F(st.Zinc.c[j])}</span></div>`;
+    }
+
+    h+=`<div class="mr3">
+      <div class="mr"><div class="rl">Z_TB(x₀)</div><div class="rv" style="color:var(--accent)">${F(st.Zinc.t)}</div></div>
+      ${st.Zinc.c.map((v,j)=>`<div class="mr"><div class="rl">Z_TB(z${j+1})</div><div class="rv" style="color:${cCols[j]}">${F(v)}</div></div>`).join('')}
+    </div>`;
+    h+=`<p class="note">Estes são valores <strong>incondicionais</strong>: não honram os dados. Observe que Z_TB(z₁) = ${F(st.Zinc.c[0])} ≠ z₁ = ${F(st.conds[0].z,1)}. Os próximos passos fazem o condicionamento.</p>`;
+    C.innerHTML=h;
+
+  // ============== STEP 4: SK DATA ==============
+  }else if(st.step===4){
+    T.textContent='Passo 5 — Krigagem Simples (KS) dos dados reais';
+    const cd=st.conds;
+    let h=`<p>Estimamos Z*(x₀) por KS usando os valores reais z₁, z₂, z₃ e a covariância C₂(r) = exp(−r/a) com a = ${F(a,1)}.</p>`;
+    h+=`<div class="fb c">Sistema KS:  C_dados · λ = c₀   →   Z*_KS = μ + Σ λᵢ(zᵢ − μ)</div>`;
+
+    // ---- Distances and C2 between conds ----
+    h+=`<details open><summary>① Matriz C_dados (3×3) — covariância entre condicionantes</summary><div class="inner">`;
+    h+=`<div class="fb">Coordenadas dos condicionantes:
+  z₁ = (${F(cd[0].x,1)}, ${F(cd[0].y,1)})    valor = ${F(cd[0].z,1)}
+  z₂ = (${F(cd[1].x,1)}, ${F(cd[1].y,1)})    valor = ${F(cd[1].z,1)}
+  z₃ = (${F(cd[2].x,1)}, ${F(cd[2].y,1)})    valor = ${F(cd[2].z,1)}
+
+Distâncias euclidianas e covariâncias:</div>`;
+    h+=`<div class="fb">`;
+    for(let i=0;i<3;i++) for(let j=i;j<3;j++){
+      const dx=cd[i].x-cd[j].x,dy=cd[i].y-cd[j].y;
+      const r=Math.sqrt(dx*dx+dy*dy);
+      if(i===j){h+=`C₂(z${i+1},z${i+1}) = C₂(0) = <span class="h">1.0000</span>  (variância unitária)\n`;}
+      else{h+=`d(z${i+1},z${j+1}) = √((${F(cd[i].x,1)}−${F(cd[j].x,1)})² + (${F(cd[i].y,1)}−${F(cd[j].y,1)})²)
+          = √(${F(dx*dx)} + ${F(dy*dy)}) = √(${F(dx*dx+dy*dy)}) = ${F(r)}
+C₂(z${i+1},z${j+1}) = exp(−${F(r)} / ${F(a,1)}) = exp(${F(-r/a)}) = <span class="h">${F(st.Cd[i][j])}</span>\n\n`;}
+    }
+    h+=`</div>`;
+    h+=`<p>Matriz C_dados:</p>`;
+    h+=matStr(st.Cd,3,['z₁','z₂','z₃'],cCols);
+    h+=`</div></details>`;
+
+    // ---- c0 vector ----
+    h+=`<details open><summary>② Vetor c₀ — covariâncias alvo–condicionantes</summary><div class="inner">`;
+    h+=`<div class="fb">`;
+    for(let i=0;i<3;i++){
+      const dx=st.tx-cd[i].x,dy=st.ty-cd[i].y;
+      const r=Math.sqrt(dx*dx+dy*dy);
+      h+=`d(x₀,z${i+1}) = √((${F(st.tx,1)}−${F(cd[i].x,1)})² + (${F(st.ty,1)}−${F(cd[i].y,1)})²)
+          = √(${F(dx*dx)} + ${F(dy*dy)}) = ${F(r)}
+c₀[${i+1}] = exp(−${F(r)} / ${F(a,1)}) = <span style="color:${cCols[i]};font-weight:600">${F(st.c0d[i])}</span>\n\n`;
+    }
+    h+=`c₀ = (${st.c0d.map((v,i)=>`<span style="color:${cCols[i]};font-weight:600">${F(v)}</span>`).join(', ')})`;
+    h+=`</div></div></details>`;
+
+    // ---- Cholesky of C_dados ----
+    h+=`<details open><summary>③ Cholesky de C_dados: C = L·Lᵀ</summary><div class="inner">`;
+    const Lk=st.Ld3;
+    h+=`<div class="fb"><span class="dim">──── Linha 1 ────</span>
+L[1,1] = √(C[1,1]) = √(${F(st.Cd[0][0])}) = <span class="h">${F(Lk[0][0])}</span>
+
+<span class="dim">──── Linha 2 ────</span>
+L[2,1] = C[2,1] / L[1,1] = ${F(st.Cd[1][0])} / ${F(Lk[0][0])} = <span class="h">${F(Lk[1][0])}</span>
+L[2,2] = √(C[2,2] − L[2,1]²) = √(${F(st.Cd[1][1])} − ${F(Lk[1][0]*Lk[1][0])}) = √(${F(st.Cd[1][1]-Lk[1][0]*Lk[1][0])}) = <span class="h">${F(Lk[1][1])}</span>
+
+<span class="dim">──── Linha 3 ────</span>
+L[3,1] = C[3,1] / L[1,1] = ${F(st.Cd[2][0])} / ${F(Lk[0][0])} = <span class="h">${F(Lk[2][0])}</span>
+L[3,2] = (C[3,2] − L[3,1]×L[2,1]) / L[2,2]
+       = (${F(st.Cd[2][1])} − ${F(Lk[2][0])}×${F(Lk[1][0])}) / ${F(Lk[1][1])}
+       = (${F(st.Cd[2][1])} − ${F(Lk[2][0]*Lk[1][0])}) / ${F(Lk[1][1])}
+       = ${F(st.Cd[2][1]-Lk[2][0]*Lk[1][0])} / ${F(Lk[1][1])} = <span class="h">${F(Lk[2][1])}</span>
+L[3,3] = √(C[3,3] − L[3,1]² − L[3,2]²)
+       = √(${F(st.Cd[2][2])} − ${F(Lk[2][0]*Lk[2][0])} − ${F(Lk[2][1]*Lk[2][1])})
+       = √(${F(st.Cd[2][2]-Lk[2][0]*Lk[2][0]-Lk[2][1]*Lk[2][1])}) = <span class="h">${F(Lk[2][2])}</span></div>`;
+    h+=matStr(Lk,3,['z₁','z₂','z₃'],cCols);
+    h+=`</div></details>`;
+
+    // ---- Solve system ----
+    h+=`<details open><summary>④ Resolver L·y = c₀ (substituição progressiva) e Lᵀ·λ = y (regressiva)</summary><div class="inner">`;
+    const y3=solvL(Lk,st.c0d);
+    h+=`<div class="fb"><span class="dim">── Substituição progressiva: L·y = c₀ ──</span>
+y₁ = c₀[1] / L[1,1] = ${F(st.c0d[0])} / ${F(Lk[0][0])} = <span class="h">${F(y3[0])}</span>
+y₂ = (c₀[2] − L[2,1]×y₁) / L[2,2]
+   = (${F(st.c0d[1])} − ${F(Lk[1][0])}×${F(y3[0])}) / ${F(Lk[1][1])}
+   = (${F(st.c0d[1])} − ${F(Lk[1][0]*y3[0])}) / ${F(Lk[1][1])}
+   = ${F(st.c0d[1]-Lk[1][0]*y3[0])} / ${F(Lk[1][1])} = <span class="h">${F(y3[1])}</span>
+y₃ = (c₀[3] − L[3,1]×y₁ − L[3,2]×y₂) / L[3,3]
+   = (${F(st.c0d[2])} − ${F(Lk[2][0])}×${F(y3[0])} − ${F(Lk[2][1])}×${F(y3[1])}) / ${F(Lk[2][2])}
+   = (${F(st.c0d[2])} − ${F(Lk[2][0]*y3[0])} − ${F(Lk[2][1]*y3[1])}) / ${F(Lk[2][2])}
+   = ${F(st.c0d[2]-Lk[2][0]*y3[0]-Lk[2][1]*y3[1])} / ${F(Lk[2][2])} = <span class="h">${F(y3[2])}</span>
+
+y = (${F(y3[0])}, ${F(y3[1])}, ${F(y3[2])})</div>`;
+
+    h+=`<div class="fb"><span class="dim">── Substituição regressiva: Lᵀ·λ = y ──</span>
+λ₃ = y₃ / L[3,3] = ${F(y3[2])} / ${F(Lk[2][2])} = <span class="h">${F(st.lamd[2])}</span>
+λ₂ = (y₂ − L[3,2]×λ₃) / L[2,2]
+   = (${F(y3[1])} − ${F(Lk[2][1])}×${F(st.lamd[2])}) / ${F(Lk[1][1])}
+   = ${F(y3[1]-Lk[2][1]*st.lamd[2])} / ${F(Lk[1][1])} = <span class="h">${F(st.lamd[1])}</span>
+λ₁ = (y₁ − L[2,1]×λ₂ − L[3,1]×λ₃) / L[1,1]
+   = (${F(y3[0])} − ${F(Lk[1][0])}×${F(st.lamd[1])} − ${F(Lk[2][0])}×${F(st.lamd[2])}) / ${F(Lk[0][0])}
+   = ${F(y3[0]-Lk[1][0]*st.lamd[1]-Lk[2][0]*st.lamd[2])} / ${F(Lk[0][0])} = <span class="h">${F(st.lamd[0])}</span></div>`;
+    h+=`<div class="fb">λ = (<span class="h">${st.lamd.map(v=>F(v)).join(', ')}</span>)    Σλᵢ = ${F(st.lamd.reduce((a,v)=>a+v,0))}</div>`;
+    h+=`</div></details>`;
+
+    // ---- Kriging estimate ----
+    h+=`<details open><summary>⑤ Estimativa e variância KS</summary><div class="inner">`;
+    h+=`<div class="fb">Z*_KS = μ + Σᵢ λᵢ × (zᵢ − μ)
+      = ${F(st.mu,1)}`;
+    for(let i=0;i<3;i++) h+=` + ${F(st.lamd[i])} × (${F(cd[i].z,1)} − ${F(st.mu,1)})`;
+    h+=`\n      = ${F(st.mu,1)}`;
+    for(let i=0;i<3;i++) h+=` + ${F(st.lamd[i])} × ${F(cd[i].z-st.mu,1)}`;
+    h+=`\n      = ${F(st.mu,1)}`;
+    for(let i=0;i<3;i++) h+=` + ${F(st.lamd[i]*(cd[i].z-st.mu))}`;
+    h+=`\n      = <span class="h">${F(st.Zskd)}</span></div>`;
+
+    h+=`<div class="fb">σ²_KS = C₂(0) − Σᵢ λᵢ × c₀ᵢ
+      = 1`;
+    for(let i=0;i<3;i++) h+=` − ${F(st.lamd[i])} × ${F(st.c0d[i])}`;
+    h+=`\n      = 1`;
+    for(let i=0;i<3;i++) h+=` − ${F(st.lamd[i]*st.c0d[i])}`;
+    h+=`\n      = <span class="h">${F(st.vskd)}</span></div>`;
+
+    h+=`<div class="rb"><div class="rl">Z*_KS (dados reais) &ensp;│&ensp; σ²_KS</div>
+      <div class="rv">${F(st.Zskd)} &ensp;│&ensp; ${F(st.vskd)}</div></div>`;
+    h+=`</div></details>`;
+    C.innerHTML=h;
+
+  // ============== STEP 5: SK SIM ==============
+  }else if(st.step===5){
+    T.textContent='Passo 6 — Krigagem Simples dos valores simulados';
+    let h=`<p>Repetimos a <strong>mesma krigagem</strong>, mas com os <strong>valores incondicionais simulados</strong> Z_TB nos pontos condicionantes. A média do campo simulado é μ_sim = 0.</p>`;
+
+    h+=`<div class="fb">Valores simulados nos condicionantes (do Passo 4):
+  Z_TB(z₁) = <span class="c1">${F(st.Zinc.c[0])}</span>
+  Z_TB(z₂) = <span class="c2">${F(st.Zinc.c[1])}</span>
+  Z_TB(z₃) = <span class="c3">${F(st.Zinc.c[2])}</span>
+
+Mesma geometria → mesmos pesos λ:
+  λ = (${st.lams.map(v=>F(v)).join(', ')})</div>`;
+
+    h+=`<div class="fb">Z*_KS,sim = μ_sim + Σᵢ λᵢ × (Z_TB(zᵢ) − μ_sim)
+           = 0`;
+    for(let i=0;i<3;i++) h+=` + ${F(st.lams[i])} × ${F(st.Zinc.c[i])}`;
+    h+=`\n           = 0`;
+    for(let i=0;i<3;i++) h+=` + ${F(st.lams[i]*st.Zinc.c[i])}`;
+    h+=`\n           = <span class="h">${F(st.Zsks)}</span></div>`;
+
+    const residuo=st.Zinc.t-st.Zsks;
+    h+=`<div class="fb"><span class="dim">──── Resíduo simulado ────</span>
+Resíduo = Z_TB(x₀) − Z*_KS,sim(x₀)
+        = ${F(st.Zinc.t)} − ${F(st.Zsks)}
+        = <span class="ok">${F(residuo)}</span></div>`;
+
+    h+=`<div class="mr3">
+      <div class="mr"><div class="rl">Z_TB(x₀)</div><div class="rv" style="color:var(--accent)">${F(st.Zinc.t)}</div></div>
+      <div class="mr"><div class="rl">Z*_KS,sim</div><div class="rv" style="color:var(--accent)">${F(st.Zsks)}</div></div>
+      <div class="mr"><div class="rl">Resíduo</div><div class="rv" style="color:var(--ok)">${F(residuo)}</div></div>
+    </div>`;
+    h+=`<p class="note">O resíduo captura a flutuação local da simulação não explicada pela krigagem. Tem E[resíduo] = 0 e Var[resíduo] = σ²_KS = ${F(st.vskd)}.</p>`;
+    C.innerHTML=h;
+
+  // ============== STEP 6: CONDITIONING ==============
+  }else if(st.step===6){
+    T.textContent='Passo 7 — Condicionamento: Z_cond = KS(dados) + resíduo simulado';
+    const res=st.Zinc.t-st.Zsks;
+    let h=`<p>A fórmula central da <strong>simulação condicional</strong>:</p>`;
+    h+=`<div class="fb c" style="font-size:.95em;"><span class="h">Z_cond(x₀) = Z*_KS(x₀) + [ Z_TB(x₀) − Z*_KS,sim(x₀) ]</span></div>`;
+    h+=`<p>Substituindo os valores calculados nos passos anteriores:</p>`;
+    h+=`<div class="fb">Z_cond = Z*_KS(dados) + resíduo_simulado
+       = <span class="h">${F(st.Zskd)}</span> + (<span class="h">${F(st.Zinc.t)}</span> − <span class="h">${F(st.Zsks)}</span>)
+       = ${F(st.Zskd)} + ${F(res)}
+       = <span class="h">${F(st.Zcond)}</span></div>`;
+
+    h+=`<div class="rb"><div class="rl">Valor Simulado Condicional em x₀ = (${F(st.tx,1)}, ${F(st.ty,1)})</div><div class="rv">${F(st.Zcond)}</div></div>`;
+
+    h+=`<div class="fb"><span class="dim">──── Por que funciona? ────</span>
+Decomposição:
+  Z_cond = Z*_KS(dados) + resíduo_simulado
+
+Componentes:
+  • Z*_KS = ${F(st.Zskd)}  →  estimativa ótima (dados reais)
+  • Resíduo = ${F(res)}  →  flutuação com E=0, Var=σ²_KS=${F(st.vskd)}
+
+Propriedades garantidas:
+  ✓ E[Z_cond] = Z*_KS (média condicional correta)
+  ✓ Var(Z_cond − Z*_KS) = σ²_KS (dispersão condicional correta)
+  ✓ Se x₀ → zᵢ, então Z_cond → zᵢ (honra os dados exatamente)
+  ✓ Covariância espacial C₂(r) preservada entre quaisquer pontos</div>`;
+
+    h+=`<p style="margin-top:12px;"><strong>Verificação numérica:</strong> arraste x₀ para cima de cada condicionante:</p>`;
+    h+=`<div class="fb">`;
+    for(let j=0;j<3;j++) h+=`z${j+1} em (${F(st.conds[j].x,1)}, ${F(st.conds[j].y,1)}) → valor real = <span style="color:${cCols[j]};font-weight:600">${F(st.conds[j].z,1)}</span>    (Z_cond deve → ${F(st.conds[j].z,1)})\n`;
+    h+=`</div>`;
+    h+=`<p class="note">Mude a seed para ver diferentes realizações — todas honram os dados mas flutuam com variância σ²_KS = ${F(st.vskd)}.</p>`;
+    C.innerHTML=h;
+  }
+}
+
+// ========== Interaction ==========
+function run(){
+  S.L=+document.getElementById('sL').value;
+  S.a=+document.getElementById('sA').value;
+  S.mu=+document.getElementById('sM').value;
+  S.seed=+document.getElementById('sS').value;
+  S.conds[0].z=+document.getElementById('z1').value;
+  S.conds[1].z=+document.getElementById('z2').value;
+  S.conds[2].z=+document.getElementById('z3').value;
+  simulate();draw2D();draw1D();updateCalc();
+}
+function setStep(s){S.step=Math.max(0,Math.min(6,s));draw2D();draw1D();updateCalc();}
+
+['sL','sA','sM','sS'].forEach(id=>{
+  const el=document.getElementById(id);
+  const vm={'sL':'vL','sA':'vA','sM':'vM','sS':'vS'}[id];
+  el.addEventListener('input',()=>{document.getElementById(vm).textContent=id==='sA'||id==='sM'?parseFloat(el.value).toFixed(1):el.value;});
+  el.addEventListener('change',run);
+});
+['z1','z2','z3'].forEach(id=>document.getElementById(id).addEventListener('change',run));
+document.getElementById('btnR').addEventListener('click',()=>{S.seed=+document.getElementById('sS').value+1;document.getElementById('sS').value=S.seed;document.getElementById('vS').textContent=S.seed;run();});
+
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();setStep(S.step+1);}if(e.key==='ArrowLeft'){e.preventDefault();setStep(S.step-1);}});
+
+function findHit(mx,my,w,h){const[tx,ty]=w2c(S.tx,S.ty,w,h);if(Math.hypot(mx-tx,my-ty)<20)return'target';for(let j=0;j<3;j++){const[cx,cy]=w2c(S.conds[j].x,S.conds[j].y,w,h);if(Math.hypot(mx-cx,my-cy)<20)return j;}return null;}
+function snap(v){return Math.max(-9,Math.min(9,Math.round(v*2)/2));}
+
+cv2.addEventListener('mousedown',e=>{const r=cv2.getBoundingClientRect();S.dragging=findHit(e.clientX-r.left,e.clientY-r.top,r.width,r.height);if(S.dragging!==null)cv2.style.cursor='grabbing';});
+cv2.addEventListener('mousemove',e=>{const r=cv2.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;if(S.dragging!==null){const[wx,wy]=c2w(mx,my,r.width,r.height);if(S.dragging==='target'){S.tx=snap(wx);S.ty=snap(wy);}else{S.conds[S.dragging].x=snap(wx);S.conds[S.dragging].y=snap(wy);}simulate();draw2D();draw1D();updateCalc();}else{cv2.style.cursor=findHit(mx,my,r.width,r.height)!==null?'grab':'default';}});
+cv2.addEventListener('mouseup',()=>{S.dragging=null;cv2.style.cursor='default';});
+cv2.addEventListener('mouseleave',()=>{S.dragging=null;cv2.style.cursor='default';});
+cv2.addEventListener('touchstart',e=>{const r=cv2.getBoundingClientRect(),t=e.touches[0];S.dragging=findHit(t.clientX-r.left,t.clientY-r.top,r.width,r.height);if(S.dragging!==null)e.preventDefault();},{passive:false});
+cv2.addEventListener('touchmove',e=>{if(S.dragging===null)return;e.preventDefault();const r=cv2.getBoundingClientRect(),t=e.touches[0],[wx,wy]=c2w(t.clientX-r.left,t.clientY-r.top,r.width,r.height);if(S.dragging==='target'){S.tx=snap(wx);S.ty=snap(wy);}else{S.conds[S.dragging].x=snap(wx);S.conds[S.dragging].y=snap(wy);}simulate();draw2D();draw1D();updateCalc();},{passive:false});
+cv2.addEventListener('touchend',()=>{S.dragging=null;});
+window.addEventListener('resize',()=>{draw2D();draw1D();});
+
+buildStepBar();
+run();
+</script>
+</body>
+</html>
